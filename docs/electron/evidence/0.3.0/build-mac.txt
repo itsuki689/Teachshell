@@ -1,0 +1,17 @@
+  • electron-builder  version=26.18.0 os=25.6.0
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=arm64 buildFromSource=false workspaceRoot=/Users/theself/Codx/Teachshell/desktop projectDir=./ appDir=./
+  • installing native dependencies  arch=arm64
+  • completed installing native dependencies
+  • packaging       platform=darwin arch=arm64 electron=45.0.0 appOutDir=release/mac-arm64
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/theself/Codx/Teachshell/desktop/release/mac-arm64
+  • searching for node modules  pm=npm searchDir=/Users/theself/Codx/Teachshell/desktop
+  • duplicate dependency references  dependencies=["vue@3.5.44","vue@3.5.44","@babel/parser@7.29.11","@vue/compiler-core@3.5.44","@vue/compiler-dom@3.5.44","@vue/compiler-dom@3.5.44","@vue/reactivity@3.5.44","@vue/compiler-ssr@3.5.44","@vue/runtime-dom@3.5.44"]
+  • ad-hoc signing with hardenedRuntime enabled requires the com.apple.security.cs.disable-library-validation entitlement to prevent app launch failures due to library validation. See https://electron.build/code-signing for details.
+  • signing         file=release/mac-arm64/Teachshell.app platform=darwin type=distribution identityName=- identityHash=none provisioningProfile=none
+  • skipped macOS notarization  reason=`notarize` options were unable to be generated
+  • building        target=macOS zip arch=arm64 file=release/Teachshell-0.3.0-arm64-mac.zip
+  • building        target=DMG arch=arm64 file=release/Teachshell-0.3.0-arm64.dmg
+  • building block map  blockMapFile=release/Teachshell-0.3.0-arm64.dmg.blockmap
+  • building block map  blockMapFile=release/Teachshell-0.3.0-arm64-mac.zip.blockmap

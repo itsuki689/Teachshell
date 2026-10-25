@@ -1,0 +1,17 @@
+  • electron-builder  version=26.18.0 os=25.6.0
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=x64 buildFromSource=false workspaceRoot=/Users/theself/Codx/Teachshell/desktop projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=win32 arch=x64 electron=45.0.0 appOutDir=release/win-unpacked
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/theself/Codx/Teachshell/desktop/release/win-unpacked
+  • searching for node modules  pm=npm searchDir=/Users/theself/Codx/Teachshell/desktop
+  • duplicate dependency references  dependencies=["vue@3.5.44","vue@3.5.44","@babel/parser@7.29.11","@vue/compiler-core@3.5.44","@vue/compiler-dom@3.5.44","@vue/compiler-dom@3.5.44","@vue/reactivity@3.5.44","@vue/compiler-ssr@3.5.44","@vue/runtime-dom@3.5.44"]
+  • updating asar integrity executable resource  executablePath=release/win-unpacked/Teachshell.exe
+  • no code signing certificate configured, signing is skipped  path=release/win-unpacked/Teachshell.exe
+  • building        target=nsis file=release/Teachshell Setup 0.3.0.exe archs=x64 oneClick=false perMachine=false
+  • no code signing certificate configured, signing is skipped  path=/private/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/t-s0bWXv/elevate-staging-1/resources/elevate.exe
+  • no code signing certificate configured, signing is skipped  path=release/Teachshell Setup 0.3.0.__uninstaller.exe
+  • no code signing certificate configured, signing is skipped  path=release/Teachshell Setup 0.3.0.exe
+  • building block map  blockMapFile=release/Teachshell Setup 0.3.0.exe.blockmap

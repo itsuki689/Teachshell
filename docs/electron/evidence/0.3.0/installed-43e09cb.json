@@ -1,0 +1,10 @@
+{
+  "installed": "/Applications/Teachshell.app",
+  "source": "/Users/theself/Codx/Teachshell/desktop/release/mac-arm64/Teachshell.app",
+  "backup": "/Applications/.Teachshell-backups/2026-10-25T05-06-34-447Z-f4b193c1-02a0-4580-bb28-e236b7eb9a11/Teachshell.app",
+  "asarSHA256": "0e71f396967351354d8d91d2da29c5584251526830a5418751998f77b7857a5b",
+  "pids": [
+    82977
+  ],
+  "verifiedAt": "2026-10-25T05:06:38.841Z"
+}

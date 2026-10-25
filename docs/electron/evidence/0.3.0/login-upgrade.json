@@ -1,0 +1,48 @@
+{
+  "startedAt": "2026-10-25T05:07:50.693Z",
+  "service": "com.teachshelf.desktop.teaching-session",
+  "profile": "test-upgrade-6829b4b6-3af5-4856-ac37-daf94663210a",
+  "allowInteraction": false,
+  "previous": {
+    "path": "/Applications/.Teachshell-backups/2026-10-25T05-06-34-447Z-f4b193c1-02a0-4580-bb28-e236b7eb9a11/Teachshell.app/Contents/Resources/teaching-session-keychain",
+    "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+    "designatedRequirement": "# designated => cdhash H\"3b2bd9f57534dcefed908aca412e9e347ad037b9\"",
+    "requirementExitCode": 0,
+    "signatureVerification": true,
+    "signatureDiagnostic": "/Applications/.Teachshell-backups/2026-10-25T05-06-34-447Z-f4b193c1-02a0-4580-bb28-e236b7eb9a11/Teachshell.app/Contents/Resources/teaching-session-keychain: valid on disk\n/Applications/.Teachshell-backups/2026-10-25T05-06-34-447Z-f4b193c1-02a0-4580-bb28-e236b7eb9a11/Teachshell.app/Contents/Resources/teaching-session-keychain: satisfies its Designated Requirement",
+    "requirementIsImplicit": true,
+    "cdHash": "3b2bd9f57534dcefed908aca412e9e347ad037b9",
+    "signature": "adhoc"
+  },
+  "current": {
+    "path": "/Applications/Teachshell.app/Contents/Resources/teaching-session-keychain",
+    "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+    "designatedRequirement": "# designated => cdhash H\"3b2bd9f57534dcefed908aca412e9e347ad037b9\"",
+    "requirementExitCode": 0,
+    "signatureVerification": true,
+    "signatureDiagnostic": "/Applications/Teachshell.app/Contents/Resources/teaching-session-keychain: valid on disk\n/Applications/Teachshell.app/Contents/Resources/teaching-session-keychain: satisfies its Designated Requirement",
+    "requirementIsImplicit": true,
+    "cdHash": "3b2bd9f57534dcefed908aca412e9e347ad037b9",
+    "signature": "adhoc"
+  },
+  "oldWrite": {
+    "ok": true,
+    "exitCode": 0
+  },
+  "newRead": {
+    "ok": true,
+    "exitCode": 0,
+    "containsData": true,
+    "matchesSyntheticRecord": true
+  },
+  "result": "noninteractive_upgrade_compatible",
+  "oldRemove": {
+    "ok": true,
+    "exitCode": 0
+  },
+  "cleanupVerified": true,
+  "completedAt": "2026-10-25T05:07:50.748Z",
+  "requirementsMatch": true,
+  "binariesMatch": true,
+  "conclusion": "The actual installed 046b730 and 43e09cb helpers are byte-identical and share the implicit ad-hoc cdhash requirement; this tested upgrade reads the existing synthetic record noninteractively. This does not guarantee access after a future helper code/signature change; such a failure must preserve the record and require an explicit user retry."
+}

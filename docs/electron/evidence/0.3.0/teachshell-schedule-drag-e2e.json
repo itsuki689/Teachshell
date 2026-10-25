@@ -1,0 +1,51 @@
+{
+  "platform": "darwin",
+  "steps": [
+    {
+      "name": "Actual Electron imports the Swift timetable sample and renders its minute grid",
+      "status": "passed",
+      "durationMs": 546
+    },
+    {
+      "name": "Locked fixed courses do not move; unlocked drag preserves original occurrence and exact duration",
+      "status": "passed",
+      "durationMs": 363
+    },
+    {
+      "name": "A repeated drag preserves identity and overlapping occurrences remain separately selectable",
+      "status": "passed",
+      "durationMs": 337
+    },
+    {
+      "name": "Escape, out-of-grid drops and concurrent changes cancel the drag without stale writes",
+      "status": "passed",
+      "durationMs": 467
+    },
+    {
+      "name": "A moved course can be cancelled, restored to the move, then returned to its recurring slot",
+      "status": "passed",
+      "durationMs": 293
+    },
+    {
+      "name": "Selected-event time keys preserve duration and anchor while inputs and locked courses stay untouched",
+      "status": "passed",
+      "durationMs": 689
+    },
+    {
+      "name": "Mouse edge resizing changes only the chosen boundary, clamps positive duration and keeps one-off identity",
+      "status": "passed",
+      "durationMs": 1052
+    },
+    {
+      "name": "Recurring plan dragging changes only one execution time while preserving deadline and the following occurrence",
+      "status": "passed",
+      "durationMs": 448
+    },
+    {
+      "name": "Minimum viewport remains scrollable and no renderer errors or framework overlays appear",
+      "status": "passed",
+      "durationMs": 49
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,8 @@
+Teachshell-0.3.0-arm64-mac.zip: OK
+Teachshell-0.3.0-arm64.dmg: OK
+Teachshell Setup 0.3.0.exe: OK
+Teachshell-0.3.0.AppImage: OK
+teachshelf-desktop_0.3.0_amd64.deb: OK
+Teachshell Setup 0.3.0.exe.blockmap: OK
+Teachshell-0.3.0-arm64-mac.zip.blockmap: OK
+Teachshell-0.3.0-arm64.dmg.blockmap: OK

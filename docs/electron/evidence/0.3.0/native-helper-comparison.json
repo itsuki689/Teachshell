@@ -1,0 +1,7 @@
+{
+  "signaturesRemovedOnlyFromTemporaryCopies": true,
+  "unsignedDistSHA256": "33123c24f3dc579d2a3b99a4729e0d343e0597fe09a918569c3bfa89a20509fc",
+  "unsignedPackagedSHA256": "33123c24f3dc579d2a3b99a4729e0d343e0597fe09a918569c3bfa89a20509fc",
+  "unsignedBytesMatch": true,
+  "note": "electron-builder re-signs the macOS resource helper. Original dist and package remain signed and unmodified; only disposable copies had their signatures removed for byte comparison."
+}

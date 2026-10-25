@@ -177,7 +177,6 @@ Chromium 使用隐藏 sandbox 读取窗口和当前库 session；资源模块先
 
 `MaterialVersions.vue` 从真实索引列出同来源所有版本，显示缺失状态，预览真实文件并明确确认恢复；恢复产生新 UUID，保留当前/所选历史字节和用户元数据。Swift 生产 Core 已解码、验证并往返保存 Electron 创建的三个版本及课程来源映射。旧物理路径作为恢复副本保留，文件监听与重启不会重新收录它们。
 
-
 ## 11. 分钟交互、顶栏、登录记忆与后台巡检（0.3.0）
 
 已读取原 `ScheduleWeekTimeline`、`ScheduleEventEditing`、`ToolbarSettings`、`TeachingLoginSession` 与实际测试样例。分钟网格保留原始发生日和时长，支持课程/计划拖动、两边缩放、键盘微调、锁定与并发取消；重复计划只改本次，截止与其他日期不变。自定义顶栏按原有 10 个枚举保存，默认 4 项，最多 6 项，可为空。详见 [原生交互迁移](native-interactions-migration.md)。

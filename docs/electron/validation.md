@@ -1,64 +1,75 @@
-# Teachshell 0.2.0 交付与验证
+# Teachshell 0.3.0 交付与验证
 
-日期：2026-10-25。分支：`codex/electron-migration`。功能代码提交：`594305b`。本次要求的教学资料增量同步、历史版本保留与恢复、多课程批量更新审核，以及搜索、导航和编辑保护已经形成实际可运行的 Release。
+日期：2026-10-25。分支：`codex/electron-migration`。本轮完成后台定时巡检、登录记忆、课程与计划的分钟拖动/缩放/键盘微调，以及自定义顶栏。实际应用已构建、安装并验收；没有用静态页面代替功能。历史报告见 [0.2.0](validation-0.2.0.md)。
 
-原 Swift 工程保留：相对审计基线 `24efb2d`，`Sources/`、原 `Tests/` 和 `Package.swift` 无改动，`example/` 未参与迁移。测试均使用临时资料库和明确的离线学校页面。按本次用户指定名称安装 `/Applications/Teachshell.app`，原 `/Applications/课屿.app` 保留。未推送或对外发布。上一阶段内容见 [0.1.0历史报告](validation-0.1.0.md)，未完成项以本报告更新为准。
+**原生 `/Applications/课屿.app` 始终保留。** 已把这一要求写入 `AGENTS.md`。自动安装仅正常退出并备份、替换、注册 `/Applications/Teachshell.app`；不推送、不发布。本轮前后原生课屿的版本 1.16.0、可执行文件 SHA256、Info.plist SHA256 和 bundle 修改时间完全相同，见 [保留证据](evidence/0.3.0/native-app-preserved.json)。本轮没有修改 `Sources/`、原 `Tests/`、`Package.swift`，也没有处理 `example/`。
 
-## 模块、文件和提交
+## 实际模块和提交
 
-| 模块               | 提交      | 实际变化                                                                                                                                                                                                                                                                                                                                             |
-| ------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 原生交互和安装流程 | `7b9a12e` | `WorkspaceSearch.vue`、`src/composables/`、`stores/library.ts`、各编辑器、`PlansView.vue`、`SettingsView.vue`、主进程。按词搜索、每类六项、60步前进后退含目录位置、发生项状态筛选、草稿离开保护；原生退出默认返回编辑，取消后仍可保存。`scripts/release-macos.mjs`、`install-macos.mjs` 实现提交快照构建、签名验证、正常退出、备份、注册和启动核对。 |
-| 增量与历史核心     | `3400a11` | `website/material-sync.ts`、`storage/repository.ts`、`storage/atomic.ts`。来源/目录映射、相同摘要跳过、新UUID版本、历史恢复、本地修改保护、缺失修复、活动引用迁移及归档引用保留；真实文件与JSON事务和失败恢复。                                                                                                                                      |
-| 批量审核完整链路   | `594305b` | `website/{batch-sync,browser,resource-head,session-fetch}.ts`、`main/website-update-ipc.ts`、preload/API、`WebsiteBatchReview.vue`、`MaterialVersions.vue`。多课程检查、选中下载、截止二选一、逐项失败重试、取消和过期；版本恢复令牌绑定原资料库；已绑定课程的导入入口转到审核。                                                                     |
+| 模块               | 提交      | 文件与结果                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------ | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 原生交互和安全登录 | `046b730` | `shared/schedule-drag.ts`、`TimetableView.vue`、`course/plans.ts`、Repository 与受保护 IPC：完整分钟网格、拖动、双边缩放、键盘微调、固定安排锁定、冲突分列和单次发生项保护。`shared/toolbar.ts`、`WorkspaceToolbar.vue`、`ToolbarSettings.vue`：原 10 种操作、最多 6 项、排序/清空/恢复默认、课程/计划/连接新建菜单。`website/login-*.ts`、`browser.ts`、Swift Keychain helper、登录控件和构建脚本：默认关闭的七天记忆、内存分区、官方 cookie 白名单、系统安全存储及重试。 |
+| 后台巡检和审核接线 | `43e09cb` | `website/background-sync.ts`、`main/website-update-ipc.ts`、主进程生命周期、`WebsiteSyncSettings.vue`、`WebsiteBatchReview.vue`、`App.vue`：按库开关/间隔、真实定时检查、休眠/离线/前台接管、失败退避、待审暂停、清单过期和实时失效。补齐退出时登录清理、网络失败可重试和延迟结果保护。                                                                                                                                                                                    |
 
-最终测试与报告提交不改变上述功能代码。设置页显示实际 Release 的版本、源提交和执行路径；最新安装回执在 `desktop/release/installed-macos.json`。
+两次功能提交都经过相关测试，再从提交快照构建 Release、验证签名、正常备份安装和打开。后续验证报告提交不改变功能代码；设置页显示实际安装的 commit 和执行路径，最新安装回执位于 `desktop/release/installed-macos.json`。
 
-## 数据行为及复核修复
+## 对照 Swift 的业务与安全行为
 
-- 检查读取课程与活动列表，不下载附件正文、不写入网站计划或来源映射。直链用 HEAD 发现，隐藏 Chromium 禁止附件 GET。已有资料显示“待下载核验”，不会误报已经是最新正文。
-- 只下载选中项；相同正文跳过，变化创建新UUID及历史记录。手工标题、备注、标签、收藏、分类和移动位置保留。历史和原物理文件均保留，同步及重启不会重新收录未索引恢复副本。
-- 本地正文修改需单独批准后才能采用网站版本；缺失项默认不选，明确勾选补回。用户移除或跨课程转移的条目不自动复活。
-- 历史恢复创建新版本，当前及所选历史均保留；活动计划跟随新版本，归档引用不变。列表和revision来自同一串行快照，主进程令牌绑定原Repository和版本。修复了相同JSON复制库可误接受旧库恢复确认的问题。
-- 附件失败时，同活动本轮已选计划保留等待；重试后恰好提交一次并正确关联。修复了计划提前成功导致后续附件漏关联的问题。未选附件不阻塞计划。
-- 下载前后重读账号、课程与活动，提交前再次校验库、连接、revision、取消状态和文件摘要。外部索引抢写保留冲突与恢复日志，不覆盖新索引。不支持两端同时写入原版资料库。
+- `ScheduleWeekTimeline` / `ScheduleEventEditing`：默认锁定固定安排；拖动保留 111 分钟等实际时长和原始发生日。方向键调整 10 分钟或 1 天，`+/-` 微调 1 分钟；上下边缘支持鼠标和键盘调整，保持正时长且不越出当天。重复计划只改本次，保留 DDL、资料、备注及下一次安排。Esc、越界、切库或并发修改取消过时操作。
+- `ToolbarSettings`：原四项默认顺序、最多六项、可为空、不重复。非法 JSON 拒绝，缺省读取不会重写原数据，未知字段保留，更新有 revision 保护。
+- `TeachingLoginSession` / Recovery：只保存官方域名 MoodleSession cookie，最多七天；恢复强制 Secure，保留 HttpOnly 和 session-only，排除统一认证及课表 cookie。恢复 cookie 不等于账号已验证，必须经过实际官方页面解析。Mac helper 可禁止交互，Windows 使用 DPAPI，Linux 拒绝明文后端且不隐瞒钥匙环限制。原生课屿的凭据不读取、不迁移、不覆盖。
+- Swift 没有后台定时器。本轮新增策略默认关闭、默认 30 分钟，允许 5–1440 分钟。应用运行时才巡检，开启后约 30 秒首查，仅对当前确认账号的活跃连接生成待审清单。检查不下载附件正文、不写入库；显式选择后才应用。关闭审核窗口保留清单，明确丢弃才移除；同 ID 广播保留勾选、DDL 选择和本地文件批准。
+- 前台与后台共用批量实例。前台接管先等待后台取消；切库、退出先停止巡检并等待在途前台操作。失败退避、登录变化、休眠恢复均不会造成重叠请求或一串补发。
 
-## 已运行验证
+实现说明：[原生交互](native-interactions-migration.md)、[登录记忆](login-session-migration.md)、[后台巡检](background-sync-migration.md)。
 
-| 验证                                                        | 结果与证据                                                                                                                                     |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 全量Node测试                                                | **229/229**，失败/跳过0；[日志](evidence/0.2.0/node-tests.txt)                                                                                 |
-| TypeScript/Vue/Vite/main/preload/stdio、提交快照Release构建 | 全部通过                                                                                                                                       |
-| 格式与补丁                                                  | `npm run format:check`、`git diff --check` 通过                                                                                                |
-| 已安装macOS应用桌面验收                                     | **28/28**，renderer错误0；[报告](evidence/0.2.0/installed-e2e.json)                                                                            |
-| 已安装应用批量/版本验收                                     | **12/12**，renderer错误0；[报告](evidence/0.2.0/installed-batch-e2e.json)                                                                      |
-| 独立真实Chromium传输                                        | **3项通过**，真实解析/隔离、HEAD跳转及附件GET阻断、明确流式下载/外域拒绝；[日志](evidence/0.2.0/browser-tests.txt)                             |
-| 新版本专项                                                  | 20项通过，含相同摘要、手工修改、缺失/移除、归档引用、恢复、路径冲突、重启、3事务断点、回滚、取消和外部索引抢写                                 |
-| 新批量专项                                                  | 14项通过，含零正文检查、选择下载、部分失败重试及附件关联、账号/页面/库变化、缺失修复、二次批准与截止选择                                       |
-| 原Swift教学基线                                             | 原 `TeachingWebsiteTests` **17/17**通过                                                                                                        |
-| Swift真实格式往返                                           | 未修改的生产Core成功解码、验证、往返保存3个Electron版本、目录、同一来源、当前绑定和元数据；[结果](evidence/0.2.0/swift-material-roundtrip.txt) |
+## 已运行的验证
 
-窗口测试实际启动 `/Applications/Teachshell.app/Contents/MacOS/Teachshell`。Browser插件不可用，按前端测试技能使用Playwright Electron；没有模拟preload，学校HTTPS由临时隔离session提供明确的离线DOM和真实流式响应，文件事务实际执行。截图已检查：[审核清单](evidence/0.2.0/screenshots/batch-review.png)、[截止选择](evidence/0.2.0/screenshots/batch-deadline.png)、[版本历史](evidence/0.2.0/screenshots/material-versions.png)。
+| 验证                                       | 结果                                                                         | 证据                                                                                                                                   |
+| ------------------------------------------ | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 全量 Node 核心/事务/安全/网络测试          | **284/284**，失败和跳过均 0                                                  | [完整日志](evidence/0.3.0/node-tests.txt)                                                                                              |
+| 已安装应用主闭环                           | **28/28**                                                                    | [报告](evidence/0.3.0/teachshelf-electron-e2e.json)                                                                                    |
+| 已安装批量更新及版本恢复                   | **12/12**                                                                    | [报告](evidence/0.3.0/teachshell-website-batch-e2e.json)                                                                               |
+| 已安装拖动、缩放及键盘                     | **9/9**                                                                      | [报告](evidence/0.3.0/teachshell-schedule-drag-e2e.json)                                                                               |
+| 已安装自定义顶栏                           | **8/8**                                                                      | [报告](evidence/0.3.0/teachshell-toolbar-e2e.json)                                                                                     |
+| 已安装登录记忆及立即退出清理               | **7/7**，系统安全存储可用                                                    | [报告](evidence/0.3.0/teachshell-login-ui-packaged.json)                                                                               |
+| 已安装真实定时巡检                         | **9/9**，两轮等待实际 30 秒，禁用后实际等待 31 秒                            | [报告](evidence/0.3.0/teachshell-background-e2e.json)                                                                                  |
+| 已安装审核实时变化                         | **7/7**                                                                      | [报告](evidence/0.3.0/teachshell-review-live-e2e.json)                                                                                 |
+| Swift 教学更新 / 顶栏与分钟编辑 / 登录基线 | **17 + 9 + 15 = 41** 项通过；附带课表解析器 15 项通过                        | [教学摘录](evidence/0.3.0/swift-teaching.txt)、[原生摘录](evidence/0.3.0/swift-native.txt)、[登录日志](evidence/0.3.0/swift-login.txt) |
+| 版本升级的安全存储兼容                     | 旧实际 helper 写入，新实际 helper 无交互读回完全相同的合成会话；测试项已删除 | [报告](evidence/0.3.0/login-upgrade.json)                                                                                              |
+| TypeScript、构建、格式、diff               | 通过                                                                         | `vue-tsc --noEmit`、`npm run build`、Prettier、`git diff --check`                                                                      |
 
-首次安装版过期测试出现 `TargetClosed`，保留[首次记录](evidence/0.2.0/initial-clock-test.json)。诊断发现测试在原生interval创建后才安装虚拟时钟，推进不驱动已有interval，造成混合计时依赖；现改为只调整Date、保留真实timer的 `setFixedTime`，有界等待5秒，并记录退出/关闭/崩溃。对同一个已安装二进制12项复验全通过。未发现应用崩溃证据，原失败也未抹去。
+实际安装版总计 **80/80**，运行命令指定 `/Applications/Teachshell.app/Contents/MacOS/Teachshell`，[完整输出](evidence/0.3.0/installed-tests.txt)。Browser 插件不可用，因此使用 Playwright Electron 控制真实主窗口、preload 和主进程；拖动用实际鼠标，键盘用实际按键。后台等待不注入调度器或假时钟；实时审核事件由实际公开业务操作产生，没有伪造状态事件。所有课程、Cookie 与学校页面均为临时隔离夹具，没有使用真实校园账号或修改用户资料库。
 
-## 构建、安装与恢复
+截图已检查：[边缘缩放](evidence/0.3.0/screenshots/teachshell-timetable-resize.png)、[顶栏](evidence/0.3.0/screenshots/teachshell-toolbar-settings.png)、[登录恢复](evidence/0.3.0/screenshots/teachshell-login-restored-packaged.png)、[后台审核](evidence/0.3.0/screenshots/teachshell-background-review.png)。
 
-五个0.2.0安装包均实际生成：macOS ARM64 DMG/ZIP、Windows x64 NSIS EXE、Linux x64 AppImage/DEB。逐包归档、内嵌源提交及main/preload/外置MCP桥接的校验见[发行清单](evidence/0.2.0/release-manifest.json)。Windows/Linux为本机交叉构建，未声称已在其系统启动验收。
+## 复核中实际修复的问题
 
-五包的实际main/preload/外置stdio摘要一致。安装版使用隔离快照构建，其main内esbuild依赖路径标签与工作目录构建不同，所以原始main摘要不同；规范化该标签后逐字节一致，stdio字节也一致。清单分别保留两套原始摘要，没有把安装版和分发包的原始main摘要混同。
+1. 非整节拖动的定位、浮动选择栏影响落点、Vue 代理不能跨 IPC 的问题；验证跨日后时长和身份不变。
+2. 网络超时或取消后 `checking` 状态永久阻止后续巡检的问题；使用令牌恢复原稳定状态，旧请求不能覆盖新的认证或关闭状态。
+3. 勾选“关闭登录记忆”后立即正常退出可能打断密文删除；关闭等待已授权删除，失败保留禁用/待清理状态，成功重试才清除警告，不重新恢复旧密文。
+4. 打开的审核窗不能接收后台完成/账号变化/清单替换；现订阅权威状态、保留同一清单选择，失效立即禁止应用，替换需明确加载。
+5. 后台全并发测试的等待原用固定 setImmediate 次数，可能早于真实 I/O；改为有界墙钟等待，保留全部业务断言。
 
-每个模块提交后均构建macOS Release并验证签名，正常退出上版、保存旧bundle、替换、注册LaunchServices并打开。安装过程中修复了JXA零参数 `terminate` 桥接调用，没有强制终止应用。安装失败恢复旧版；用户未保存退出被取消时停止替换；脚本不操作用户资料库。
+## 安装包与构建验证
 
-`codesign --verify --deep --strict` 通过；Info.plist及内嵌版本均为0.2.0，进程路径确认为 `/Applications/Teachshell.app/Contents/MacOS/Teachshell`。见[功能验收版本记录](evidence/0.2.0/release-verification.json)、[该次安装回执](evidence/0.2.0/installed-macos.json)。最后文档/测试提交的重建不会改变功能代码，最新回执位于忽略目录 `desktop/release/installed-macos.json`，不要把历史回执当作当前PID。旧bundle在 `/Applications/.Teachshell-backups/`。
+五个安装包均由 `43e09cb` 的同一次工作区源码构建生成，包内 `release-info` 为 0.3.0 / 对应完整 commit。完整解包并比较主进程、preload、全部 renderer 文件及外置 stdio 桥接脚本；Mac helper 仅在 Mac Resources 中，架构与签名校验通过。安装用的隔离 Git 快照构建与工作区构建仅有 esbuild 依赖来源标签差异，严格限制在注释/来源标签行归一后完整代码一致。
 
-macOS签名为 **ad-hoc，未公证**；未配置Apple Developer或Windows发行证书，没有把本机签名描述为正式发行签名。
+| 平台        | 文件（`desktop/release/`）           | 大小     |
+| ----------- | ------------------------------------ | -------- |
+| macOS ARM64 | `Teachshell-0.3.0-arm64.dmg`         | 126.9 MB |
+| macOS ARM64 | `Teachshell-0.3.0-arm64-mac.zip`     | 122.9 MB |
+| Windows x64 | `Teachshell Setup 0.3.0.exe`         | 126.1 MB |
+| Linux x64   | `Teachshell-0.3.0.AppImage`          | 123.2 MB |
+| Linux x64   | `teachshelf-desktop_0.3.0_amd64.deb` | 130.9 MB |
 
-## 剩余差异与独立验收
+[完整载荷清单](evidence/0.3.0/release-manifest.json)、[SHA256](evidence/0.3.0/SHA256SUMS.txt)、[归档验证](evidence/0.3.0/verification.txt)。全部通过 7zz 完整性检查；DMG 额外通过 `hdiutil verify`，NSIS 内层 7z 和 DEB 内层 tar 也已验证。Mac App 和 helper 通过 `codesign --verify --deep --strict` / `--strict`，为 ad-hoc 签名，未公证；Windows 无发布签名证书。自动化 CI 仍分别在三平台原生 runner 构建和运行应用，配置不代表本轮已执行远端 CI。
 
-1. 真实校园账号及当前校园网络未验收；旧WKWebView cookie和Keychain登录信息不自动转移。离线DOM/HTTP验收不能证明真实登录成功。
-2. Windows/Linux原生运行、权限、密钥环、安装/卸载仍需实机或CI。三平台CI已包含源码测试、安装包构建及打包后40项窗口验收，本次未远程触发。
-3. 后台定时巡检、Swift可选七天记住登录、拖动调课、自定义顶栏、Office/Quick Look原生缩略图仍有差异。搜索、导航历史、状态筛选、资料版本及批量审核现已完成。
-4. 文件事务要求支持硬链接的本地库卷；网络卷/FAT/exFAT未验收。目录rename竞争新建空目录的窄竞态仍是此前记录的存储边界，不支持两端同时写同库。
+## 仍需验证或保留的差异
 
-操作、复制迁移及构建命令见 [README](../../desktop/README.md)，审核规则见[教学批量审核](teaching-batch-migration.md)。本次三个模块已完成可运行、可恢复的Release闭环，独立平台、联网及其他原生差异保持明确记录。
+- Windows/Linux 已生成并校验真实安装包，但本轮没有这些系统的桌面实机，不声称其鼠标交互、安全密钥环和安装运行已验收。Intel Mac helper 要在 Intel 主机生成，不能用当前 ARM CLT 强行链接。
+- 真实学校登录、校园网络/VPN、服务器页面变更与会话过期需在实际账号环境验证。离线官方 URL 夹具不能替代这一步。
+- 像素级布局、Office 原生缩略图、系统原生 Quick Look 等仍有平台差异；课程/计划 Delete 键的原生快捷删除未扩展。本轮拖动、缩放、方向键和加减微调已完成。
+- 巡检仅在应用进程运行时工作，开机自启动、应用退出后的系统任务和系统通知未实现。采用当前登录会话，不后台填写密码或处理验证码。
+- 已安装两版 helper 相同，本次升级无须重新授权；未来 helper 内容或签名变化时，系统可能要求用户主动重试授权。不能为了免提示放宽钥匙串 ACL。
+- 保留既有文件事务边界：优先本地支持硬链接的文件系统，不允许 Swift 与 Electron 同写原库；网络/移动卷和外部挂载迁移仍须对应环境验收。

@@ -1,0 +1,13 @@
+  • electron-builder  version=26.18.0 os=25.6.0
+  • loaded configuration  file=package.json ("build" field)
+  • executing @electron/rebuild  electronVersion=45.0.0 arch=x64 buildFromSource=false workspaceRoot=/Users/theself/Codx/Teachshell/desktop projectDir=./ appDir=./
+  • installing native dependencies  arch=x64
+  • completed installing native dependencies
+  • packaging       platform=linux arch=x64 electron=45.0.0 appOutDir=release/linux-unpacked
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/theself/Codx/Teachshell/desktop/release/linux-unpacked
+  • searching for node modules  pm=npm searchDir=/Users/theself/Codx/Teachshell/desktop
+  • duplicate dependency references  dependencies=["vue@3.5.44","vue@3.5.44","@babel/parser@7.29.11","@vue/compiler-core@3.5.44","@vue/compiler-dom@3.5.44","@vue/compiler-dom@3.5.44","@vue/reactivity@3.5.44","@vue/compiler-ssr@3.5.44","@vue/runtime-dom@3.5.44"]
+  • building        target=AppImage arch=x64 file=release/Teachshell-0.3.0.AppImage
+  • building embedded block map  file=release/Teachshell-0.3.0.AppImage
+  • building        target=deb arch=x64 file=release/teachshelf-desktop_0.3.0_amd64.deb

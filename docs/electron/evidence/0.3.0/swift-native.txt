@@ -1,0 +1,31 @@
+Original successful Swift Testing output, captured from the prior tool response (not a rerun).
+Command: scripts/test-macos.sh --skip-build --filter 'ToolbarSettingsTests|PlanTimeEditingTests'
+Exit code: 0
+Planning progress and toolchain warning omitted; test output follows verbatim.
+
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite ToolbarSettingsTests started.
+◇ Suite PlanTimeEditingTests started.
+◇ Test olderIndexesKeepTheirContentsAndUseTheOriginalFourShortcutsWithoutRewriting() started.
+◇ Test customColorsSupportSingleOccurrenceOverridesExplicitResetAndLegacyData() started.
+◇ Test wholeMovesPreserveDurationAndRespectBothMidnightBoundaries() started.
+◇ Test snappedEdgesRemainInsideOneDayAndNeverInvertTheInterval() started.
+◇ Test resizingOneRepeatedOccurrenceLeavesItsDeadlineAndOtherWeeksUntouched() started.
+✔ Test wholeMovesPreserveDurationAndRespectBothMidnightBoundaries() passed after 0.001 seconds.
+✔ Test snappedEdgesRemainInsideOneDayAndNeverInvertTheInterval() passed after 0.002 seconds.
+✔ Test resizingOneRepeatedOccurrenceLeavesItsDeadlineAndOtherWeeksUntouched() passed after 0.015 seconds.
+✔ Test customColorsSupportSingleOccurrenceOverridesExplicitResetAndLegacyData() passed after 0.019 seconds.
+✔ Suite PlanTimeEditingTests passed after 0.019 seconds.
+✔ Test olderIndexesKeepTheirContentsAndUseTheOriginalFourShortcutsWithoutRewriting() passed after 0.026 seconds.
+◇ Test aCustomOrderAndAnEmptyCapsuleBothSurviveReopeningWithoutChangingLibraryRecords() started.
+✔ Test aCustomOrderAndAnEmptyCapsuleBothSurviveReopeningWithoutChangingLibraryRecords() passed after 0.018 seconds.
+◇ Test invalidStoredShortcutsAreRejectedAndTheirOriginalIndexBytesRemainRecoverable() started.
+✔ Test invalidStoredShortcutsAreRejectedAndTheirOriginalIndexBytesRemainRecoverable() passed after 0.008 seconds.
+◇ Test invalidAndFailedWritesPreserveTheCurrentShortcutsRecordsAndIndex() started.
+✔ Test invalidAndFailedWritesPreserveTheCurrentShortcutsRecordsAndIndex() passed after 0.008 seconds.
+◇ Test backupRestoreAndMigrationCarryTheCapsuleOrderTogetherWithCourseAndPlanData() started.
+✔ Test backupRestoreAndMigrationCarryTheCapsuleOrderTogetherWithCourseAndPlanData() passed after 0.024 seconds.
+✔ Suite ToolbarSettingsTests passed after 0.086 seconds.
+✔ Test run with 9 tests in 2 suites passed after 0.086 seconds.
