@@ -378,7 +378,13 @@ try {
           { width, height },
         );
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+,' : 'Control+,');
-        await page.getByLabel('显示模式', { exact: true }).selectOption(theme);
+        await page.getByRole('tab', { name: '外观', exact: true }).click();
+        await page
+          .getByRole('button', {
+            name: (theme === 'dark' ? '深色' : '浅色') + '显示模式',
+            exact: true,
+          })
+          .click();
         await sidebarCourse(courseA.name).click();
         await page.getByRole('button', { name: '列表视图', exact: true }).click();
         await page.locator('.materials-table tbody tr[data-browser-id]').last().click();

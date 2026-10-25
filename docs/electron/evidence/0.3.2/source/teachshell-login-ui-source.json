@@ -1,0 +1,15 @@
+{
+  "passed": 7,
+  "rendererErrors": 0,
+  "mode": "source",
+  "secureStorageAvailable": true,
+  "steps": [
+    "Default-off login UI and strict boolean IPC validation",
+    "Library switching clears the old memory session and isolates remembered preferences",
+    "A restart retains the opt-in preference and never saves unverified anonymous cookies",
+    "Disabled preference persists on the next actual application launch",
+    "Authenticated UI opt-in uses the application default helper and normal quit flushes a rotated synthetic session",
+    "Restored cookies remain unverified until the real parser runs; disabling clears default secure storage across restart",
+    "Clicking disable and quitting immediately completes the authorized secure-store deletion"
+  ]
+}

@@ -56,6 +56,8 @@ const operation = ref<{ task: StudyTask; occurrence?: PlanOccurrence; action: Ac
   ),
   operationScope = ref<PlanEditScope>('all');
 const plans = computed(() => store.state.tasks);
+const selectedKey = ref('');
+const selectedRow = computed(() => rows.value.find((row) => row.key === selectedKey.value));
 const listOnly = computed(() => ['unscheduled', 'cancelled', 'archived'].includes(filter.value));
 watch(
   () => store.route,
@@ -241,11 +243,16 @@ defineExpose({
 });
 </script>
 <template>
-  <section class="workspace">
+  <section
+    class="workspace plans-workspace"
+    :class="{ 'calendar-workspace': mode !== 'list', 'plan-list-workspace': mode === 'list' }"
+  >
     <header class="workspace-header">
       <div class="heading-block">
         <div class="heading-line">
-          <h1>{{ store.title }}</h1>
+          <h1>
+            {{ store.route === 'pending' ? '待完成计划' : mode === 'list' ? '计划列表' : '计划' }}
+          </h1>
           <span v-if="mode !== 'month'" class="subtle-count">{{ rows.length }} 项</span>
         </div>
         <p>安排学习与作业，按北京时间管理执行与截止时间。</p>
@@ -326,126 +333,191 @@ defineExpose({
       :include-courses="filter === 'active' || filter === 'all'"
       @edit="(event) => edit({ key: event.id, task: event.task, occurrence: event })"
     />
-    <div v-else class="plans-scroll">
-      <div v-if="!rows.length" class="empty-state">
-        <CalendarDays :size="43" />
-        <h2>{{ mode === 'agenda' ? '这一天没有符合条件的安排' : '还没有符合条件的计划' }}</h2>
-        <p>
-          {{
-            mode === 'agenda'
-              ? '已取消和已归档的安排不显示。可在列表的临时变更中恢复。'
-              : '创建任务，关联课程、资料和截止时间。'
-          }}
-        </p>
-        <button class="primary" @click="editing = {}">新建计划</button>
-      </div>
-      <div
-        v-for="row in rows"
-        :key="row.key"
-        class="plan-row"
-        :class="{
-          completed: row.task.completedAt != null,
-          cancelled: row.task.cancelledAt != null,
-        }"
-        :data-plan-id="row.task.id"
-        :data-original-date="row.occurrence?.originalDate"
-      >
-        <button
-          class="complete-button"
-          :class="{ checked: row.task.completedAt != null }"
-          :aria-label="(row.task.completedAt != null ? '恢复计划 ' : '完成计划 ') + row.task.title"
-          :disabled="row.task.completionRequired === false || row.task.cancelledAt != null"
-          @click="status(row, row.task.completedAt != null ? 'reopen' : 'complete')"
-        >
-          <Check v-if="row.task.completedAt != null" :size="15" /></button
-        ><button class="plan-content" :aria-label="'编辑计划 ' + row.task.title" @click="edit(row)">
-          <div class="plan-title">
-            <strong>{{ row.task.title }}</strong
-            ><span class="tag">{{ row.occurrence?.isDeadline ? '截止 DDL' : row.task.kind }}</span
-            ><span v-if="row.task.repeatRule" class="repeat-tag"
-              ><Repeat2 :size="13" />{{ repeatLabel(row.task) }}</span
-            ><span v-if="row.task.archivedAt != null" class="tag">已归档</span
-            ><span v-if="row.task.cancelledAt != null" class="tag">已取消</span>
-            <span v-if="!row.occurrence && hasMatchingException(row.task)" class="tag"
-              >匹配单次安排</span
-            >
-          </div>
-          <p v-if="row.task.content" class="plan-description">{{ row.task.content }}</p>
-          <div class="plan-meta">
-            <span v-if="row.task.courseID"
-              ><span
-                class="inline-dot"
-                :style="{
-                  background: store.state.courses.find((c) => c.id === row.task.courseID)?.colorHex,
-                }"
-              />{{
-                store.state.courses.find((c) => c.id === row.task.courseID)?.name ??
-                row.task.courseNameSnapshot
-              }}</span
-            ><span
-              ><Clock3 :size="12" />{{
-                row.occurrence
-                  ? row.occurrence.isAllDay
-                    ? '全天 · '
-                    : ''
-                  : row.task.deadline
-                    ? '截止：'
-                    : '执行：'
-              }}{{ label(row.occurrence?.date ?? row.task.deadline ?? row.task.startsAt) }}</span
-            ><span v-if="row.task.location">{{ row.task.location }}</span
-            ><span v-if="row.task.materialIDs.length"
-              >{{ row.task.materialIDs.length }} 份关联资料</span
-            >
-          </div>
-        </button>
-        <div class="plan-actions">
-          <button
-            v-if="base(row.task).exceptions?.length"
-            class="icon-button"
-            :aria-label="'查看临时变更 ' + row.task.title"
-            title="查看临时变更"
-            @click="historyID = row.task.id"
-          >
-            <History :size="16" /><span class="exception-count">{{
-              base(row.task).exceptions?.length
-            }}</span></button
-          ><button
-            class="icon-button"
-            :aria-label="
-              (row.task.cancelledAt != null ? '恢复已取消计划 ' : '取消计划 ') + row.task.title
-            "
-            :title="row.task.cancelledAt != null ? '恢复已取消计划' : '取消计划'"
-            @click="status(row, row.task.cancelledAt != null ? 'restore' : 'cancel')"
-          >
-            <RotateCcw v-if="row.task.cancelledAt != null" :size="16" /><XCircle
-              v-else
-              :size="16"
-            /></button
-          ><button
-            class="icon-button"
-            :aria-label="row.task.archivedAt != null ? '恢复归档计划' : '归档计划'"
-            :title="row.task.archivedAt != null ? '恢复归档计划' : '归档计划'"
-            @click="status(row, row.task.archivedAt != null ? 'unarchive' : 'archive')"
-          >
-            <Archive :size="16" /></button
-          ><button
-            class="icon-button danger-text"
-            aria-label="删除计划"
-            @click="status(row, 'delete')"
-          >
-            <Trash2 :size="16" />
-          </button>
+    <div v-else class="plans-list-body">
+      <div class="plans-scroll">
+        <div v-if="mode === 'list'" class="plan-columns" aria-hidden="true">
+          <span>状态</span><span>计划</span><span>执行</span><span>截止</span><span>操作</span>
         </div>
-      </div>
-      <div v-if="mode === 'list' && store.state.timetableTerms.length" class="info-note">
-        <CalendarDays :size="17" />
-        <div>
-          资料库中 {{ store.state.timetableTerms.length }} 个课表学期已完整保留。
+        <div v-if="!rows.length" class="empty-state">
+          <CalendarDays :size="43" />
+          <h2>{{ mode === 'agenda' ? '这一天没有符合条件的安排' : '还没有符合条件的计划' }}</h2>
           <p>
-            点击“查看课表”可按周查看、设置学期并取消或恢复单次课程。月历按原版设置显示截止项、计划与课程。
+            {{
+              mode === 'agenda'
+                ? '已取消和已归档的安排不显示。可在列表的临时变更中恢复。'
+                : '创建任务，关联课程、资料和截止时间。'
+            }}
           </p>
+          <button class="primary" @click="editing = {}">新建计划</button>
+        </div>
+        <div
+          v-for="row in rows"
+          :key="row.key"
+          class="plan-row"
+          :class="{
+            completed: row.task.completedAt != null,
+            cancelled: row.task.cancelledAt != null,
+          }"
+          :data-plan-id="row.task.id"
+          :aria-selected="selectedKey === row.key"
+          @click="selectedKey = row.key"
+          :data-original-date="row.occurrence?.originalDate"
+        >
+          <button
+            class="complete-button"
+            :class="{ checked: row.task.completedAt != null }"
+            :aria-label="
+              (row.task.completedAt != null ? '恢复计划 ' : '完成计划 ') + row.task.title
+            "
+            :disabled="row.task.completionRequired === false || row.task.cancelledAt != null"
+            @click="status(row, row.task.completedAt != null ? 'reopen' : 'complete')"
+          >
+            <Check v-if="row.task.completedAt != null" :size="15" /></button
+          ><button
+            class="plan-content"
+            :aria-label="'编辑计划 ' + row.task.title"
+            @click="edit(row)"
+          >
+            <div class="plan-title">
+              <strong>{{ row.task.title }}</strong
+              ><span class="tag">{{ row.occurrence?.isDeadline ? '截止 DDL' : row.task.kind }}</span
+              ><span v-if="row.task.repeatRule" class="repeat-tag"
+                ><Repeat2 :size="13" />{{ repeatLabel(row.task) }}</span
+              ><span v-if="row.task.archivedAt != null" class="tag">已归档</span
+              ><span v-if="row.task.cancelledAt != null" class="tag">已取消</span>
+              <span v-if="!row.occurrence && hasMatchingException(row.task)" class="tag"
+                >匹配单次安排</span
+              >
+            </div>
+            <p v-if="row.task.content" class="plan-description">{{ row.task.content }}</p>
+            <div class="plan-meta">
+              <span v-if="row.task.courseID"
+                ><span
+                  class="inline-dot"
+                  :style="{
+                    background: store.state.courses.find((c) => c.id === row.task.courseID)
+                      ?.colorHex,
+                  }"
+                />{{
+                  store.state.courses.find((c) => c.id === row.task.courseID)?.name ??
+                  row.task.courseNameSnapshot
+                }}</span
+              ><span
+                ><Clock3 :size="12" />{{
+                  row.occurrence
+                    ? row.occurrence.isAllDay
+                      ? '全天 · '
+                      : ''
+                    : row.task.deadline
+                      ? '截止：'
+                      : '执行：'
+                }}{{ label(row.occurrence?.date ?? row.task.deadline ?? row.task.startsAt) }}</span
+              ><span v-if="row.task.location">{{ row.task.location }}</span
+              ><span v-if="row.task.materialIDs.length"
+                >{{ row.task.materialIDs.length }} 份关联资料</span
+              >
+            </div>
+          </button>
+          <span v-if="mode === 'list'" class="plan-date" :title="label(row.task.startsAt)">{{
+            row.task.hasExecutionTime === false
+              ? '未安排'
+              : new Date(dateMs(row.task.startsAt)).toLocaleDateString('zh-CN', {
+                  timeZone: 'Asia/Shanghai',
+                  month: 'numeric',
+                  day: 'numeric',
+                })
+          }}</span>
+          <span
+            v-if="mode === 'list'"
+            class="plan-date"
+            :title="row.task.deadline == null ? '' : label(row.task.deadline)"
+            >{{
+              row.task.deadline == null
+                ? '—'
+                : new Date(dateMs(row.task.deadline)).toLocaleDateString('zh-CN', {
+                    timeZone: 'Asia/Shanghai',
+                    month: 'numeric',
+                    day: 'numeric',
+                  })
+            }}</span
+          >
+          <div class="plan-actions">
+            <button
+              v-if="base(row.task).exceptions?.length"
+              class="icon-button"
+              :aria-label="'查看临时变更 ' + row.task.title"
+              title="查看临时变更"
+              @click="historyID = row.task.id"
+            >
+              <History :size="16" /><span class="exception-count">{{
+                base(row.task).exceptions?.length
+              }}</span></button
+            ><button
+              class="icon-button"
+              :aria-label="
+                (row.task.cancelledAt != null ? '恢复已取消计划 ' : '取消计划 ') + row.task.title
+              "
+              :title="row.task.cancelledAt != null ? '恢复已取消计划' : '取消计划'"
+              @click="status(row, row.task.cancelledAt != null ? 'restore' : 'cancel')"
+            >
+              <RotateCcw v-if="row.task.cancelledAt != null" :size="16" /><XCircle
+                v-else
+                :size="16"
+              /></button
+            ><button
+              class="icon-button"
+              :aria-label="row.task.archivedAt != null ? '恢复归档计划' : '归档计划'"
+              :title="row.task.archivedAt != null ? '恢复归档计划' : '归档计划'"
+              @click="status(row, row.task.archivedAt != null ? 'unarchive' : 'archive')"
+            >
+              <Archive :size="16" /></button
+            ><button
+              class="icon-button danger-text"
+              aria-label="删除计划"
+              @click="status(row, 'delete')"
+            >
+              <Trash2 :size="16" />
+            </button>
+          </div>
         </div>
       </div>
+      <aside v-if="mode === 'list'" class="plan-detail" aria-label="计划详情">
+        <template v-if="selectedRow">
+          <h2>{{ selectedRow.task.title }}</h2>
+          <p class="muted">{{ selectedRow.task.kind }}</p>
+          <dl>
+            <dt>执行时间</dt>
+            <dd>
+              {{
+                selectedRow.task.hasExecutionTime === false
+                  ? '未安排'
+                  : label(selectedRow.task.startsAt)
+              }}
+            </dd>
+            <dt>截止时间</dt>
+            <dd>
+              {{
+                selectedRow.task.deadline == null ? '无截止时间' : label(selectedRow.task.deadline)
+              }}
+            </dd>
+            <dt>所属课程</dt>
+            <dd>
+              {{
+                store.state.courses.find((c) => c.id === selectedRow?.task.courseID)?.name || '无'
+              }}
+            </dd>
+            <dt>地点</dt>
+            <dd>{{ selectedRow.task.location || '未设置' }}</dd>
+          </dl>
+          <p class="wrap">{{ selectedRow.task.content }}</p>
+          <button @click="edit(selectedRow)">编辑所选计划</button>
+        </template>
+        <div v-else class="empty-state compact">
+          <CalendarDays :size="32" />
+          <h3>选择一个计划</h3>
+          <p>查看时间、课程与计划详情。</p>
+        </div>
+      </aside>
     </div>
     <TaskEditor
       v-if="editing"

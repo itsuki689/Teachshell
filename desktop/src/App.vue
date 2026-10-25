@@ -253,7 +253,7 @@ onUnmounted(() => {
 <template>
   <div class="app-shell">
     <div class="titlebar">
-      <span class="titlebar-brand">Teachshell</span><span class="titlebar-caption">课程与资料</span>
+      <span class="titlebar-brand">Teachshell</span>
       <div class="titlebar-actions">
         <button
           class="icon-button"
@@ -274,13 +274,13 @@ onUnmounted(() => {
           <ChevronRight :size="17" />
         </button>
         <button
-          class="icon-button"
+          class="global-search-trigger"
           aria-label="全局搜索"
           title="全局搜索 · ⌘ / Ctrl K"
           :disabled="!store.snapshot"
           @click="showSearch = true"
         >
-          <Search :size="17" />
+          <Search :size="17" /><span>搜索课程、资料与计划</span>
         </button>
         <button
           class="icon-button"

@@ -23,6 +23,8 @@ import type { TimetableTerm, TimetableOccurrence } from '../../shared/timetable'
 import { useLibrary } from '../stores/library';
 import { useWorkspaceUI } from '../stores/workspace-ui';
 import { storeToRefs } from 'pinia';
+import TaskEditor from '../components/TaskEditor.vue';
+const creatingPlan = ref(false);
 import Modal from '../components/Modal.vue';
 import { addPlanDays, planEvents } from '../../shared/plans';
 import type { PlanOccurrence } from '../../shared/plans';
@@ -684,108 +686,148 @@ function time(item: TimetableOccurrence) {
 }
 </script>
 <template>
-  <section class="workspace">
-    <header class="workspace-header">
-      <div class="heading-block">
-        <h1>课表</h1>
-        <p>按北京时间与学期周次展示课程，保留原有调课与停课记录。</p>
-      </div>
-      <div class="toolbar-controls">
-        <button @click="store.navigate('plans')"><ArrowLeft :size="15" />计划列表</button
-        ><button @click="emit('website')"><Globe :size="15" />网站读取</button
-        ><button class="primary" @click="importJSON"><Download :size="15" />导入课表 JSON</button>
-      </div>
-    </header>
-    <template v-if="term"
-      ><div class="filter-bar">
-        <select v-model="selected" aria-label="课表学期">
-          <option v-for="t in terms" :key="t.id" :value="t.id">{{ t.name }}</option>
-        </select>
-        <div class="timetable-mode" role="group" aria-label="课表视图">
-          <button
-            :class="{ active: mode === 'list' }"
-            @click="mode = 'list'"
-            aria-label="课表课程列表"
+  <section class="workspace timetable-workspace">
+    <aside class="schedule-options" aria-label="课表设置与详情">
+      <header class="workspace-header">
+        <div class="heading-block">
+          <h1>计划</h1>
+          <p>按北京时间与学期周次展示课程，保留原有调课与停课记录。</p>
+        </div>
+        <div class="toolbar-controls">
+          <button title="计划列表" aria-label="计划列表" @click="store.navigate('plans')">
+            <ArrowLeft :size="15" />计划列表</button
+          ><button title="网站读取" aria-label="网站读取" @click="emit('website')">
+            <Globe :size="15" />网站读取</button
+          ><button
+            title="导入课表 JSON"
+            aria-label="导入课表 JSON"
+            class="primary"
+            @click="importJSON"
           >
-            课程列表
-          </button>
-          <button
-            :class="{ active: mode === 'timeline' }"
-            @click="mode = 'timeline'"
-            aria-label="课表时间网格"
-          >
-            时间网格
+            <Download :size="15" />导入课表 JSON
           </button>
         </div>
-        <span class="spacer" /><button
-          class="icon-button"
-          aria-label="上一周"
-          :disabled="week <= 1"
-          @click="week--"
+      </header>
+      <div class="schedule-view-switch segmented" role="group" aria-label="计划视图">
+        <button
+          @click="
+            ui.planMode = 'month';
+            store.navigate('plans');
+          "
         >
-          <ChevronLeft :size="17" /></button
-        ><label
-          >第
-          <input
-            v-model.number="week"
-            aria-label="课表周次"
-            type="number"
-            :min="1"
-            :max="term.weekCount"
-            class="week-input"
-          />
-          周</label
-        ><button
-          class="icon-button"
-          aria-label="下一周"
-          :disabled="week >= term.weekCount"
-          @click="week++"
+          月
+        </button>
+        <button class="active" @click="mode = 'timeline'">周</button>
+        <button
+          @click="
+            ui.planMode = 'agenda';
+            store.navigate('plans');
+          "
         >
-          <ChevronRight :size="17" /></button
-        ><button @click="openSettings"><Settings2 :size="15" />学期设置</button>
+          日
+        </button>
       </div>
-      <div v-if="mode === 'timeline'" class="timeline-controls">
-        <label class="check-label"
-          ><input type="checkbox" v-model="fixedEditing" />编辑固定课程与计划</label
-        >
-        <label class="check-label"><input type="checkbox" v-model="showPlans" />显示计划</label>
-        <span class="muted small">拖动只调整本次 · 保留时长 · Esc 取消</span>
-      </div>
-      <div v-if="mode === 'timeline'" class="timeline-selection" aria-label="选中时间安排">
-        <template v-if="chosen">
-          <strong>{{ chosen.title }}</strong
-          ><span
-            >{{ clock(chosen.range.start) }} – {{ clock(chosen.range.end) }} ·
-            {{ chosen.location }}</span
-          >
-          <span class="spacer" />
-          <template v-if="chosen.course">
-            <label class="meeting-month-toggle"
-              ><input
-                type="checkbox"
-                :checked="monthVisible(chosen.course)"
-                :disabled="!!store.busy"
-                @change="setMonthVisible(chosen.course, $event)"
-                :aria-label="'月历显示 ' + chosen.title"
-              />月历显示</label
-            >
-            <button @click="openMove(chosen.course)" :disabled="!!store.busy">调整本次</button>
-            <button @click="cancel(chosen.course)" :disabled="!!store.busy">取消本次</button>
+      <template v-if="term">
+        <div class="filter-bar">
+          <select v-model="selected" aria-label="课表学期">
+            <option v-for="t in terms" :key="t.id" :value="t.id">{{ t.name }}</option>
+          </select>
+          <div class="timetable-mode" role="group" aria-label="课表视图">
             <button
-              v-if="chosen.course.rescheduleID"
-              @click="restoreMove(chosen.course.rescheduleID)"
-              :disabled="!!store.busy"
+              :class="{ active: mode === 'list' }"
+              @click="mode = 'list'"
+              aria-label="课表课程列表"
             >
-              还原调课
+              课程列表
             </button>
-          </template>
-          <span v-else class="small muted">{{
-            chosen.fixed && !fixedEditing
-              ? '固定计划已锁定'
-              : '可拖动调整本次；截止与其他发生项保持不变'
-          }}</span> </template
-        ><span v-else class="muted small">选择一个安排查看详情；固定课程默认锁定。</span>
-      </div>
+            <button
+              :class="{ active: mode === 'timeline' }"
+              @click="mode = 'timeline'"
+              aria-label="课表时间网格"
+            >
+              时间网格
+            </button>
+          </div>
+          <button @click="openSettings"><Settings2 :size="15" />学期设置</button>
+        </div>
+        <div v-if="mode === 'timeline'" class="timeline-controls">
+          <label class="check-label"
+            ><input type="checkbox" v-model="fixedEditing" />编辑固定课程与计划</label
+          >
+          <label class="check-label"><input type="checkbox" v-model="showPlans" />显示计划</label>
+          <span class="muted small">拖动只调整本次 · 保留时长 · Esc 取消</span>
+        </div>
+        <div v-if="mode === 'timeline'" class="timeline-selection" aria-label="选中时间安排">
+          <template v-if="chosen">
+            <strong>{{ chosen.title }}</strong
+            ><span
+              >{{ clock(chosen.range.start) }} – {{ clock(chosen.range.end) }} ·
+              {{ chosen.location }}</span
+            >
+            <span class="spacer" />
+            <template v-if="chosen.course">
+              <label class="meeting-month-toggle"
+                ><input
+                  type="checkbox"
+                  :checked="monthVisible(chosen.course)"
+                  :disabled="!!store.busy"
+                  @change="setMonthVisible(chosen.course, $event)"
+                  :aria-label="'月历显示 ' + chosen.title"
+                />月历显示</label
+              >
+              <button @click="openMove(chosen.course)" :disabled="!!store.busy">调整本次</button>
+              <button @click="cancel(chosen.course)" :disabled="!!store.busy">取消本次</button>
+              <button
+                v-if="chosen.course.rescheduleID"
+                @click="restoreMove(chosen.course.rescheduleID)"
+                :disabled="!!store.busy"
+              >
+                还原调课
+              </button>
+            </template>
+            <span v-else class="small muted">{{
+              chosen.fixed && !fixedEditing
+                ? '固定计划已锁定'
+                : '可拖动调整本次；截止与其他发生项保持不变'
+            }}</span> </template
+          ><span v-else class="muted small">选择一个安排查看详情；固定课程默认锁定。</span>
+        </div>
+      </template>
+      <footer class="schedule-create">
+        <button @click="creatingPlan = true">＋ 新建计划</button>
+      </footer>
+    </aside>
+    <TaskEditor v-if="creatingPlan" @close="creatingPlan = false" />
+    <div v-if="term" class="schedule-datebar">
+      <span class="spacer" /><button
+        class="icon-button"
+        aria-label="上一周"
+        :disabled="week <= 1"
+        @click="week--"
+      >
+        <ChevronLeft :size="17" /></button
+      ><label
+        >第
+        <input
+          v-model.number="week"
+          aria-label="课表周次"
+          type="number"
+          :min="1"
+          :max="term.weekCount"
+          class="week-input"
+        />
+        周</label
+      ><button
+        class="icon-button"
+        aria-label="下一周"
+        :disabled="week >= term.weekCount"
+        @click="week++"
+      >
+        <ChevronRight :size="17" /></button
+      ><span class="spacer" />{{ term.name }}
+    </div>
+    <div v-else class="schedule-datebar">课程安排</div>
+    <template v-if="term">
       <div class="timetable-scroll" ref="scroll" @scroll="clearDrag">
         <div v-if="term.weekOneMonday == null" class="empty-state compact">
           <CalendarDays :size="38" />

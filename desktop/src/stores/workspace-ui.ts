@@ -26,6 +26,7 @@ function freshWorkspace() {
 export const useWorkspaceUI = defineStore('workspace-ui', () => {
   const library = useLibrary(),
     preferences = ref(loadPreferences()),
+    settingsTab = ref('appearance'),
     workspace = ref(freshWorkspace()),
     identity = computed(() => library.snapshot?.workspaceID ?? library.snapshot?.root ?? '');
   watch(
@@ -90,6 +91,7 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
   }
   return {
     identity,
+    settingsTab,
     semester,
     day,
     timetableTermID,

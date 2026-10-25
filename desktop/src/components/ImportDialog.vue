@@ -32,7 +32,7 @@ async function submit() {
 }
 </script>
 <template>
-  <Modal title="导入资料" @close="emit('close')"
+  <Modal :width="490" title="导入资料" @close="emit('close')"
     ><form class="form-stack" @submit.prevent="submit">
       <p class="muted">选择文件或文件夹，批量加入本地资料库。</p>
       <label

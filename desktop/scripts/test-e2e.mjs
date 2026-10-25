@@ -13,6 +13,7 @@ const tests = [
   'workspace-sync.e2e.mjs',
   'e2e-component-sync.mjs',
   'e2e-ui-parity.mjs',
+  'page-layout.e2e.mjs',
   'website-context.e2e.mjs',
 ];
 // The transport test bundles the source into a separate minimal Electron host.

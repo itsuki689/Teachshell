@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { useWorkspaceUI } from '../stores/workspace-ui';
+function modelSettings() {
+  useWorkspaceUI().settingsTab = 'assistant';
+  void store.navigate('settings');
+}
 const api = window.teachshelf;
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import {
@@ -161,7 +166,7 @@ onUnmounted(() => {
       </div>
       <div class="toolbar-controls">
         <button :disabled="streaming || resetting" @click="reset"><Plus :size="16" />新对话</button
-        ><button @click="store.navigate('settings')"><Settings2 :size="16" />模型设置</button>
+        ><button @click="modelSettings"><Settings2 :size="16" />模型设置</button>
       </div>
     </header>
     <div ref="scroll" class="chat-scroll">
@@ -174,7 +179,7 @@ onUnmounted(() => {
               <strong>先连接一个模型</strong>
               <p>支持 OpenAI 兼容 API 和本地模型服务。</p>
             </div>
-            <button class="primary" @click="store.navigate('settings')">设置模型</button>
+            <button class="primary" @click="modelSettings">设置模型</button>
           </div>
           <div class="examples">
             <span class="small muted">可以这样开始</span

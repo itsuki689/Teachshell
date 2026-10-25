@@ -142,6 +142,7 @@ async function drop(e: DragEvent, courseID?: string) {
         class="course-row"
         :class="{ active: store.courseID === c.id }"
         :style="{ '--course-color': c.colorHex }"
+        :title="[c.name, c.teacher, c.semester].filter(Boolean).join(' · ')"
         @click="store.navigate('course:' + c.id)"
         @dblclick="emit('editCourse', c)"
         @contextmenu.prevent="emit('editCourse', c)"

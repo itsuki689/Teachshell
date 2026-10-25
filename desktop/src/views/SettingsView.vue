@@ -3,7 +3,7 @@ const api = window.teachshelf;
 import { onMounted, reactive, ref } from 'vue';
 import {
   Archive,
-  Check,
+  PanelTop,
   Copy,
   Database,
   Download,
@@ -17,6 +17,17 @@ import {
 } from 'lucide-vue-next';
 import { useLibrary } from '../stores/library';
 import type { AppInfo } from '../../shared/api';
+import { useWorkspaceUI } from '../stores/workspace-ui';
+const ui = useWorkspaceUI();
+const tabs = [
+  { id: 'appearance', label: '外观', icon: Monitor },
+  { id: 'toolbar', label: '顶栏', icon: PanelTop },
+  { id: 'library', label: '资料库', icon: Database },
+  { id: 'backup', label: '备份', icon: Archive },
+  { id: 'assistant', label: 'AI 助手', icon: Sparkles },
+  { id: 'mcp', label: 'MCP', icon: Server },
+  { id: 'about', label: '关于', icon: Globe },
+];
 import ToolbarSettings from '../components/ToolbarSettings.vue';
 const application = ref<AppInfo>();
 const emit = defineEmits<{ website: [] }>(),
@@ -99,16 +110,34 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
 </script>
 <template>
   <section class="workspace settings-workspace">
-    <header class="workspace-header">
+    <header class="settings-header">
       <div class="heading-block">
         <h1>设置</h1>
-        <p>资料库、模型连接与本机服务。</p>
       </div>
+      <nav class="settings-tabs" role="tablist" aria-label="设置分类">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          role="tab"
+          :id="'settings-tab-' + tab.id"
+          :aria-selected="ui.settingsTab === tab.id"
+          :aria-controls="'settings-panel-' + tab.id"
+          :class="{ active: ui.settingsTab === tab.id }"
+          @click="ui.settingsTab = tab.id"
+        >
+          <component :is="tab.icon" :size="17" /><span>{{ tab.label }}</span>
+        </button>
+      </nav>
     </header>
     <div class="settings-scroll">
-      <div class="settings-content">
-        <ToolbarSettings />
-        <section v-if="application" class="settings-section">
+      <div
+        class="settings-content"
+        role="tabpanel"
+        :id="'settings-panel-' + ui.settingsTab"
+        :aria-labelledby="'settings-tab-' + ui.settingsTab"
+      >
+        <ToolbarSettings v-show="ui.settingsTab === 'toolbar'" />
+        <section v-if="application" v-show="ui.settingsTab === 'about'" class="settings-section">
           <h2><Monitor :size="19" />关于 {{ application.name }}</h2>
           <div class="settings-card">
             <div class="setting-row">
@@ -128,7 +157,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
             </div>
           </div>
         </section>
-        <section class="settings-section">
+        <section v-show="ui.settingsTab === 'library'" class="settings-section">
           <h2><Database :size="19" />本地资料库</h2>
           <div class="settings-card">
             <div class="setting-row">
@@ -146,9 +175,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
               <button @click="store.chooseLibrary(true)" :disabled="!!store.busy">
                 <Download :size="16" />复制导入旧资料库…</button
               ><button @click="store.chooseLibrary(false)" :disabled="!!store.busy">
-                <FolderOpen :size="16" />打开 Desktop 资料库…</button
-              ><button @click="backup" :disabled="!!store.busy">
-                <Archive :size="16" />备份完整资料库…
+                <FolderOpen :size="16" />打开 Desktop 资料库…
               </button>
             </div>
             <p class="field-note">
@@ -156,7 +183,22 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
             </p>
           </div>
         </section>
-        <section class="settings-section">
+        <section v-show="ui.settingsTab === 'backup'" class="settings-section">
+          <h2><Archive :size="19" />资料库备份</h2>
+          <div class="settings-card">
+            <div class="setting-row">
+              <div>
+                <strong>保存完整资料库副本</strong>
+                <p>备份课程、计划、索引和库内文件，可在需要时重新打开。</p>
+              </div>
+              <button @click="backup" :disabled="!!store.busy">
+                <Archive :size="16" />备份完整资料库…
+              </button>
+            </div>
+            <p class="field-note">外部引用与挂载目录保留在原位置，请另外备份这些文件。</p>
+          </div>
+        </section>
+        <section v-show="ui.settingsTab === 'assistant'" class="settings-section">
           <h2><Sparkles :size="19" />AI 助手</h2>
           <form class="settings-card form-stack" @submit.prevent="saveAI">
             <label
@@ -199,7 +241,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
             </p>
           </form>
         </section>
-        <section class="settings-section">
+        <section v-show="ui.settingsTab === 'mcp'" class="settings-section">
           <h2><Server :size="19" />MCP 连接</h2>
           <form class="settings-card form-stack" @submit.prevent="saveMCP">
             <div class="setting-row">
@@ -239,21 +281,44 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
             >
           </form>
         </section>
-        <section class="settings-section">
+        <section v-show="ui.settingsTab === 'appearance'" class="settings-section">
           <h2><Monitor :size="19" />外观</h2>
-          <div class="settings-card setting-row">
-            <div>
-              <strong>显示模式</strong>
-              <p>选择适合当前环境的明暗主题。</p>
+          <p class="settings-intro">选择舒适的显示模式，让课屿更合你的习惯。</p>
+          <h3 class="settings-group-title">显示模式</h3>
+          <div class="settings-card">
+            <div class="appearance-options" role="group" aria-label="显示模式">
+              <button
+                v-for="option in [
+                  { value: 'light', label: '浅色' },
+                  { value: 'dark', label: '深色' },
+                  { value: 'system', label: '跟随系统' },
+                ]"
+                :key="option.value"
+                :class="{ selected: form.theme === option.value }"
+                :aria-label="option.label + '显示模式'"
+                :aria-pressed="form.theme === option.value"
+                :disabled="!loaded || !!store.busy"
+                @click="
+                  form.theme = option.value;
+                  saveTheme();
+                "
+              >
+                <span class="appearance-preview" :class="option.value" aria-hidden="true"
+                  ><span class="preview-sidebar"><i /><i /><i /></span
+                  ><span class="preview-content"><i /><i /><i /></span
+                ></span>
+                <span class="appearance-label"
+                  ><Monitor :size="16" />{{ option.label }}<span class="spacer" /><span
+                    class="appearance-check"
+                    >{{ form.theme === option.value ? '✓' : '' }}</span
+                  ></span
+                >
+              </button>
             </div>
-            <select v-model="form.theme" aria-label="显示模式" @change="saveTheme">
-              <option value="system">跟随系统</option>
-              <option value="light">浅色</option>
-              <option value="dark">深色</option>
-            </select>
+            <p class="field-note">跟随系统会自动匹配操作系统的外观。显示设置保存在本机。</p>
           </div>
         </section>
-        <section class="settings-section">
+        <section v-show="ui.settingsTab === 'library'" class="settings-section">
           <h2><Globe :size="19" />教学网站</h2>
           <div class="settings-card setting-row">
             <div>

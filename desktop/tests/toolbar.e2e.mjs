@@ -71,6 +71,7 @@ async function waitActions(expected) {
 }
 async function openSettings() {
   await page.keyboard.press(process.platform === 'darwin' ? 'Meta+,' : 'Control+,');
+  await page.getByRole('tab', { name: '顶栏', exact: true }).click();
   await settings().getByRole('heading', { name: '自定义顶栏' }).waitFor();
 }
 async function closeDialog(title) {
@@ -133,6 +134,7 @@ try {
     'Settings adds two actions, enforces maximum six, then reorders and removes real persisted shortcuts',
     async () => {
       await button('settings').click();
+      await page.getByRole('tab', { name: '顶栏', exact: true }).click();
       await settings().getByRole('heading', { name: '自定义顶栏' }).waitFor();
       await settings().getByRole('button', { name: '添加计划', exact: true }).click();
       await waitActions([...defaults, 'schedule']);
@@ -215,7 +217,7 @@ try {
     const actions = ['schedule', 'allMaterials', 'favorites', 'recent', 'homework', 'pendingTasks'];
     await replaceActions(actions);
     for (const [action, heading] of [
-      ['schedule', '计划'],
+      ['schedule', '计划列表'],
       ['allMaterials', '全部资料'],
       ['favorites', '我的收藏'],
       ['recent', '最近打开'],

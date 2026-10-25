@@ -1,0 +1,12 @@
+{
+  "steps": [
+    "Inspector keeps edits typed while a previous save response is pending",
+    "Continued drafts keep conflict protection for submitted and untouched fields",
+    "Inspector close asks before discarding a draft and cancel preserves it",
+    "Homework switch clears old rows before the new course listing returns",
+    "Homework location follows a course rename without manual refresh",
+    "An old history reply cannot resurrect a cleared conversation"
+  ],
+  "rendererErrors": [],
+  "packaged": false
+}

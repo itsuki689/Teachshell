@@ -261,7 +261,7 @@ try {
         .getByRole('button', { name: '取消本次', exact: true })
         .click();
       await until((s) => s.timetableTerms[0].cancellations.length === 1);
-      assert.equal(await occurrence().count(), 0);
+      await occurrence().waitFor({ state: 'detached' });
       await page.getByRole('button', { name: '恢复课程', exact: true }).click();
       await until((s) => s.timetableTerms[0].cancellations.length === 0);
       await occurrence().waitFor();

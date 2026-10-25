@@ -129,6 +129,7 @@ try {
           .connection.id;
       });
       await page.keyboard.press(process.platform === 'darwin' ? 'Meta+,' : 'Control+,');
+      await page.getByRole('tab', { name: '资料库', exact: true }).click();
       await page.getByRole('button', { name: '打开教学网站工具', exact: true }).click();
       website = page.getByRole('dialog', { name: '教学网站', exact: true });
       await openBatch();

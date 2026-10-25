@@ -185,7 +185,7 @@ async function save() {
 }
 </script>
 <template>
-  <Modal :title="task ? '编辑计划' : '新建计划'" @close="emit('close')"
+  <Modal :width="650" :title="task ? '编辑计划' : '新建计划'" @close="emit('close')"
     ><form class="form-stack" @submit.prevent="save">
       <div v-if="occurrence && task?.repeatRule" class="scope-editor">
         <label

@@ -56,7 +56,7 @@ async function remove() {
 }
 </script>
 <template>
-  <Modal :title="course ? '编辑课程' : '新建课程'" @close="emit('close')"
+  <Modal :width="460" :title="course ? '编辑课程' : '新建课程'" @close="emit('close')"
     ><form class="form-stack" @submit.prevent="save">
       <label
         >课程名称<input

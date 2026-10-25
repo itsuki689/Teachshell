@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue';
 import { X } from 'lucide-vue-next';
-defineProps<{ title: string; wide?: boolean }>();
+defineProps<{ title: string; wide?: boolean; width?: number }>();
 const emit = defineEmits<{ close: [] }>();
 const panel = ref<HTMLElement>();
 let previous: Element | null = null;
@@ -45,6 +45,7 @@ onUnmounted(() => {
       ref="panel"
       class="modal"
       :class="{ wide }"
+      :style="width ? { width: width + 'px' } : undefined"
       role="dialog"
       aria-modal="true"
       :aria-label="title"

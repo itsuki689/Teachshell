@@ -1,0 +1,29 @@
+{
+  "steps": [
+    {
+      "name": "A delayed real sync reply cannot overwrite a subsequent course change event",
+      "status": "passed"
+    },
+    {
+      "name": "Native new/open menu actions respect the inspector unsaved-change confirmation",
+      "status": "passed"
+    },
+    {
+      "name": "Native menu and shortcuts cannot stack editors or switch libraries under a modal",
+      "status": "passed"
+    },
+    {
+      "name": "A workspace change remounts views and dismisses editors from the previous library",
+      "status": "passed"
+    },
+    {
+      "name": "Changing libraries from a course homework view leaves no old-course request errors",
+      "status": "passed"
+    },
+    {
+      "name": "No stale editor, blank page, framework overlay or renderer exception remains",
+      "status": "passed"
+    }
+  ],
+  "errors": []
+}

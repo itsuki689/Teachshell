@@ -105,6 +105,7 @@ async function website() {
     .locator('.titlebar-actions')
     .getByRole('button', { name: '打开设置', exact: true })
     .click();
+  await page.getByRole('tab', { name: '资料库', exact: true }).click();
   await page.getByRole('button', { name: '打开教学网站工具', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '教学网站', exact: true });
   await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).waitFor();
@@ -421,15 +422,13 @@ try {
       await installOfficialFixture(scopeA);
       await app.evaluate(
         async ({ session }, scope) =>
-          session
-            .fromPartition('teachshelf-' + scope + '-teaching')
-            .cookies.set({
-              url: 'https://selearning.nju.edu.cn',
-              name: 'MoodleSession',
-              value: 'synthetic-close-race',
-              path: '/',
-              httpOnly: true,
-            }),
+          session.fromPartition('teachshelf-' + scope + '-teaching').cookies.set({
+            url: 'https://selearning.nju.edu.cn',
+            name: 'MoodleSession',
+            value: 'synthetic-close-race',
+            path: '/',
+            httpOnly: true,
+          }),
         scopeA,
       );
       await authenticateFromUI(dialog);

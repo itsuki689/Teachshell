@@ -1,0 +1,52 @@
+{
+  "platform": "darwin",
+  "viewport": {
+    "width": 1300,
+    "height": 859
+  },
+  "browser": "Browser plugin not available; Playwright Electron",
+  "steps": [
+    {
+      "name": "Shipped page identity, nonblank layout, isolated renderer and original four toolbar actions",
+      "status": "passed",
+      "durationMs": 77
+    },
+    {
+      "name": "Settings adds two actions, enforces maximum six, then reorders and removes real persisted shortcuts",
+      "status": "passed",
+      "durationMs": 396
+    },
+    {
+      "name": "Custom toolbar order survives app restart and stale IPC revision cannot overwrite it",
+      "status": "passed",
+      "durationMs": 540
+    },
+    {
+      "name": "Removing every shortcut hides the capsule; keyboard settings and restore defaults remain usable",
+      "status": "passed",
+      "durationMs": 868
+    },
+    {
+      "name": "Original update/import/create shortcuts open their real approval or editor dialogs",
+      "status": "passed",
+      "durationMs": 253
+    },
+    {
+      "name": "Six navigation shortcuts each show the corresponding real view",
+      "status": "passed",
+      "durationMs": 835
+    },
+    {
+      "name": "Create menu dismisses on Escape and outside click; settings toggles back to previous route",
+      "status": "passed",
+      "durationMs": 164
+    },
+    {
+      "name": "No framework overlay or renderer runtime errors",
+      "status": "passed",
+      "durationMs": 1
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

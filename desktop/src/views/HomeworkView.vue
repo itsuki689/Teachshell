@@ -10,6 +10,7 @@ import {
   Link,
   ArrowLeft,
   Pencil,
+  Search,
 } from 'lucide-vue-next';
 import type { HomeworkEntry, HomeworkListing } from '../../shared/api';
 import { useLibrary } from '../stores/library';
@@ -21,7 +22,38 @@ const api = window.teachshelf,
   listing = ref<HomeworkListing>(),
   editing = ref<HomeworkEntry | null | undefined>(undefined),
   name = ref('');
-const loading = ref(false);
+const loading = ref(false),
+  query = ref('');
+const entries = computed(() =>
+  (listing.value?.entries ?? []).filter((entry) =>
+    entry.name.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()),
+  ),
+);
+function modified(value: number) {
+  return new Date(value).toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+function fileType(entry: HomeworkEntry) {
+  return entry.isDirectory
+    ? '文件夹'
+    : entry.name.includes('.')
+      ? entry.name.split('.').at(-1)?.toUpperCase()
+      : '文件';
+}
+function fileSize(entry: HomeworkEntry) {
+  return entry.isDirectory
+    ? '—'
+    : entry.size < 1024
+      ? entry.size + ' B'
+      : entry.size < 1048576
+        ? (entry.size / 1024).toFixed(1) + ' KB'
+        : (entry.size / 1048576).toFixed(1) + ' MB';
+}
 const mountedWorkspace = store.workspaceID;
 let sequence = 0,
   active = true;
@@ -140,20 +172,14 @@ async function mount(reset = false) {
 }
 </script>
 <template>
-  <section class="workspace">
+  <section class="workspace homework-workspace">
     <header class="workspace-header">
       <div class="heading-block">
         <h1>作业文件夹</h1>
-        <p>直接管理真实目录；复制导入保留原文件。</p>
+        <p>题目、草稿与成果，像 Finder 一样整理。</p>
       </div>
       <div class="toolbar-controls">
-        <button v-if="course" :disabled="loading" @click="mount()">
-          <Link :size="15" />挂载目录</button
-        ><button v-if="listing?.mounted" :disabled="loading" @click="mount(true)">
-          恢复默认目录</button
-        ><button :disabled="loading || !listing" @click="edit()">
-          <FolderPlus :size="15" />新建文件夹</button
-        ><button class="primary" :disabled="loading || !listing" @click="importFiles">
+        <button class="primary" :disabled="loading || !listing" @click="importFiles">
           <Upload :size="15" />导入文件
         </button>
       </div>
@@ -171,19 +197,41 @@ async function mount(reset = false) {
       >
         <FolderOpen :size="15" />文件位置
       </button>
+      <button v-if="course" :disabled="loading" @click="mount()">
+        <Link :size="15" />挂载目录
+      </button>
+      <button v-if="listing?.mounted" :disabled="loading" @click="mount(true)">恢复默认目录</button>
+      <button :disabled="loading || !listing" @click="edit()">
+        <FolderPlus :size="15" />新建文件夹
+      </button>
     </div>
     <nav class="homework-crumb">
-      <button @click="go('')">作业</button
+      <button
+        class="icon-button"
+        aria-label="上一级文件夹"
+        :disabled="!relative"
+        @click="go(crumbs.slice(0, -1).join('/'))"
+      >
+        <ArrowLeft :size="16" />
+      </button>
+      <button @click="go('')">
+        {{ store.state.courses.find((c) => c.id === course)?.name || '公共作业' }}</button
       ><template v-for="(c, i) in crumbs" :key="i"
         ><span>/</span
         ><button @click="go(crumbs.slice(0, i + 1).join('/'))">{{ c }}</button></template
-      ><span v-if="listing?.mounted" class="tag">外部挂载</span>
+      ><span v-if="listing?.mounted" class="tag">外部挂载</span> <span class="spacer" /><label
+        class="search-field"
+        ><Search :size="15" /><input
+          v-model="query"
+          aria-label="搜索当前作业文件夹"
+          placeholder="搜索当前文件夹"
+      /></label>
     </nav>
     <div class="homework-list">
-      <button v-if="relative" class="homework-row" @click="go(crumbs.slice(0, -1).join('/'))">
-        <ArrowLeft :size="18" />上一级
-      </button>
-      <div v-for="entry in listing?.entries" :key="entry.relativePath" class="homework-row">
+      <div class="homework-columns" aria-hidden="true">
+        <span>名称</span><span>修改日期</span><span>类型</span><span>大小</span><span />
+      </div>
+      <div v-for="entry in entries" :key="entry.relativePath" class="homework-row">
         <button
           class="homework-entry"
           @dblclick="
@@ -195,28 +243,34 @@ async function mount(reset = false) {
         >
           <Folder v-if="entry.isDirectory" :size="21" /><File v-else :size="21" /><strong>{{
             entry.name
-          }}</strong></button
-        ><span class="muted small">{{
-          entry.isDirectory ? '文件夹' : new Intl.NumberFormat('zh-CN').format(entry.size) + ' B'
-        }}</span
-        ><button class="icon-button" :aria-label="'重命名 ' + entry.name" @click="edit(entry)">
-          <Pencil :size="15" /></button
-        ><button
-          class="icon-button"
-          :aria-label="'显示 ' + entry.name"
-          @click="store.run(() => api.revealHomework(course || undefined, entry.relativePath))"
-        >
-          <FolderOpen :size="16" />
+          }}</strong>
         </button>
+        <span class="muted small">{{ modified(entry.modifiedAt) }}</span
+        ><span class="muted small">{{ fileType(entry) }}</span
+        ><span class="muted small">{{ fileSize(entry) }}</span>
+        <div class="homework-actions">
+          <button class="icon-button" :aria-label="'重命名 ' + entry.name" @click="edit(entry)">
+            <Pencil :size="15" /></button
+          ><button
+            class="icon-button"
+            :aria-label="'显示 ' + entry.name"
+            @click="store.run(() => api.revealHomework(course || undefined, entry.relativePath))"
+          >
+            <FolderOpen :size="16" />
+          </button>
+        </div>
       </div>
       <div v-if="loading" class="empty-state" role="status">正在读取作业目录…</div>
-      <div v-else-if="listing && !listing.entries.length" class="empty-state">
+      <div v-else-if="listing && !entries.length" class="empty-state">
         <Folder :size="43" />
-        <h2>目录里还没有文件</h2>
+        <h2>{{ query ? '没有匹配的文件' : '目录里还没有文件' }}</h2>
         <p>导入作业文件，或创建文件夹。</p>
       </div>
     </div>
-    <p class="homework-location muted small wrap">{{ listing?.root }}</p>
+    <footer class="homework-location muted small">
+      <span v-if="listing">{{ entries.length }} 个项目</span
+      ><span class="path-text" :title="listing?.root">{{ listing?.root }}</span>
+    </footer>
     <Modal
       v-if="editing !== undefined"
       :title="editing ? '重命名' : '新建作业文件夹'"
@@ -252,10 +306,11 @@ async function mount(reset = false) {
   flex: 1;
 }
 .homework-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 145px 65px 70px 65px;
   align-items: center;
-  gap: 16px;
-  min-height: 52px;
+  gap: 10px;
+  min-height: 42px;
   border-bottom: 1px solid var(--border);
   width: 100%;
   font-size: 13px;
@@ -280,10 +335,49 @@ async function mount(reset = false) {
   color: var(--accent);
 }
 .homework-location {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  border-top: 1px solid var(--border);
   padding: 10px 24px;
   margin: 0;
 }
-.homework-crumb .tag {
-  margin-left: auto;
+.homework-columns {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 145px 65px 70px 65px;
+  gap: 10px;
+  padding: 8px 0;
+  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  position: sticky;
+  top: -10px;
+  background: var(--bg);
+  z-index: 1;
+}
+.homework-actions {
+  display: flex;
+}
+.homework-crumb .search-field {
+  flex: 0 1 210px;
+}
+.homework-workspace .filter-bar > select {
+  max-width: 230px;
+  width: 230px;
+}
+.homework-location .path-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 1100px) {
+  .homework-workspace .filter-bar {
+    flex-wrap: wrap;
+  }
+  .homework-row,
+  .homework-columns {
+    grid-template-columns: minmax(160px, 1fr) 125px 50px 60px 60px;
+    gap: 6px;
+  }
 }
 </style>

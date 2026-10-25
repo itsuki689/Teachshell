@@ -609,6 +609,7 @@ try {
       .locator('.titlebar-actions')
       .getByRole('button', { name: '打开设置', exact: true })
       .click();
+    await page.getByRole('tab', { name: 'AI 助手', exact: true }).click();
     await page.getByLabel('API 基础地址', { exact: true }).fill('http://127.0.0.1:11434/v1');
     await page.getByLabel('模型名称', { exact: true }).fill('local-test-model');
     await page.getByRole('button', { name: '保存模型设置', exact: true }).click();
@@ -617,7 +618,8 @@ try {
     );
   });
   await check('Minimum desktop viewport and dark appearance remain usable', async () => {
-    await page.getByLabel('显示模式', { exact: true }).selectOption('dark');
+    await page.getByRole('tab', { name: '外观', exact: true }).click();
+    await page.getByRole('button', { name: '深色显示模式', exact: true }).click();
     await page.waitForFunction(() => document.documentElement.dataset.theme === 'dark');
     await page.setViewportSize({ width: 1020, height: 680 });
     await page
@@ -634,7 +636,8 @@ try {
       .locator('.titlebar-actions')
       .getByRole('button', { name: '打开设置', exact: true })
       .click();
-    await page.getByLabel('显示模式', { exact: true }).selectOption('system');
+    await page.getByRole('tab', { name: '外观', exact: true }).click();
+    await page.getByRole('button', { name: '跟随系统显示模式', exact: true }).click();
     await page.setViewportSize({ width: 1260, height: 800 });
   });
   await check(
@@ -1055,6 +1058,7 @@ try {
           .locator('.titlebar-actions')
           .getByRole('button', { name: '打开设置', exact: true })
           .click();
+        await page.getByRole('tab', { name: 'MCP', exact: true }).click();
         await page.getByLabel('服务端口', { exact: true }).fill(String(port));
         await page.getByRole('checkbox', { name: '启用 MCP Server', exact: true }).check();
         await page.getByRole('button', { name: '保存 MCP 设置', exact: true }).click();

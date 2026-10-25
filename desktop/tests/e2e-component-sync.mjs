@@ -176,7 +176,7 @@ try {
   await page.getByLabel('作业所属课程', { exact: true }).selectOption(a.id);
   await page.getByRole('button', { name: '重命名 共同作业目录', exact: true }).waitFor();
   await check('Homework switch clears old rows before the new course listing returns', async () => {
-    const previous = await page.locator('.homework-location').textContent();
+    const previous = await page.locator('.homework-location .path-text').textContent();
     await holdNextReply('listHomework');
     await page.getByLabel('作业所属课程', { exact: true }).selectOption(b.id);
     await held();
@@ -191,7 +191,7 @@ try {
     assert.equal(await page.locator('.homework-location').textContent(), '');
     await releaseReply();
     await page.getByRole('button', { name: '重命名 共同作业目录', exact: true }).waitFor();
-    const next = await page.locator('.homework-location').textContent();
+    const next = await page.locator('.homework-location .path-text').textContent();
     assert.notEqual(next, previous);
     assert.match(next, /审查课程乙/);
     await page.getByRole('button', { name: '重命名 共同作业目录', exact: true }).click();
@@ -224,6 +224,7 @@ try {
     .locator('.titlebar-actions')
     .getByRole('button', { name: '打开设置', exact: true })
     .click();
+  await page.getByRole('tab', { name: 'AI 助手', exact: true }).click();
   await page.getByLabel('模型名称', { exact: true }).waitFor();
   await page.locator('.sidebar').getByRole('button', { name: 'AI 助手', exact: true }).click();
   await check('An old history reply cannot resurrect a cleared conversation', async () => {
