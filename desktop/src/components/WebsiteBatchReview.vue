@@ -407,6 +407,7 @@ function deadline(value?: SwiftDate, allDay = false) {
               </p>
               <label
                 >截止冲突处理<select
+                  v-choice
                   v-model="decisions[row.id]"
                   :aria-label="'截止冲突处理 ' + row.title"
                   :disabled="!!running"

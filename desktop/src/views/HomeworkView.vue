@@ -5,7 +5,6 @@ import {
   File,
   FolderOpen,
   FolderPlus,
-  Upload,
   RefreshCw,
   Link,
   ArrowLeft,
@@ -13,6 +12,7 @@ import {
   Search,
 } from 'lucide-vue-next';
 import type { HomeworkEntry, HomeworkListing } from '../../shared/api';
+import AppSymbol from '../components/AppSymbol.vue';
 import { useLibrary } from '../stores/library';
 import Modal from '../components/Modal.vue';
 const api = window.teachshelf,
@@ -180,12 +180,12 @@ async function mount(reset = false) {
       </div>
       <div class="toolbar-controls">
         <button class="primary" :disabled="loading || !listing" @click="importFiles">
-          <Upload :size="15" />导入文件
+          <AppSymbol name="import" :size="15" />导入文件
         </button>
       </div>
     </header>
     <div class="filter-bar">
-      <select v-model="course" aria-label="作业所属课程">
+      <select v-choice v-model="course" aria-label="作业所属课程">
         <option value="">未分类作业</option>
         <option v-for="c in store.state.courses" :key="c.id" :value="c.id">
           {{ c.name }}

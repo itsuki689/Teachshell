@@ -293,12 +293,12 @@ defineExpose({
           v-model="query"
           placeholder="搜索计划名称与内容"
           aria-label="搜索计划" /></label
-      ><select v-model="courseID" aria-label="计划课程筛选">
+      ><select v-choice v-model="courseID" aria-label="计划课程筛选">
         <option value="">全部课程</option>
         <option v-for="c in store.state.courses" :key="c.id" :value="c.id">
           {{ c.name }}
         </option></select
-      ><select v-model="filter" aria-label="计划状态筛选">
+      ><select v-choice v-model="filter" aria-label="计划状态筛选">
         <option value="active">当前计划</option>
         <option value="unscheduled">待安排</option>
         <option value="pending">未完成</option>
@@ -579,7 +579,7 @@ defineExpose({
       ><div class="form-stack">
         <p>{{ operation.occurrence?.task.title ?? operation.task.title }}</p>
         <label
-          >作用范围<select v-model="operationScope" aria-label="作用范围">
+          >作用范围<select v-choice v-model="operationScope" aria-label="作用范围">
             <option v-for="scope in scopes" :key="scope" :value="scope">
               {{ operation.task.repeatRule ? scopeNames[scope] : '此计划' }}
             </option>

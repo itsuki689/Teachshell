@@ -442,7 +442,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
           <p class="muted">在独立窗口完成登录。先读取课程首页，再打开作业或资料条目读取详情。</p>
           <div class="form-row">
             <label
-              >网站类型<select aria-label="网站类型" v-model="kind">
+              >网站类型<select v-choice aria-label="网站类型" v-model="kind">
                 <option value="teaching">教学平台（Moodle）</option>
                 <option value="timetable">南京大学课表</option>
               </select></label
@@ -474,7 +474,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
             <summary>已绑定课程与截止冲突 · {{ connections.length }} 个连接</summary>
             <div class="form-stack">
               <label
-                >管理课程连接<select v-model="managedID" aria-label="管理课程连接">
+                >管理课程连接<select v-choice v-model="managedID" aria-label="管理课程连接">
                   <option v-for="c in connections" :key="c.id" :value="c.id">
                     {{ courseName(c.courseID) }} · {{ c.remoteTitle }}
                   </option>
@@ -554,7 +554,11 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
                 </p>
                 <div class="form-row">
                   <label class="grow"
-                    >绑定到本地课程<select v-model="localCourseID" aria-label="绑定到本地课程">
+                    >绑定到本地课程<select
+                      v-choice
+                      v-model="localCourseID"
+                      aria-label="绑定到本地课程"
+                    >
                       <option value="">请选择课程</option>
                       <option
                         v-for="c in store.state.courses.filter((c) => !c.isArchived)"
@@ -607,7 +611,11 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
                 <pre v-if="page.intro" class="website-intro">{{ page.intro }}</pre>
                 <template v-if="matchingConnections.length"
                   ><label
-                    >作业所属连接<select v-model="assignmentConnectionID" aria-label="作业所属连接">
+                    >作业所属连接<select
+                      v-choice
+                      v-model="assignmentConnectionID"
+                      aria-label="作业所属连接"
+                    >
                       <option v-for="c in matchingConnections" :key="c.id" :value="c.id">
                         {{ courseName(c.courseID) }} · {{ c.remoteTitle }}
                       </option>
@@ -707,7 +715,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
                 >
                 <div class="website-import">
                   <label
-                    >导入到课程<select aria-label="导入到课程" v-model="localCourseID">
+                    >导入到课程<select v-choice aria-label="导入到课程" v-model="localCourseID">
                       <option value="">未分类</option>
                       <option v-for="c in store.state.courses" :key="c.id" :value="c.id">
                         {{ c.name }}

@@ -16,12 +16,12 @@ import {
   Search,
   Star,
   Trash2,
-  Upload,
   X,
 } from 'lucide-vue-next';
 import { dateMs } from '../../shared/model';
 import { compareMaterials, compareNames } from '../../shared/ordering';
 import type { Course, Material, MaterialFolder } from '../../shared/model';
+import AppSymbol from '../components/AppSymbol.vue';
 import { useLibrary } from '../stores/library';
 import { useWorkspaceUI } from '../stores/workspace-ui';
 import { storeToRefs } from 'pinia';
@@ -546,13 +546,13 @@ onUnmounted(() => {
           @click="query = ''"
         >
           <X :size="13" /></button></label
-      ><select v-model="format" aria-label="格式筛选">
+      ><select v-choice v-model="format" aria-label="格式筛选">
         <option value="">全部格式</option>
         <option v-for="f in formats" :key="f">{{ f }}</option></select
-      ><select v-model="category" aria-label="类别筛选">
+      ><select v-choice v-model="category" aria-label="类别筛选">
         <option value="">全部类别</option>
         <option v-for="c in categories" :key="c">{{ c }}</option></select
-      ><select v-model="sort" aria-label="排序">
+      ><select v-choice v-model="sort" aria-label="排序">
         <option value="time">最近添加</option>
         <option value="name">名称</option>
         <option value="recent">最近打开</option>
@@ -608,7 +608,7 @@ onUnmounted(() => {
           >
             清除筛选</button
           ><button v-else class="primary" @click="emit('import')">
-            <Upload :size="15" />导入资料
+            <AppSymbol name="import" :size="15" />导入资料
           </button>
         </div>
         <template v-else
@@ -767,7 +767,9 @@ onUnmounted(() => {
         @preview="showPreview"
       />
     </div>
-    <div v-if="dropActive" class="drop-label"><Upload :size="25" />松开以导入或移动资料</div>
+    <div v-if="dropActive" class="drop-label">
+      <AppSymbol name="import" :size="25" />松开以导入或移动资料
+    </div>
     <FolderEditor
       v-if="folderEditor !== undefined"
       :folder="folderEditor ?? undefined"
@@ -783,12 +785,17 @@ onUnmounted(() => {
           移动 {{ store.selected.length }} 份资料。外部引用的原文件仍保留在原位置。
         </p>
         <label
-          >目标课程<select aria-label="目标课程" v-model="moveCourseID" @change="moveFolderID = ''">
+          >目标课程<select
+            v-choice
+            aria-label="目标课程"
+            v-model="moveCourseID"
+            @change="moveFolderID = ''"
+          >
             <option value="">未分类</option>
             <option v-for="c in store.state.courses" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select></label
         ><label
-          >目标文件夹<select aria-label="目标文件夹" v-model="moveFolderID">
+          >目标文件夹<select v-choice aria-label="目标文件夹" v-model="moveFolderID">
             <option value="">资料根目录</option>
             <option v-for="f in moveFolders" :key="f.id" :value="f.id">{{ f.name }}</option>
           </select></label

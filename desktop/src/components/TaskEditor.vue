@@ -199,7 +199,7 @@ async function save() {
     ><form class="form-stack" @submit.prevent="save">
       <div v-if="occurrence && task?.repeatRule" class="scope-editor">
         <label
-          >修改范围<select v-model="scope" aria-label="修改范围">
+          >修改范围<select v-choice v-model="scope" aria-label="修改范围">
             <option value="thisOccurrence">仅本次</option>
             <option value="thisAndFuture">本次及以后</option>
             <option value="all">整组计划</option>
@@ -222,14 +222,14 @@ async function save() {
             <option>复习</option>
           </datalist></label
         ><label
-          >课程<select aria-label="课程" v-model="form.courseID">
+          >课程<select v-choice aria-label="课程" v-model="form.courseID">
             <option value="">不关联课程</option>
             <option v-for="c in store.state.courses" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select></label
         >
       </div>
       <label
-        >计划类型<select v-model="form.origin" aria-label="计划类型" :disabled="single">
+        >计划类型<select v-choice v-model="form.origin" aria-label="计划类型" :disabled="single">
           <option value="activity">活动计划</option>
           <option value="fixed">固定计划</option>
         </select></label
@@ -264,7 +264,12 @@ async function save() {
         ><template v-if="form.repeats"
           ><div class="form-row">
             <label
-              >重复频率<select v-model="form.frequency" aria-label="重复频率" :disabled="single">
+              >重复频率<select
+                v-choice
+                v-model="form.frequency"
+                aria-label="重复频率"
+                :disabled="single"
+              >
                 <option value="daily">每天</option>
                 <option value="weekly">每周</option>
                 <option value="monthly">每月</option>

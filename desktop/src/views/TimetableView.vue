@@ -754,7 +754,7 @@ function time(item: TimetableOccurrence) {
       </div>
       <template v-if="term || mode === 'timeline'">
         <div v-if="term" class="filter-bar">
-          <select v-model="selected" aria-label="课表学期">
+          <select v-choice v-model="selected" aria-label="课表学期">
             <option v-for="t in terms" :key="t.id" :value="t.id">{{ t.name }}</option>
           </select>
           <div class="timetable-mode" role="group" aria-label="课表视图">

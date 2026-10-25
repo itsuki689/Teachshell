@@ -14,6 +14,7 @@ const tests = [
   'e2e-component-sync.mjs',
   'e2e-ui-parity.mjs',
   'page-layout.e2e.mjs',
+  'controls-parity.e2e.mjs',
   'appearance-week.e2e.mjs',
   'website-context.e2e.mjs',
 ];

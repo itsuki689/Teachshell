@@ -1,0 +1,218 @@
+/* ChoiceMenu / SolidChoiceList: 13pt title, 10pt inset, 7pt radius;
+   compact sidebar controls use 12pt and 28pt height. */
+:root {
+  --choice-surface: #f5f5f5;
+}
+:root[data-theme='dark'] {
+  --choice-surface: #292b2d;
+}
+select.choice-control {
+  appearance: none;
+  background-color: var(--choice-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath d='m2 3.5 3 3 3-3' fill='none' stroke='%23878a8e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding: 5px 29px 5px 10px;
+  min-height: 32px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  border-radius: 7px;
+  cursor: default;
+}
+select.choice-control:disabled {
+  opacity: 0.45;
+}
+select.choice-control:focus:not(:focus-visible) {
+  box-shadow: none;
+  border-color: var(--border);
+}
+select.choice-control:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.sidebar select.choice-control {
+  min-height: 28px;
+  font-size: 12px;
+  line-height: 18px;
+  padding-block: 4px;
+}
+.choice-popup {
+  position: fixed;
+  margin: 0;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--choice-surface);
+  color: var(--text);
+  box-shadow:
+    inset 0 0 0 1px var(--border),
+    0 6px 20px #0003,
+    0 1px 3px #0002;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  font:
+    400 13px/20px -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    'Noto Sans CJK SC',
+    'Microsoft YaHei',
+    sans-serif;
+  text-align: left;
+  white-space: normal;
+  user-select: none;
+}
+.choice-popup::backdrop {
+  background: transparent;
+  pointer-events: none;
+}
+.choice-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 5px;
+  cursor: default;
+}
+.choice-option + .choice-option {
+  margin-top: 2px;
+}
+.choice-option[hidden] {
+  display: none;
+}
+.choice-option.highlighted {
+  background: var(--selection);
+}
+.choice-option[aria-disabled='true'] {
+  opacity: 0.4;
+}
+.choice-check {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 12px;
+  position: relative;
+}
+.choice-option[aria-selected='true'] .choice-check::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid currentColor;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(42deg);
+}
+.choice-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Match the regular-weight SF toolbar feel on every platform. */
+svg.lucide {
+  stroke-width: 1.65;
+}
+.app-symbol {
+  display: block;
+  flex: 0 0 auto;
+}
+.shortcuts .active .app-symbol,
+.paired-nav .active .app-symbol {
+  stroke-width: 1.65;
+}
+.brand .app-symbol {
+  width: 27px;
+  height: 27px;
+}
+button,
+input,
+select {
+  line-height: 1.35;
+}
+button > svg {
+  vertical-align: middle;
+}
+.segmented button,
+.settings-tabs button {
+  font-weight: 500;
+}
+.settings-tabs button {
+  gap: 6px;
+}
+.form-stack > label,
+.form-row > label {
+  line-height: 1.45;
+}
+.form-stack input:not([type='checkbox']):not([type='color']),
+.form-stack select {
+  font-weight: 400;
+}
+.setting-row > div:first-child {
+  min-width: 0;
+}
+.setting-row p,
+.setting-row small,
+.check-label {
+  overflow-wrap: anywhere;
+}
+
+.toolbar-action-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 500;
+}
+.quick-create button:focus-visible {
+  background: var(--selection);
+  outline: none;
+}
+
+.toolbar-order {
+  width: 18px;
+  flex: 0 0 18px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: center;
+}
+.toolbar-preview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px;
+  height: 78px;
+  margin: 16px 0;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 2.5%, transparent);
+}
+.preview-traffic {
+  display: flex;
+  gap: 5px;
+}
+.preview-traffic i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--muted) 25%, transparent);
+}
+.preview-search {
+  flex: 1;
+  height: 26px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 4.5%, transparent);
+}
+.preview-capsule {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 10px 9px;
+  border: 1px solid var(--border);
+  border-radius: 30px;
+  background: var(--choice-surface);
+  box-shadow: 0 2px 3px #0001;
+}

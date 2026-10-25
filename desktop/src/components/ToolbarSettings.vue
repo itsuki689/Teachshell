@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ArrowUp, ArrowDown, Minus, Plus } from 'lucide-vue-next';
+import AppSymbol from './AppSymbol.vue';
+import { toolbarSymbols } from './symbols';
+import { ArrowUp, ArrowDown, Minus } from 'lucide-vue-next';
 import { useLibrary } from '../stores/library';
 import {
   defaultToolbarActions,
@@ -11,6 +13,11 @@ import {
 import type { ToolbarAction } from '../../shared/toolbar';
 const store = useLibrary();
 const actions = computed(() => readToolbarActions(store.state.toolbarSettings));
+const previewLabel = computed(() =>
+  actions.value.length
+    ? '胶囊预览：' + actions.value.map((a) => toolbarTitles[a]).join('、')
+    : '胶囊已隐藏',
+);
 const available = computed(() =>
   toolbarActions.filter((action) => !actions.value.includes(action)),
 );
@@ -51,9 +58,25 @@ function move(index: number, offset: number) {
           恢复默认顶栏
         </button>
       </div>
+      <div class="toolbar-preview" role="img" :aria-label="previewLabel">
+        <span class="preview-traffic" aria-hidden="true"><i /><i /><i /></span>
+        <span class="preview-search" aria-hidden="true" />
+        <span v-if="actions.length" class="preview-capsule" aria-hidden="true"
+          ><AppSymbol
+            v-for="action in actions"
+            :key="action"
+            :name="toolbarSymbols[action]"
+            :size="16"
+        /></span>
+        <small v-else>胶囊已隐藏</small>
+      </div>
       <ol class="toolbar-selected" aria-label="已选顶栏操作">
         <li v-for="(action, index) in actions" :key="action" :data-action="action">
-          <span>{{ index + 1 }}. {{ toolbarTitles[action] }}</span
+          <span class="toolbar-action-label"
+            ><small class="toolbar-order">{{ index + 1 }}</small
+            ><AppSymbol :name="toolbarSymbols[action]" :size="17" />{{
+              toolbarTitles[action]
+            }}</span
           ><button
             :aria-label="'上移' + toolbarTitles[action]"
             :disabled="!!store.busy || index === 0"
@@ -84,7 +107,7 @@ function move(index: number, offset: number) {
           :aria-label="'添加' + toolbarTitles[action]"
           @click="save([...actions, action])"
         >
-          <Plus :size="14" />{{ toolbarTitles[action] }}
+          <AppSymbol :name="toolbarSymbols[action]" :size="16" />{{ toolbarTitles[action] }}
         </button>
       </div>
       <p class="field-note">即使移除设置图标，也可通过侧栏或 ⌘ / Ctrl , 打开设置。</p>

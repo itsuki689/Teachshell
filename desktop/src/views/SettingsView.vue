@@ -3,6 +3,11 @@ const api = window.teachshelf;
 import { onMounted, reactive, ref } from 'vue';
 import {
   Archive,
+  Palette,
+  HardDrive,
+  History,
+  Network,
+  Info,
   PanelTop,
   Copy,
   Database,
@@ -20,13 +25,13 @@ import type { AppInfo } from '../../shared/api';
 import { useWorkspaceUI } from '../stores/workspace-ui';
 const ui = useWorkspaceUI();
 const tabs = [
-  { id: 'appearance', label: '外观', icon: Monitor },
+  { id: 'appearance', label: '外观', icon: Palette },
   { id: 'toolbar', label: '顶栏', icon: PanelTop },
-  { id: 'library', label: '资料库', icon: Database },
-  { id: 'backup', label: '备份', icon: Archive },
+  { id: 'library', label: '资料库', icon: HardDrive },
+  { id: 'backup', label: '备份', icon: History },
   { id: 'assistant', label: 'AI 助手', icon: Sparkles },
-  { id: 'mcp', label: 'MCP', icon: Server },
-  { id: 'about', label: '关于', icon: Globe },
+  { id: 'mcp', label: 'MCP', icon: Network },
+  { id: 'about', label: '关于', icon: Info },
 ];
 import ToolbarSettings from '../components/ToolbarSettings.vue';
 import AppearanceSettings from '../components/AppearanceSettings.vue';

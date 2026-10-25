@@ -36,12 +36,12 @@ async function submit() {
     ><form class="form-stack" @submit.prevent="submit">
       <p class="muted">选择文件或文件夹，批量加入本地资料库。</p>
       <label
-        >课程<select aria-label="课程" v-model="courseID" @change="folderID = ''">
+        >课程<select v-choice aria-label="课程" v-model="courseID" @change="folderID = ''">
           <option value="">未分类</option>
           <option v-for="c in store.state.courses" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select></label
       ><label
-        >文件夹<select aria-label="文件夹" v-model="folderID">
+        >文件夹<select v-choice aria-label="文件夹" v-model="folderID">
           <option value="">资料根目录</option>
           <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
         </select></label

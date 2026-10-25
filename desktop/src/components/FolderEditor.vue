@@ -58,12 +58,17 @@ async function dissolve() {
     ><form class="form-stack" @submit.prevent="save">
       <label>名称<input v-model="form.name" required maxlength="120" /></label
       ><label
-        >课程<select aria-label="课程" v-model="form.courseID" @change="form.parentID = ''">
+        >课程<select
+          v-choice
+          aria-label="课程"
+          v-model="form.courseID"
+          @change="form.parentID = ''"
+        >
           <option value="">未分类</option>
           <option v-for="c in store.state.courses" :value="c.id" :key="c.id">{{ c.name }}</option>
         </select></label
       ><label
-        >上级文件夹<select aria-label="上级文件夹" v-model="form.parentID">
+        >上级文件夹<select v-choice aria-label="上级文件夹" v-model="form.parentID">
           <option value="">资料根目录</option>
           <option v-for="f in parents" :value="f.id" :key="f.id">{{ f.name }}</option>
         </select></label
