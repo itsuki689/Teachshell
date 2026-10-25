@@ -61,10 +61,7 @@ async function until(predicate) {
   throw new Error('Timed out waiting for committed library state');
 }
 async function createCourse(name) {
-  await page
-    .locator('.sidebar')
-    .getByRole('button', { name: '新建课程', exact: true })
-    .click();
+  await page.locator('.sidebar').getByRole('button', { name: '新建课程', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '新建课程' });
   await dialog.getByLabel('课程名称').fill(name);
   await dialog.getByLabel('学期', { exact: true }).fill('2026 秋季');
@@ -957,19 +954,46 @@ try {
         '2099-12-22T10:00:00.000Z',
       );
       await refreshFixture({ deadline: '2099年12月23日 18:00' });
+      const confirmation = dialog.getByRole('button', {
+        name: '确认应用当前作业',
+        exact: true,
+      });
+      await confirmation.waitFor();
+      assert.equal(await confirmation.isEnabled(), true);
+      // Keep a public-API preview to verify the main-process guard as well as
+      // the UI's immediate invalidation, without trying to click a disabled action.
+      const rejectedPreview = await page.evaluate(async () => {
+        const api = window.teachshelf;
+        const observed = await api.inspectWebsite('teaching');
+        const current = await api.snapshot();
+        return api.previewWebsiteAssignment(
+          observed.proposalID,
+          current.state.teachingConnections[0].id,
+        );
+      });
       const before = (await snapshot()).state.tasks.find((t) => t.id === websiteTaskID);
       await app.evaluate(() => {
         globalThis.__teachshelfWebsiteFixture.account = '100';
       });
       await remote.reload();
-      await dialog.getByRole('button', { name: '确认应用当前作业', exact: true }).click();
-      await page.getByRole('alert').waitFor();
-      assert.match(await page.getByRole('alert').innerText(), /账号|课程|变化|不一致/);
+      await dialog
+        .getByText('网站账号已变化，请重新读取当前页面并预览。', { exact: true })
+        .first()
+        .waitFor();
+      assert.equal(await confirmation.isDisabled(), true);
+      const rejected = await page.evaluate(async (proposalID) => {
+        try {
+          await window.teachshelf.applyWebsiteAssignment(proposalID);
+          return '';
+        } catch (error) {
+          return String(error);
+        }
+      }, rejectedPreview.proposalID);
+      assert.match(rejected, /账号|课程|变化|不一致/);
       assert.deepEqual(
         (await snapshot()).state.tasks.find((t) => t.id === websiteTaskID),
         before,
       );
-      await page.getByRole('button', { name: '关闭错误提示', exact: true }).click();
       await dialog.getByRole('button', { name: '关闭', exact: true }).click();
     },
   );

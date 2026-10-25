@@ -21,6 +21,8 @@ import {
 } from '../../shared/timetable';
 import type { TimetableTerm, TimetableOccurrence } from '../../shared/timetable';
 import { useLibrary } from '../stores/library';
+import { useWorkspaceUI } from '../stores/workspace-ui';
+import { storeToRefs } from 'pinia';
 import Modal from '../components/Modal.vue';
 import { addPlanDays, planEvents } from '../../shared/plans';
 import type { PlanOccurrence } from '../../shared/plans';
@@ -46,15 +48,14 @@ const moving = ref<TimetableOccurrence | null>(null),
     start: '',
     end: '',
   });
-const selected = ref(''),
-  week = ref(1),
-  editing = ref(false),
+const ui = useWorkspaceUI();
+const { timetableTermID: selected, timetableMode: mode } = storeToRefs(ui);
+const editing = ref(false),
   monday = ref(''),
   weekCount = ref(20),
   endDate = ref(''),
   times = ref<{ section: number; start: string; end: string }[]>([]);
-const mode = ref<'list' | 'timeline'>('list'),
-  fixedEditing = ref(false),
+const fixedEditing = ref(false),
   showPlans = ref(true),
   grid = ref<HTMLElement>(),
   scroll = ref<HTMLElement>();
@@ -88,12 +89,30 @@ let capture: HTMLElement | undefined,
   suppressClickUntil = 0;
 const terms = computed(() => store.state.timetableTerms as unknown as TimetableTerm[]),
   term = computed(() => terms.value.find((t) => t.id === selected.value) ?? terms.value[0]);
+const week = computed({
+  get: () => {
+    const t = term.value;
+    if (!t) return 1;
+    const candidate = timetableWeek(t, ui.day + 'T00:00:00+08:00') ?? ui.weekFor(t.id) ?? 1;
+    return Math.min(t.weekCount, Math.max(1, candidate));
+  },
+  set: (value: number) => {
+    const t = term.value;
+    if (!t || !Number.isInteger(value)) return;
+    const next = Math.min(t.weekCount, Math.max(1, value));
+    ui.rememberWeek(t.id, next);
+    // Swift keeps the selected civil weekday when moving between academic weeks.
+    const weekday = ((new Date(ui.day + 'T00:00:00Z').getUTCDay() + 6) % 7) + 1;
+    const date = timetableDate(t, next, weekday);
+    if (date !== undefined) ui.day = shanghaiDayKey(date);
+  },
+});
 watch(
-  () => term.value?.id,
+  () => [ui.identity, term.value?.id, term.value?.weekCount, term.value?.weekOneMonday] as const,
   () => {
     if (term.value) {
       selected.value = term.value.id;
-      week.value = timetableWeek(term.value, swiftNow()) ?? 1;
+      week.value = week.value;
     }
   },
   { immediate: true },

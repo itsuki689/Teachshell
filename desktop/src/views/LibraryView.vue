@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
   ChevronRight,
   Download,
@@ -23,17 +23,25 @@ import { dateMs } from '../../shared/model';
 import { compareMaterials, compareNames } from '../../shared/ordering';
 import type { Course, Material, MaterialFolder } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import { useWorkspaceUI } from '../stores/workspace-ui';
+import { storeToRefs } from 'pinia';
+import { materialSearchMatches, selectionRange } from '../../shared/workspace-ui';
 import FolderEditor from '../components/FolderEditor.vue';
 import MaterialInspector from '../components/MaterialInspector.vue';
 import PreviewDialog from '../components/PreviewDialog.vue';
 import Modal from '../components/Modal.vue';
 const emit = defineEmits<{ import: []; editCourse: [course?: Course]; website: [] }>(),
   store = useLibrary();
+const ui = useWorkspaceUI();
+const { libraryLayout: layout } = storeToRefs(ui);
+const canvas = ref<HTMLElement>();
+const cursorID = ref(''),
+  anchorID = ref('');
+let selectionPending = false;
 const query = ref(''),
   category = ref(''),
   format = ref(''),
   sort = ref<string>(store.course?.materialSort ?? 'time'),
-  layout = ref('list'),
   showInspector = ref(true),
   dropActive = ref(false),
   folderEditor = ref<MaterialFolder | null | undefined>(undefined),
@@ -71,17 +79,16 @@ const visible = computed(() => {
       return false;
     if (store.route === 'favorites' && !m.isFavorite) return false;
     if (store.route === 'recent' && !m.lastOpenedAt) return false;
-    const text = [
-      m.title,
-      m.originalName,
-      m.tags,
-      m.notes,
-      store.state.courses.find((c) => c.id === m.courseID)?.name,
-    ]
-      .join(' ')
-      .toLocaleLowerCase();
+    const course = store.state.courses.find((c) => c.id === m.courseID);
+    if (ui.semester && course?.semester !== ui.semester) return false;
     return (
-      (!query.value || text.includes(query.value.toLocaleLowerCase())) &&
+      materialSearchMatches(query.value, [
+        m.title,
+        m.originalName,
+        m.tags,
+        m.notes,
+        course?.name ?? '未分类',
+      ]) &&
       (!category.value || m.category === category.value) &&
       (!format.value || extension(m.originalName) === format.value)
     );
@@ -98,7 +105,11 @@ watch(sort, async (value) => {
     );
 });
 const folders = computed(() =>
-  !isScoped.value || query.value || category.value || format.value
+  !isScoped.value ||
+  query.value ||
+  category.value ||
+  format.value ||
+  (ui.semester && store.course?.semester !== ui.semester)
     ? []
     : store.state.materialFolders
         .filter((f) => f.courseID === store.courseID && f.parentID === store.folderID)
@@ -128,37 +139,172 @@ function size(n: number) {
 function date(value: number | string) {
   return new Date(dateMs(value)).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 }
-async function select(e: MouseEvent, m: Material) {
-  if (!(await store.requestLeave())) return;
-  if (e.shiftKey && store.selected.length) {
-    const start = visible.value.findIndex((v) => v.id === store.selected.at(-1)),
-      end = visible.value.findIndex((v) => v.id === m.id);
-    if (start >= 0) {
-      store.selected = [
-        ...new Set([
-          ...store.selected,
-          ...visible.value.slice(Math.min(start, end), Math.max(start, end) + 1).map((v) => v.id),
-        ]),
-      ];
-      return;
-    }
+const browserRows = computed(() => [
+  ...folders.value.map((folder) => ({ id: folder.id, folder })),
+  ...visible.value.map((material) => ({ id: material.id, material })),
+]);
+async function changeSelection(action: () => void) {
+  if (selectionPending || store.busy) return false;
+  selectionPending = true;
+  try {
+    if (!(await store.requestLeave())) return false;
+    action();
+    return true;
+  } finally {
+    selectionPending = false;
   }
-  if (e.ctrlKey || e.metaKey) toggle(m.id);
-  else store.selected = [m.id];
-  showInspector.value = true;
 }
-async function toggle(id: string) {
-  if (!(await store.requestLeave())) return;
-  store.selected = store.selected.includes(id)
-    ? store.selected.filter((v) => v !== id)
-    : [...store.selected, id];
+async function select(e: MouseEvent, m: Material) {
+  if (selectionPending) return;
+  if (
+    !e.shiftKey &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    store.selected.length === 1 &&
+    store.selected[0] === m.id
+  ) {
+    cursorID.value = anchorID.value = m.id;
+    return;
+  }
+  await changeSelection(() => {
+    if (e.shiftKey && anchorID.value) {
+      store.selected = selectionRange(
+        visible.value.map((v) => v.id),
+        anchorID.value,
+        m.id,
+      );
+    } else if (e.ctrlKey || e.metaKey) {
+      store.selected = store.selected.includes(m.id)
+        ? store.selected.filter((id) => id !== m.id)
+        : [...store.selected, m.id];
+      anchorID.value = m.id;
+    } else {
+      store.selected = [m.id];
+      anchorID.value = m.id;
+    }
+    cursorID.value = m.id;
+    showInspector.value = true;
+  });
 }
-async function selectAll() {
-  if (!(await store.requestLeave())) return;
-  store.selected = visible.value.every((m) => store.selected.includes(m.id))
-    ? []
-    : visible.value.map((m) => m.id);
+async function toggle(id: string, event?: Event) {
+  const input = event?.target instanceof HTMLInputElement ? event.target : undefined;
+  if (input) input.checked = store.selected.includes(id);
+  await changeSelection(() => {
+    store.selected = store.selected.includes(id)
+      ? store.selected.filter((v) => v !== id)
+      : [...store.selected, id];
+    cursorID.value = anchorID.value = id;
+  });
+  if (input) input.checked = store.selected.includes(id);
 }
+async function selectAll(always = false, event?: Event) {
+  const input = event?.target instanceof HTMLInputElement ? event.target : undefined;
+  const allChecked = () =>
+    visible.value.length > 0 && visible.value.every((m) => store.selected.includes(m.id));
+  if (input) input.checked = allChecked();
+  await changeSelection(() => {
+    store.selected =
+      !always && visible.value.every((m) => store.selected.includes(m.id))
+        ? []
+        : visible.value.map((m) => m.id);
+  });
+  if (input) input.checked = allChecked();
+}
+async function clearSelected() {
+  await changeSelection(() => {
+    store.selected = [];
+    cursorID.value = anchorID.value = '';
+  });
+}
+async function setInspector(visible: boolean) {
+  if (visible || (await store.requestLeave())) showInspector.value = visible;
+}
+let dragPreparation = 0;
+let approvedDrag: { id: string; workspace: string; selection: string } | undefined;
+function releaseDragPreparation() {
+  dragPreparation++;
+  approvedDrag = undefined;
+}
+async function prepareDrag(event: PointerEvent, material: Material) {
+  const target = event.target as HTMLElement;
+  if (
+    selectionPending ||
+    event.button !== 0 ||
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    store.selected.includes(material.id) ||
+    (target.closest('input,button,a') && target.closest('input,button,a') !== event.currentTarget)
+  )
+    return;
+  const token = ++dragPreparation,
+    workspace = ui.identity,
+    selection = JSON.stringify(store.selected);
+  approvedDrag = undefined;
+  selectionPending = true;
+  try {
+    const approved = await store.requestLeave();
+    if (
+      approved &&
+      token === dragPreparation &&
+      workspace === ui.identity &&
+      selection === JSON.stringify(store.selected)
+    )
+      approvedDrag = { id: material.id, workspace, selection };
+  } finally {
+    selectionPending = false;
+  }
+}
+async function moveSelection(event: KeyboardEvent) {
+  const rows = browserRows.value;
+  if (!rows.length || selectionPending) return;
+  const focused = (event.target as HTMLElement).closest<HTMLElement>('[data-browser-id]')?.dataset
+    .browserId;
+  let index = rows.findIndex(
+    (row) => row.id === (focused || cursorID.value || store.selected.at(-1)),
+  );
+  const previous = rows[index]?.id;
+  if (event.key === 'Home') index = 0;
+  else if (event.key === 'End') index = rows.length - 1;
+  else
+    index =
+      index < 0
+        ? event.key === 'ArrowUp'
+          ? rows.length - 1
+          : 0
+        : Math.max(0, Math.min(rows.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)));
+  const target = rows[index];
+  const changed = await changeSelection(() => {
+    if (!event.shiftKey || !anchorID.value)
+      anchorID.value = event.shiftKey ? (previous ?? target.id) : target.id;
+    cursorID.value = target.id;
+    const range = event.shiftKey
+      ? selectionRange(
+          rows.map((row) => row.id),
+          anchorID.value,
+          target.id,
+        )
+      : [target.id];
+    store.selected = visible.value
+      .filter((material) => range.includes(material.id))
+      .map((material) => material.id);
+    showInspector.value = true;
+  });
+  if (!changed) return;
+  await nextTick();
+  const element = canvas.value?.querySelector<HTMLElement>(
+    '[data-browser-id="' + CSS.escape(target.id) + '"]',
+  );
+  element?.focus({ preventScroll: true });
+  element?.scrollIntoView({ block: 'nearest' });
+}
+watch(
+  () => browserRows.value.map((row) => row.id),
+  (ids) => {
+    if (!ids.includes(cursorID.value)) cursorID.value = '';
+    if (!ids.includes(anchorID.value)) anchorID.value = '';
+  },
+);
 function openFolder(f?: MaterialFolder) {
   void store.navigate(store.route, f?.id);
 }
@@ -209,7 +355,26 @@ async function showPreview(id: string) {
   if (result) preview.value = { id, ...result };
 }
 function drag(e: DragEvent, m: Material) {
-  if (!store.selected.includes(m.id)) store.selected = [m.id];
+  if (selectionPending) {
+    e.preventDefault();
+    return;
+  }
+  if (!store.selected.includes(m.id)) {
+    if (
+      approvedDrag?.id !== m.id ||
+      approvedDrag.workspace !== ui.identity ||
+      approvedDrag.selection !== JSON.stringify(store.selected)
+    ) {
+      e.preventDefault();
+      return;
+    }
+    // Change selection only after Chromium starts its drag: adding the selection
+    // bar on pointerdown would move the source row out from under the pointer.
+    store.selected = [m.id];
+    cursorID.value = anchorID.value = m.id;
+    showInspector.value = true;
+  }
+  approvedDrag = undefined;
   e.dataTransfer?.setData('application/x-teachshelf-ids', JSON.stringify(store.selected));
   if (e.dataTransfer) e.dataTransfer.effectAllowed = 'copyMove';
 }
@@ -253,22 +418,57 @@ function leaveDrop(e: DragEvent) {
     dropActive.value = false;
 }
 function key(e: KeyboardEvent) {
-  if ((e.target as HTMLElement)?.closest('input,textarea,select,[role="dialog"]')) return;
+  const target = e.target as HTMLElement;
+  if (
+    store.busy ||
+    target?.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]') ||
+    document.querySelector('[role="dialog"]')
+  )
+    return;
+  if (
+    ['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    !e.altKey &&
+    canvas.value?.contains(target) &&
+    target.closest('[data-browser-id]')
+  ) {
+    e.preventDefault();
+    void moveSelection(e);
+    return;
+  }
+  if (e.key === 'Enter' && target.matches('tr[data-folder-id]')) {
+    const folder = folders.value.find((f) => f.id === target.dataset.folderId);
+    if (folder) {
+      e.preventDefault();
+      openFolder(folder);
+    }
+    return;
+  }
   if (e.code === 'Space' && selectedMaterial.value) {
     e.preventDefault();
     void showPreview(selectedMaterial.value.id);
   }
   if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
     e.preventDefault();
-    selectAll();
+    void selectAll(true);
   }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
     void remove();
   }
 }
-onMounted(() => window.addEventListener('keydown', key));
-onUnmounted(() => window.removeEventListener('keydown', key));
+onMounted(() => {
+  window.addEventListener('keydown', key);
+  window.addEventListener('pointerup', releaseDragPreparation);
+  window.addEventListener('blur', releaseDragPreparation);
+});
+onUnmounted(() => {
+  releaseDragPreparation();
+  window.removeEventListener('keydown', key);
+  window.removeEventListener('pointerup', releaseDragPreparation);
+  window.removeEventListener('blur', releaseDragPreparation);
+});
 </script>
 <template>
   <section
@@ -328,7 +528,7 @@ onUnmounted(() => window.removeEventListener('keydown', key));
           :class="{ active: showInspector }"
           aria-label="资料信息"
           :disabled="!selectedMaterial"
-          @click="showInspector = !showInspector"
+          @click="setInspector(!showInspector)"
         >
           <Info :size="18" />
         </button>
@@ -383,13 +583,13 @@ onUnmounted(() => window.removeEventListener('keydown', key));
         <Download :size="14" />导出副本…</button
       ><button @click="remove"><Trash2 :size="14" />移除记录</button><span class="spacer" /><button
         class="text-button"
-        @click="store.selected = []"
+        @click="clearSelected"
       >
         取消选择
       </button>
     </div>
     <div class="library-body">
-      <div class="material-canvas">
+      <div ref="canvas" class="material-canvas">
         <div v-if="!visible.length && !folders.length" class="empty-state">
           <Search v-if="hasFilters" :size="43" /><Folder v-else :size="43" />
           <h2>{{ hasFilters ? '没有匹配的资料' : '这里还没有资料' }}</h2>
@@ -422,7 +622,7 @@ onUnmounted(() => window.removeEventListener('keydown', key));
                     :checked="
                       visible.length > 0 && visible.every((m) => store.selected.includes(m.id))
                     "
-                    @change="selectAll"
+                    @change="selectAll(false, $event)"
                   />
                 </th>
                 <th>名称</th>
@@ -437,6 +637,9 @@ onUnmounted(() => window.removeEventListener('keydown', key));
                 v-for="f in folders"
                 :key="f.id"
                 class="folder-row"
+                :data-browser-id="f.id"
+                :data-folder-id="f.id"
+                tabindex="0"
                 @dblclick="openFolder(f)"
                 @dragover.prevent
                 @drop="drop($event, f.id)"
@@ -469,8 +672,10 @@ onUnmounted(() => window.removeEventListener('keydown', key));
                 :key="m.id"
                 :class="{ selected: store.selected.includes(m.id), missing: m.isMissing }"
                 :aria-selected="store.selected.includes(m.id)"
+                :data-browser-id="m.id"
                 tabindex="0"
                 draggable="true"
+                @pointerdown="prepareDrag($event, m)"
                 @click="select($event, m)"
                 @dblclick="store.run(() => api.openMaterial(m.id), '已打开资料')"
                 @keydown.enter="store.run(() => api.openMaterial(m.id), '已打开资料')"
@@ -481,7 +686,7 @@ onUnmounted(() => window.removeEventListener('keydown', key));
                     type="checkbox"
                     :checked="store.selected.includes(m.id)"
                     :aria-label="'选择 ' + m.title"
-                    @change="toggle(m.id)"
+                    @change="toggle(m.id, $event)"
                   />
                 </td>
                 <td>
@@ -525,6 +730,7 @@ onUnmounted(() => window.removeEventListener('keydown', key));
               v-for="f in folders"
               :key="f.id"
               class="material-cover folder-cover"
+              :data-browser-id="f.id"
               @click="openFolder(f)"
               @dragover.prevent
               @drop="drop($event, f.id)"
@@ -535,8 +741,11 @@ onUnmounted(() => window.removeEventListener('keydown', key));
               v-for="m in visible"
               :key="m.id"
               class="material-cover"
+              :data-browser-id="m.id"
+              :aria-selected="store.selected.includes(m.id)"
               :class="{ selected: store.selected.includes(m.id) }"
               draggable="true"
+              @pointerdown="prepareDrag($event, m)"
               @click="select($event, m)"
               @dblclick="showPreview(m.id)"
               @dragstart="drag($event, m)"
@@ -554,7 +763,7 @@ onUnmounted(() => window.removeEventListener('keydown', key));
         v-if="showInspector && selectedMaterial"
         :key="selectedMaterial.id"
         :material="selectedMaterial"
-        @close="showInspector = false"
+        @close="setInspector(false)"
         @preview="showPreview"
       />
     </div>

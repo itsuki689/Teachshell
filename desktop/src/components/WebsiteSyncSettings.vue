@@ -9,20 +9,28 @@ const status = ref<BackgroundStatus>(),
   interval = ref(30),
   busy = ref(false);
 let unsubscribe: (() => void) | undefined,
-  active = true;
+  active = true,
+  eventSequence = 0;
+const workspace = store.workspaceID;
+const current = () => active && workspace === store.workspaceID;
 function accept(value: BackgroundStatus) {
-  if (!active) return;
+  if (!current()) return;
   const previous = status.value?.preferences.intervalMinutes;
   status.value = value;
   if (previous === undefined || previous !== value.preferences.intervalMinutes)
     interval.value = value.preferences.intervalMinutes;
 }
 onMounted(async () => {
-  unsubscribe = api.onWebsiteBackground(accept);
+  unsubscribe = api.onWebsiteBackground((value) => {
+    eventSequence++;
+    accept(value);
+  });
+  const before = eventSequence;
   try {
-    accept(await api.websiteBackgroundStatus());
+    const value = await api.websiteBackgroundStatus();
+    if (before === eventSequence) accept(value);
   } catch (error) {
-    if (active) store.error = String(error);
+    if (current() && before === eventSequence) store.error = String(error);
   }
 });
 onUnmounted(() => {
@@ -30,11 +38,12 @@ onUnmounted(() => {
   unsubscribe?.();
 });
 async function save(patch: Partial<BackgroundPreferences>) {
+  if (busy.value || !current()) return;
   busy.value = true;
   try {
     accept(await api.saveWebsiteBackground(patch));
   } catch (error) {
-    if (active) store.error = String(error);
+    if (current()) store.error = String(error);
   } finally {
     busy.value = false;
   }

@@ -17,10 +17,19 @@ import {
 } from 'lucide-vue-next';
 import type { Course } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import { useWorkspaceUI } from '../stores/workspace-ui';
+import { storeToRefs } from 'pinia';
 const store = useLibrary();
 const emit = defineEmits<{ editCourse: [course?: Course] }>();
-const semester = ref(''),
-  archive = ref('active');
+const ui = useWorkspaceUI();
+const { semester } = storeToRefs(ui);
+const archive = ref('active');
+watch(
+  () => ui.identity,
+  () => {
+    archive.value = 'active';
+  },
+);
 watch(
   () => [store.courseID, store.searchNavigationID] as const,
   ([id]) => {

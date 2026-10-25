@@ -10,6 +10,10 @@ const tests = [
   'website-login-ui.e2e.mjs',
   'website-background.e2e.mjs',
   'website-review-live.e2e.mjs',
+  'workspace-sync.e2e.mjs',
+  'e2e-component-sync.mjs',
+  'e2e-ui-parity.mjs',
+  'website-context.e2e.mjs',
 ];
 // The transport test bundles the source into a separate minimal Electron host.
 // The other suites exercise the actual installed app when an executable is set.

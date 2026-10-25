@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
 import {
   AlertCircle,
   ChevronLeft,
@@ -47,9 +47,26 @@ const store = useLibrary(),
   loaded = ref(false);
 const releases: (() => void)[] = [];
 const websiteBackground = ref<BackgroundStatus>();
+let backgroundSequence = 0;
+watch(
+  () => store.workspaceID,
+  (_value, previous) => {
+    if (!previous) return;
+    courseEditor.value = undefined;
+    showImport.value = showWebsite.value = showTask.value = showSearch.value = false;
+    searchedTask.value = undefined;
+    backgroundSequence++;
+    websiteBackground.value = undefined;
+  },
+  { flush: 'sync' },
+);
 async function refreshWebsiteBackground() {
+  const request = ++backgroundSequence,
+    workspace = store.workspaceID;
   try {
-    websiteBackground.value = await api.websiteBackgroundStatus();
+    const value = await api.websiteBackgroundStatus();
+    if (request === backgroundSequence && workspace === store.workspaceID)
+      websiteBackground.value = value;
   } catch {
     /* Switching/closing a library emits a fresh state after completion. */
   }
@@ -119,6 +136,8 @@ async function activateSearch(result: WorkspaceSearchResult) {
   showSearch.value = false;
 }
 function menu(action: string) {
+  // Native menu accelerators can reach the renderer while a modal is open.
+  if (store.busy || document.querySelector('[role=dialog]')) return;
   switch (action) {
     case 'search':
       showSearch.value = true;
@@ -131,11 +150,11 @@ function menu(action: string) {
       break;
     case 'new-course':
     case 'create-course':
-      editCourse();
+      void toolbarAction('create-course');
       break;
     case 'import':
     case 'import-files':
-      showImport.value = true;
+      void toolbarAction('import');
       break;
     case 'settings':
       store.navigate('settings');
@@ -151,7 +170,7 @@ function menu(action: string) {
       break;
     case 'new-task':
     case 'new-plan':
-      showTask.value = true;
+      void toolbarAction('create-plan');
       break;
     case 'open-library':
       void store.chooseLibrary(false);
@@ -165,6 +184,7 @@ function menu(action: string) {
   }
 }
 function key(e: KeyboardEvent) {
+  if (document.querySelector('[role=dialog]')) return;
   if (
     !document.querySelector('[role=dialog]') &&
     ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '['))
@@ -184,21 +204,20 @@ function key(e: KeyboardEvent) {
   if (!(e.metaKey || e.ctrlKey)) return;
   if (e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    if (!document.querySelector('[role=dialog]')) showSearch.value = true;
+    menu('search');
     return;
   }
   if (e.key.toLowerCase() === 'o') {
     e.preventDefault();
-    showImport.value = true;
+    menu('import');
   }
   if (e.key.toLowerCase() === 'n') {
     e.preventDefault();
-    if (e.shiftKey) showTask.value = true;
-    else editCourse();
+    menu(e.shiftKey ? 'new-plan' : 'new-course');
   }
   if (e.key === ',') {
     e.preventDefault();
-    store.navigate('settings');
+    menu('settings');
   }
 }
 onMounted(async () => {
@@ -211,6 +230,7 @@ onMounted(async () => {
     api.onChanged(store.accept),
     api.onMenu(menu),
     api.onWebsiteBackground((status) => {
+      backgroundSequence++;
       websiteBackground.value = status;
     }),
   );
@@ -274,7 +294,7 @@ onUnmounted(() => {
         <WorkspaceToolbar @action="toolbarAction" />
       </div>
     </div>
-    <div v-if="store.snapshot" class="app-body">
+    <div v-if="store.snapshot" :key="store.workspaceID" class="app-body">
       <Sidebar @edit-course="editCourse" />
       <main class="main-pane">
         <LibraryView

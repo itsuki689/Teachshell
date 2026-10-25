@@ -168,7 +168,8 @@ function setupChat() {
 async function watch() {
   await watcher?.close();
   if (timer) clearTimeout(timer);
-  watcher = chokidar.watch(path.join(repository.root, 'files'), {
+  const repo = repository;
+  watcher = chokidar.watch(path.join(repo.root, 'files'), {
     ignoreInitial: true,
     followSymlinks: false,
     awaitWriteFinish: { stabilityThreshold: 350, pollInterval: 100 },
@@ -177,15 +178,18 @@ async function watch() {
   watcher.on('all', () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
-      repository.sync().catch((error) => {
-        repository.warnings = [String(error)];
-        post('changed', repository.snapshot());
+      if (repo !== repository || switching || quitting) return;
+      repo.sync().catch((error) => {
+        if (repo !== repository) return;
+        repo.warnings = [String(error)];
+        post('changed', repo.snapshot());
       });
     }, 500);
   });
   watcher.on('error', (error) => {
-    repository.warnings = [String(error)];
-    post('changed', repository.snapshot());
+    if (repo !== repository) return;
+    repo.warnings = [String(error)];
+    post('changed', repo.snapshot());
   });
 }
 async function switchLibrary(root: string) {
@@ -254,9 +258,14 @@ function installIPC() {
         throw new Error('拒绝不可信页面调用');
       if (switching || quitting) throw new Error('资料库正在切换或关闭，请稍候');
       const parsed = args.parse(input) as unknown[];
-      if (foregroundWebsiteActions.has(name) && websiteUpdates)
-        return websiteUpdates.foreground(async () => fn(...parsed));
-      return fn(...parsed);
+      const context = repository;
+      const result =
+        foregroundWebsiteActions.has(name) && websiteUpdates
+          ? await websiteUpdates.foreground(async () => fn(...parsed))
+          : await fn(...parsed);
+      if (context !== repository && name !== 'openLibrary' && name !== 'importLibrary')
+        throw new Error('资料库已切换，请在当前资料库重新操作');
+      return result;
     });
   clearTeachingPreviews = installTeachingIPC({
     handle,
@@ -399,27 +408,32 @@ function installIPC() {
   );
   handle('dissolveFolder', oneID, (id) => repository.dissolveFolder(id));
   handle('openMaterial', oneID, async (id) => {
-    const file = await repository.resolveMaterial(id);
+    const repo = repository;
+    const file = await repo.resolveMaterial(id);
+    if (repo !== repository) throw new Error('资料库已切换，请重试');
     if (!canOpenDocument(file))
       throw new Error('不从资料管理器执行程序或脚本，请使用“显示文件位置”');
     const error = await shell.openPath(file);
     if (error) throw new Error(error);
-    await repository.updateMaterial(id, { lastOpenedAt: swiftNow() });
+    if (repo !== repository) throw new Error('资料库已切换，请重试');
+    await repo.updateMaterial(id, { lastOpenedAt: swiftNow() });
   });
   handle('revealMaterial', oneID, async (id) =>
     shell.showItemInFolder(await repository.resolveMaterial(id)),
   );
   handle('previewMaterial', oneID, async (id) => {
-    const file = await repository.resolveMaterial(id);
+    const repo = repository;
+    const file = await repo.resolveMaterial(id);
+    if (repo !== repository) throw new Error('资料库已切换，请重试');
     const mime = mimeTypes[path.extname(file).toLowerCase()];
     if (!mime) throw new Error('该格式请使用系统应用打开');
     const token = randomUUID();
     if (previews.size > 100) previews.clear();
-    previews.set(token, { id, root: repository.root, mime });
+    previews.set(token, { id, root: repo.root, mime });
     return {
       url: 'shelf-preview://' + token + '/content',
       mime,
-      name: repository.state.materials.find((m) => m.id === id)!.originalName,
+      name: repo.state.materials.find((m) => m.id === id)!.originalName,
     };
   });
   handle('sync', none, () => repository.sync());
@@ -439,6 +453,7 @@ function installIPC() {
     return root ? switchLibrary(root) : null;
   });
   handle('backupLibrary', none, async () => {
+    const repo = repository;
     const result = await dialog.showSaveDialog(mainWindow, {
       title: '备份完整资料库',
       defaultPath: path.join(
@@ -446,7 +461,8 @@ function installIPC() {
         '课屿备份-' + new Date().toISOString().slice(0, 10),
       ),
     });
-    return result.canceled || !result.filePath ? null : repository.backup(result.filePath);
+    if (repo !== repository) throw new Error('资料库已切换，请重试');
+    return result.canceled || !result.filePath ? null : repo.backup(result.filePath);
   });
 
   handle('importTimetable', z.tuple([z.string().uuid().optional()]), async (proposalID) => {

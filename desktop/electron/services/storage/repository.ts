@@ -79,8 +79,10 @@ interface Entry extends Observation {
   directory: boolean;
 }
 const marker = '.teachshelf-electron.json';
+let snapshotSequence = 0;
 export class Repository {
   readonly root: string;
+  readonly workspaceID = randomUUID();
   private stateValue: LibraryState = emptyLibrary();
   private release?: () => Promise<void>;
   private queue: Promise<unknown> = Promise.resolve();
@@ -394,6 +396,8 @@ export class Repository {
   snapshot(): Snapshot {
     return {
       root: this.root,
+      workspaceID: this.workspaceID,
+      sequence: ++snapshotSequence,
       state: this.state,
       revision: digest(JSON.stringify(this.stateValue)),
       warnings: [...this.warnings],

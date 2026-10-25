@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onUnmounted } from 'vue';
 import {
   Folder,
   File,
@@ -21,55 +21,106 @@ const api = window.teachshelf,
   listing = ref<HomeworkListing>(),
   editing = ref<HomeworkEntry | null | undefined>(undefined),
   name = ref('');
-let sequence = 0;
+const loading = ref(false);
+const mountedWorkspace = store.workspaceID;
+let sequence = 0,
+  active = true;
+type Location = { workspace: string | undefined; course: string; relative: string };
+let editingLocation: Location | undefined;
+const location = (): Location => ({
+  workspace: store.workspaceID,
+  course: course.value,
+  relative: relative.value,
+});
+const sameLocation = (value: Location) =>
+  active &&
+  value.workspace === store.workspaceID &&
+  value.course === course.value &&
+  value.relative === relative.value;
+function closeEditor() {
+  editing.value = undefined;
+  editingLocation = undefined;
+}
 async function load() {
-  const request = ++sequence;
-  const result = await store.run(
-    () => api.listHomework(course.value || undefined, relative.value),
-    '作业目录已读取',
-  );
-  if (result && request === sequence) listing.value = result;
+  if (!active || mountedWorkspace !== store.workspaceID) return;
+  const request = ++sequence,
+    target = location();
+  listing.value = undefined;
+  loading.value = true;
+  try {
+    const result = await store.run(
+      () => api.listHomework(target.course || undefined, target.relative),
+      '作业目录已读取',
+    );
+    if (result && request === sequence && sameLocation(target)) listing.value = result;
+  } finally {
+    if (active && request === sequence) loading.value = false;
+  }
 }
 watch(
-  [course, () => store.snapshot?.root],
+  course,
   () => {
+    if (!active || mountedWorkspace !== store.workspaceID) return;
     relative.value = '';
+    closeEditor();
     void load();
   },
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
 );
+watch(
+  () => store.snapshot?.revision,
+  () => {
+    if (!active || mountedWorkspace !== store.workspaceID) return;
+    if (course.value && !store.state.courses.some((item) => item.id === course.value))
+      course.value = '';
+    else void load();
+  },
+);
+onUnmounted(() => {
+  active = false;
+  sequence++;
+});
 const crumbs = computed(() => relative.value.split('/').filter(Boolean));
 async function go(value: string) {
+  closeEditor();
   relative.value = value;
   await load();
 }
 async function importFiles() {
+  if (loading.value || !listing.value) return;
+  const target = location();
   const result = await store.run(() =>
-    api.importHomework(course.value || undefined, relative.value),
+    api.importHomework(target.course || undefined, target.relative),
   );
-  if (result) {
+  if (result && sameLocation(target)) {
     await load();
+    if (!sameLocation(target)) return;
     store.status = `已复制 ${result.imported} 份，跳过 ${result.skipped} 份`;
     if (result.errors.length) store.error = result.errors.join('\n');
   }
 }
 function edit(item?: HomeworkEntry) {
+  if (loading.value || !listing.value) return;
+  editingLocation = location();
   editing.value = item ?? null;
   name.value = item?.name ?? '';
 }
 async function save() {
-  const item = editing.value;
+  const item = editing.value,
+    target = editingLocation;
+  if (item === undefined || !target || !sameLocation(target) || loading.value) return;
   const result = await store.run(() =>
     item
-      ? api.renameHomework(course.value || undefined, item.relativePath, name.value)
-      : api.createHomeworkFolder(course.value || undefined, relative.value, name.value),
+      ? api.renameHomework(target.course || undefined, item.relativePath, name.value)
+      : api.createHomeworkFolder(target.course || undefined, target.relative, name.value),
   );
-  if (result) {
-    editing.value = undefined;
+  if (result && sameLocation(target) && editingLocation === target) {
+    closeEditor();
     await load();
   }
 }
 async function mount(reset = false) {
+  const target = location();
   if (
     reset &&
     !(await store.confirm(
@@ -79,8 +130,9 @@ async function mount(reset = false) {
     ))
   )
     return;
-  const result = await store.run(() => api.mountHomework(course.value, reset));
-  if (result) {
+  if (!sameLocation(target)) return;
+  const result = await store.run(() => api.mountHomework(target.course, reset));
+  if (result && sameLocation(target)) {
     store.accept(result);
     relative.value = '';
     await load();
@@ -95,10 +147,15 @@ async function mount(reset = false) {
         <p>直接管理真实目录；复制导入保留原文件。</p>
       </div>
       <div class="toolbar-controls">
-        <button v-if="course" @click="mount()"><Link :size="15" />挂载目录</button
-        ><button v-if="listing?.mounted" @click="mount(true)">恢复默认目录</button
-        ><button @click="edit()"><FolderPlus :size="15" />新建文件夹</button
-        ><button class="primary" @click="importFiles"><Upload :size="15" />导入文件</button>
+        <button v-if="course" :disabled="loading" @click="mount()">
+          <Link :size="15" />挂载目录</button
+        ><button v-if="listing?.mounted" :disabled="loading" @click="mount(true)">
+          恢复默认目录</button
+        ><button :disabled="loading || !listing" @click="edit()">
+          <FolderPlus :size="15" />新建文件夹</button
+        ><button class="primary" :disabled="loading || !listing" @click="importFiles">
+          <Upload :size="15" />导入文件
+        </button>
       </div>
     </header>
     <div class="filter-bar">
@@ -152,7 +209,8 @@ async function mount(reset = false) {
           <FolderOpen :size="16" />
         </button>
       </div>
-      <div v-if="!listing?.entries.length" class="empty-state">
+      <div v-if="loading" class="empty-state" role="status">正在读取作业目录…</div>
+      <div v-else-if="listing && !listing.entries.length" class="empty-state">
         <Folder :size="43" />
         <h2>目录里还没有文件</h2>
         <p>导入作业文件，或创建文件夹。</p>
@@ -162,12 +220,14 @@ async function mount(reset = false) {
     <Modal
       v-if="editing !== undefined"
       :title="editing ? '重命名' : '新建作业文件夹'"
-      @close="editing = undefined"
+      @close="closeEditor"
       ><form class="form-stack" @submit.prevent="save">
         <label>名称<input v-model="name" required maxlength="255" /></label>
         <div class="dialog-actions">
-          <span class="spacer" /><button type="button" @click="editing = undefined">取消</button
-          ><button class="primary" :disabled="!name.trim() || !!store.busy">保存名称</button>
+          <span class="spacer" /><button type="button" @click="closeEditor">取消</button
+          ><button class="primary" :disabled="!name.trim() || !!store.busy || loading">
+            保存名称
+          </button>
         </div>
       </form></Modal
     >

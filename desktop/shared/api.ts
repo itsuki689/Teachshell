@@ -36,6 +36,9 @@ import type {
 import type { Course, LibraryState, Material, MaterialFolder, StudyTask } from './model';
 export interface Snapshot {
   root: string;
+  /** Transient identity/order for IPC observations; never stored in library.json. */
+  workspaceID: string;
+  sequence: number;
   state: LibraryState;
   revision: string;
   warnings: string[];

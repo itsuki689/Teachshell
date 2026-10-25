@@ -16,14 +16,19 @@ const props = defineProps<{ material: Material }>(),
   store = useLibrary();
 const form = reactive({ title: '', category: '', tags: '', notes: '', filename: '' }),
   initial = ref('');
+const saving = ref(false);
+let active = true;
+function materialForm(material = props.material) {
+  return {
+    title: material.title,
+    category: material.category,
+    tags: material.tags,
+    notes: material.notes,
+    filename: material.originalName,
+  };
+}
 function reset() {
-  Object.assign(form, {
-    title: props.material.title,
-    category: props.material.category,
-    tags: props.material.tags,
-    notes: props.material.notes,
-    filename: props.material.originalName,
-  });
+  Object.assign(form, materialForm());
   initial.value = JSON.stringify(form);
 }
 watch(() => props.material.id, reset, { immediate: true });
@@ -40,6 +45,12 @@ const releaseLeaveGuard = store.registerLeaveGuard(async () => {
   return approved;
 });
 onUnmounted(releaseLeaveGuard);
+onUnmounted(() => {
+  active = false;
+});
+async function close() {
+  if (await store.requestLeave()) emit('close');
+}
 watch(
   () => props.material,
   () => {
@@ -48,6 +59,10 @@ watch(
   { deep: true },
 );
 async function save() {
+  if (saving.value) return;
+  const submitted = { ...form },
+    targetID = props.material.id,
+    workspace = store.workspaceID;
   const baseline = JSON.parse(initial.value) as typeof form;
   const patch: Partial<Material> & { filename?: string } = {},
     expected: Partial<Material> & { filename?: string } = {};
@@ -57,13 +72,33 @@ async function save() {
       expected[key] = baseline[key];
     }
   }
-  const result = await store.change(
-    () => api.updateMaterial(props.material.id, patch, expected),
-    '资料信息已保存',
-  );
-  if (result) {
-    await nextTick();
-    reset();
+  saving.value = true;
+  try {
+    const result = await store.change(
+      () => api.updateMaterial(targetID, patch, expected),
+      '资料信息已保存',
+    );
+    if (result) {
+      await nextTick();
+      if (!active || workspace !== store.workspaceID || props.material.id !== targetID) return;
+      const saved = result.state.materials.find((material) => material.id === targetID);
+      if (!saved) return;
+      const current = materialForm(),
+        committed = materialForm(saved),
+        nextBaseline = { ...current },
+        continued = { ...form };
+      for (const key of ['title', 'category', 'tags', 'notes', 'filename'] as const) {
+        if (continued[key] === submitted[key]) form[key] = current[key];
+        else {
+          // A later snapshot must not silently authorize overwriting another edit.
+          nextBaseline[key] = key in patch ? committed[key] : baseline[key];
+          form[key] = continued[key];
+        }
+      }
+      initial.value = JSON.stringify(nextBaseline);
+    }
+  } finally {
+    saving.value = false;
   }
 }
 const size = computed(() =>
@@ -78,7 +113,7 @@ const size = computed(() =>
   <aside class="inspector">
     <header>
       <h3>资料信息</h3>
-      <button class="icon-button" aria-label="关闭资料信息" @click="emit('close')">
+      <button class="icon-button" aria-label="关闭资料信息" @click="close">
         <X :size="17" />
       </button>
     </header>

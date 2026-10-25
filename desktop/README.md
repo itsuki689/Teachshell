@@ -1,6 +1,6 @@
 # Teachshell
 
-Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.0。保留原 Swift 工程，使用独立应用标识 `com.teachshelf.desktop`。本次补齐后台巡检、受控登录记忆、分钟拖动/缩放与自定义顶栏，并保留教学资料增量同步、历史版本和批量审核。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
+Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.1。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
 
 ## 开发
 

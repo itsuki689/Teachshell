@@ -30,6 +30,8 @@ import {
 import type { PlanEditScope, PlanOccurrence, PlanStatus } from '../../shared/plans';
 import { shanghaiDayKey } from '../../shared/timetable';
 import { useLibrary } from '../stores/library';
+import { useWorkspaceUI } from '../stores/workspace-ui';
+import { storeToRefs } from 'pinia';
 import TaskEditor from '../components/TaskEditor.vue';
 import PlanMonthCalendar from '../components/PlanMonthCalendar.vue';
 import Modal from '../components/Modal.vue';
@@ -38,9 +40,9 @@ import type { PlanFilter } from '../composables/plan-filter';
 const store = useLibrary(),
   filter = ref<PlanFilter>(store.route === 'pending' ? 'pending' : 'active'),
   query = ref(''),
-  courseID = ref(''),
-  mode = ref<'list' | 'agenda' | 'month'>('list'),
-  day = ref(shanghaiDayKey(swiftNow()));
+  courseID = ref('');
+const ui = useWorkspaceUI();
+const { planMode: mode, day } = storeToRefs(ui);
 const editing = ref<{ task?: StudyTask; occurrence?: PlanOccurrence } | null>(null),
   historyID = ref<string | null>(null);
 type Action = PlanStatus | 'delete';

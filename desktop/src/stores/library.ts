@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
-import { emptyLibrary } from '../../shared/model';
+import { emptyLibrary } from '../../shared/model.ts';
 import type { Snapshot, Settings } from '../../shared/api';
 interface WorkspaceLocation {
   route: string;
@@ -22,6 +22,7 @@ export const useLibrary = defineStore('library', () => {
   const confirmRequest = ref<{ title: string; detail: string; action: string } | null>(null);
   let confirmResolve: ((v: boolean) => void) | undefined;
   const state = computed(() => snapshot.value?.state ?? emptyLibrary());
+  const workspaceID = computed(() => snapshot.value?.workspaceID ?? snapshot.value?.root);
   const courseID = computed(() =>
     route.value.startsWith('course:') ? route.value.slice(7) : undefined,
   );
@@ -70,11 +71,14 @@ export const useLibrary = defineStore('library', () => {
     };
   }
   async function requestLeave() {
-    return leaveGuard ? leaveGuard() : true;
+    const context = workspaceID.value;
+    const approved = leaveGuard ? await leaveGuard() : true;
+    return approved && context === workspaceID.value;
   }
   async function navigate(to: string, folder?: string) {
     const destination = { route: to, folderID: folder };
-    if (!validLocation(destination) || !(await requestLeave())) return false;
+    if (!validLocation(destination) || !(await requestLeave()) || !validLocation(destination))
+      return false;
     const previous = location();
     if (!sameLocation(previous, destination)) {
       if (!backHistory.value.length || !sameLocation(backHistory.value.at(-1)!, previous))
@@ -115,23 +119,39 @@ export const useLibrary = defineStore('library', () => {
     selected.value = [];
   }
   function accept(value: Snapshot) {
-    const switched = !!snapshot.value && snapshot.value.root !== value.root;
+    // An older IPC reply can arrive after a newer filesystem/MCP change event.
+    if (snapshot.value && value.sequence <= snapshot.value.sequence) return false;
+    const switched = !!snapshot.value && workspaceID.value !== (value.workspaceID ?? value.root);
     snapshot.value = value;
-    if (switched) resetNavigation();
+    if (switched) {
+      decide(false);
+      leaveGuard = undefined;
+      error.value = '';
+      resetNavigation();
+    }
     backHistory.value = backHistory.value.filter(validLocation);
     forwardHistory.value = forwardHistory.value.filter(validLocation);
     if (courseID.value && !value.state.courses.some((c) => c.id === courseID.value))
       applyLocation({ route: 'all' });
     else if (!validLocation(location())) folderID.value = undefined;
     selected.value = selected.value.filter((id) => value.state.materials.some((m) => m.id === id));
+    return true;
   }
-  async function run<T>(fn: () => Promise<T>, label = '已保存'): Promise<T | undefined> {
+  async function run<T>(
+    fn: () => Promise<T>,
+    label = '已保存',
+    workspaceScoped = true,
+  ): Promise<T | undefined> {
+    const context = workspaceID.value;
+    const current = () => !workspaceScoped || !context || context === workspaceID.value;
     busy.value++;
     try {
       const value = await fn();
+      if (!current()) return undefined;
       status.value = label;
       return value;
     } catch (e) {
+      if (!current()) return undefined;
       error.value = e instanceof Error ? e.message : String(e);
       status.value = '操作未完成';
       return undefined;
@@ -140,16 +160,18 @@ export const useLibrary = defineStore('library', () => {
     }
   }
   async function change(fn: () => Promise<Snapshot>, label = '已保存') {
-    return run(async () => {
-      const result = await fn();
-      accept(result);
-      return result;
-    }, label);
+    const result = await run(fn, label);
+    if (!result) return;
+    accept(result);
+    // Callers need their own committed result (created IDs/edit baselines), even
+    // when a more recent observation already supplies the visible UI state.
+    return result;
   }
   async function refresh() {
     return change(() => window.teachshelf.snapshot(), '资料库已加载');
   }
   async function chooseLibrary(copy: boolean) {
+    if (busy.value || !(await requestLeave())) return;
     await run(
       async () => {
         const result = await (copy
@@ -157,10 +179,11 @@ export const useLibrary = defineStore('library', () => {
           : window.teachshelf.openLibrary());
         if (result) {
           accept(result);
-          navigate('all');
+          resetNavigation();
         }
       },
       copy ? '资料库复制导入完成' : '资料库已打开',
+      false,
     );
   }
   function confirm(title: string, detail: string, action = '确认'): Promise<boolean> {
@@ -185,6 +208,7 @@ export const useLibrary = defineStore('library', () => {
     folderID,
     selected,
     state,
+    workspaceID,
     courseID,
     course,
     title,

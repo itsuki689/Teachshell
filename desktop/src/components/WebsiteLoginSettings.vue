@@ -7,16 +7,21 @@ const api = window.teachshelf,
 const status = ref<LoginStatus>(),
   busy = ref(false);
 let unsubscribe: (() => void) | undefined;
-let active = true;
+let active = true,
+  eventSequence = 0;
+const workspace = store.workspaceID;
+const current = () => active && workspace === store.workspaceID;
 onMounted(async () => {
   unsubscribe = api.onWebsiteLogin((value) => {
-    if (active) status.value = value;
+    eventSequence++;
+    if (current()) status.value = value;
   });
+  const before = eventSequence;
   try {
     const value = await api.websiteLoginStatus();
-    if (active) status.value = value;
+    if (current() && before === eventSequence) status.value = value;
   } catch (error) {
-    if (active) store.error = String(error);
+    if (current() && before === eventSequence) store.error = String(error);
   }
 });
 onUnmounted(() => {
@@ -24,15 +29,16 @@ onUnmounted(() => {
   unsubscribe?.();
 });
 async function change(enabled?: boolean) {
+  if (busy.value || !current()) return;
   busy.value = true;
   try {
     const value =
       enabled === undefined
         ? await api.retryWebsiteLogin()
         : await api.rememberWebsiteLogin(enabled);
-    if (active) status.value = value;
+    if (current()) status.value = value;
   } catch (error) {
-    if (active) store.error = String(error);
+    if (current()) store.error = String(error);
   } finally {
     busy.value = false;
   }

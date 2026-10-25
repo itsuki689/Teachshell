@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import {
   ArrowUp,
   ArrowUpLeft,
@@ -17,10 +17,15 @@ const store = useLibrary(),
   messages = ref<ChatMessage[]>([]),
   input = ref(''),
   streaming = ref(false),
+  resetting = ref(false),
   delta = ref(''),
   pending = ref<ChatEvent | null>(null),
   scroll = ref<HTMLElement>();
 let unsubscribe: (() => void) | undefined;
+let active = true,
+  historySequence = 0,
+  sendSequence = 0;
+const current = (workspace: string | undefined) => active && workspace === store.workspaceID;
 const configured = computed(() => !!store.settings?.ai.baseURL && !!store.settings.ai.model);
 const examples = [
   '今天有哪些待完成的计划？',
@@ -32,15 +37,22 @@ async function bottom() {
   scroll.value?.scrollTo({ top: scroll.value.scrollHeight, behavior: 'smooth' });
 }
 async function history() {
+  const request = ++historySequence,
+    workspace = store.workspaceID;
   try {
-    messages.value = await api.chatHistory();
+    const value = await api.chatHistory();
+    if (current(workspace) && request === historySequence) messages.value = value;
   } catch (error) {
-    store.error = error instanceof Error ? error.message : String(error);
+    if (current(workspace) && request === historySequence)
+      store.error = error instanceof Error ? error.message : String(error);
   }
 }
 async function send() {
   const text = input.value.trim();
-  if (!text || streaming.value) return;
+  if (!text || streaming.value || resetting.value) return;
+  const request = ++sendSequence,
+    workspace = store.workspaceID;
+  historySequence++;
   input.value = '';
   streaming.value = true;
   delta.value = '';
@@ -51,20 +63,26 @@ async function send() {
     createdAt: Date.now(),
   });
   await bottom();
+  if (!current(workspace) || request !== sendSequence) return;
   try {
     await api.sendChat(text);
   } catch (e) {
-    store.error = e instanceof Error ? e.message : String(e);
+    if (current(workspace) && request === sendSequence)
+      store.error = e instanceof Error ? e.message : String(e);
   } finally {
-    streaming.value = false;
-    pending.value = null;
-    delta.value = '';
-    await history();
-    await bottom();
+    if (current(workspace) && request === sendSequence) {
+      streaming.value = false;
+      pending.value = null;
+      delta.value = '';
+      await history();
+      await bottom();
+    }
   }
 }
 async function decide(approved: boolean) {
-  const id = pending.value?.requestID;
+  const confirmation = pending.value,
+    workspace = store.workspaceID;
+  const id = confirmation?.requestID;
   if (!id) return;
   const result = await store.run(
     async () => {
@@ -73,9 +91,11 @@ async function decide(approved: boolean) {
     },
     approved ? '已确认操作' : '已拒绝操作',
   );
-  if (result) pending.value = null;
+  if (result && current(workspace) && pending.value === confirmation) pending.value = null;
 }
 async function reset() {
+  if (streaming.value || resetting.value) return;
+  const workspace = store.workspaceID;
   if (
     messages.value.length &&
     !(await store.confirm(
@@ -85,25 +105,20 @@ async function reset() {
     ))
   )
     return;
-  await store.run(() => api.clearChat(), '对话已清除');
-  await history();
-}
-watch(
-  () => store.snapshot?.root,
-  async () => {
-    streaming.value = false;
-    delta.value = '';
-    pending.value = null;
-    await history();
-  },
-);
-onMounted(async () => {
-  await history();
-  if (!store.settings) {
-    const s = await store.run(() => api.settings());
-    if (s) store.settings = s;
+  if (!current(workspace)) return;
+  historySequence++;
+  resetting.value = true;
+  try {
+    await store.run(() => api.clearChat(), '对话已清除');
+    if (current(workspace)) await history();
+  } finally {
+    if (current(workspace)) resetting.value = false;
   }
+}
+// App keys the workspace body by workspaceID, so switching creates a fresh chat view.
+onMounted(async () => {
   unsubscribe = api.onChat((e) => {
+    if (!active) return;
     if (e.type === 'delta') {
       delta.value += e.text ?? '';
       void bottom();
@@ -121,8 +136,18 @@ onMounted(async () => {
       void history().then(bottom);
     }
   });
+  await history();
+  if (!store.settings && active) {
+    const s = await store.run(() => api.settings());
+    if (s && active) store.settings = s;
+  }
 });
-onUnmounted(() => unsubscribe?.());
+onUnmounted(() => {
+  active = false;
+  historySequence++;
+  sendSequence++;
+  unsubscribe?.();
+});
 </script>
 <template>
   <section class="workspace chat-workspace">
@@ -135,7 +160,7 @@ onUnmounted(() => unsubscribe?.());
         </div>
       </div>
       <div class="toolbar-controls">
-        <button :disabled="streaming" @click="reset"><Plus :size="16" />新对话</button
+        <button :disabled="streaming || resetting" @click="reset"><Plus :size="16" />新对话</button
         ><button @click="store.navigate('settings')"><Settings2 :size="16" />模型设置</button>
       </div>
     </header>
@@ -196,7 +221,7 @@ onUnmounted(() => unsubscribe?.());
           placeholder="例如：把明天的复习计划改到晚上七点"
           aria-label="给 AI 助手的消息"
           rows="2"
-          :disabled="streaming"
+          :disabled="streaming || resetting"
           @keydown.enter.meta.prevent="send"
           @keydown.enter.ctrl.prevent="send"
         /><button
@@ -205,7 +230,7 @@ onUnmounted(() => unsubscribe?.());
           @click="store.run(() => api.cancelChat(), '已停止生成')"
         >
           <Square :size="14" />停止</button
-        ><button v-else class="primary" :disabled="!configured || !input.trim()">
+        ><button v-else class="primary" :disabled="!configured || !input.trim() || resetting">
           <ArrowUp :size="17" />发送
         </button>
       </div>
