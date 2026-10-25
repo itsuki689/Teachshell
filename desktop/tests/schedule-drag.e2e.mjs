@@ -117,7 +117,7 @@ try {
         path.join(desktop, '../Resources/Timetable/Sample-undergraduate.json'),
       );
       await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
-      await page.getByRole('button', { name: '查看课表', exact: true }).click();
+      await page.locator('.timeline-board').waitFor();
       await page.getByRole('button', { name: '导入课表 JSON', exact: true }).first().click();
       const settings = page.getByRole('dialog', { name: '学期设置' });
       await settings.getByLabel('第一周周一（北京时间）', { exact: true }).fill('2026-09-07');
@@ -149,6 +149,7 @@ try {
       meetingID = s.state.timetableTerms[0].meetings.find(
         (m) => m.title === '高等数学 A' && m.weekday === 1,
       ).id;
+      await page.getByRole('button', { name: '课表课程列表', exact: true }).click();
       await page
         .locator('.week-day')
         .first()

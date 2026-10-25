@@ -111,7 +111,7 @@ async function drop(e: DragEvent, courseID?: string) {
     <nav class="paired-nav">
       <button
         :class="{ active: store.route === 'plans' || store.route === 'timetable' }"
-        @click="store.navigate('plans')"
+        @click="ui.openSchedule()"
       >
         <CalendarDays :size="17" />计划</button
       ><button

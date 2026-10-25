@@ -83,6 +83,13 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
       preferences.value.timetableMode = value;
     },
   });
+  async function openSchedule(mode = preferences.value.scheduleMode) {
+    if (!(await library.navigate(mode === 'week' ? 'timetable' : 'plans'))) return false;
+    preferences.value.scheduleMode = mode;
+    if (mode === 'week') preferences.value.timetableMode = 'timeline';
+    else preferences.value.planMode = mode;
+    return true;
+  }
   function weekFor(termID: string) {
     return workspace.value.timetableWeeks[termID];
   }
@@ -90,6 +97,7 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
     workspace.value.timetableWeeks[termID] = week;
   }
   return {
+    openSchedule,
     identity,
     settingsTab,
     semester,

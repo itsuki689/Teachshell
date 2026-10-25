@@ -23,7 +23,7 @@ test('display preferences accept only supported display modes and discard extra 
       root: '/private/library',
       day: '2026-09-16',
     }),
-    { libraryLayout: 'grid', planMode: 'month', timetableMode: 'timeline' },
+    { libraryLayout: 'grid', planMode: 'month', timetableMode: 'timeline', scheduleMode: 'week' },
   );
   assert.deepEqual(
     readDisplayPreferences({ libraryLayout: 'unexpected', planMode: false, timetableMode: [] }),

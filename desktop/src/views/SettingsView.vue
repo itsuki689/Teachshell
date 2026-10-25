@@ -29,6 +29,7 @@ const tabs = [
   { id: 'about', label: '关于', icon: Globe },
 ];
 import ToolbarSettings from '../components/ToolbarSettings.vue';
+import AppearanceSettings from '../components/AppearanceSettings.vue';
 const application = ref<AppInfo>();
 const emit = defineEmits<{ website: [] }>(),
   store = useLibrary();
@@ -38,7 +39,6 @@ const form = reactive({
     apiKey: '',
     mcpEnabled: false,
     mcpPort: 53142,
-    theme: 'system',
   }),
   showToken = ref(false),
   loaded = ref(false);
@@ -50,7 +50,6 @@ function fill() {
       model: s.ai.model,
       mcpEnabled: s.mcp.enabled,
       mcpPort: s.mcp.port,
-      theme: s.theme,
     });
   loaded.value = true;
 }
@@ -94,10 +93,6 @@ async function saveMCP() {
     () => api.saveSettings({ mcpEnabled: form.mcpEnabled, mcpPort: Number(form.mcpPort) }),
     'MCP 设置已保存',
   );
-  if (result) store.settings = result;
-}
-async function saveTheme() {
-  const result = await store.run(() => api.saveSettings({ theme: form.theme }), '外观已更新');
   if (result) store.settings = result;
 }
 async function backup() {
@@ -281,43 +276,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
             >
           </form>
         </section>
-        <section v-show="ui.settingsTab === 'appearance'" class="settings-section">
-          <h2><Monitor :size="19" />外观</h2>
-          <p class="settings-intro">选择舒适的显示模式，让课屿更合你的习惯。</p>
-          <h3 class="settings-group-title">显示模式</h3>
-          <div class="settings-card">
-            <div class="appearance-options" role="group" aria-label="显示模式">
-              <button
-                v-for="option in [
-                  { value: 'light', label: '浅色' },
-                  { value: 'dark', label: '深色' },
-                  { value: 'system', label: '跟随系统' },
-                ]"
-                :key="option.value"
-                :class="{ selected: form.theme === option.value }"
-                :aria-label="option.label + '显示模式'"
-                :aria-pressed="form.theme === option.value"
-                :disabled="!loaded || !!store.busy"
-                @click="
-                  form.theme = option.value;
-                  saveTheme();
-                "
-              >
-                <span class="appearance-preview" :class="option.value" aria-hidden="true"
-                  ><span class="preview-sidebar"><i /><i /><i /></span
-                  ><span class="preview-content"><i /><i /><i /></span
-                ></span>
-                <span class="appearance-label"
-                  ><Monitor :size="16" />{{ option.label }}<span class="spacer" /><span
-                    class="appearance-check"
-                    >{{ form.theme === option.value ? '✓' : '' }}</span
-                  ></span
-                >
-              </button>
-            </div>
-            <p class="field-note">跟随系统会自动匹配操作系统的外观。显示设置保存在本机。</p>
-          </div>
-        </section>
+        <AppearanceSettings v-show="ui.settingsTab === 'appearance'" />
         <section v-show="ui.settingsTab === 'library'" class="settings-section">
           <h2><Globe :size="19" />教学网站</h2>
           <div class="settings-card setting-row">

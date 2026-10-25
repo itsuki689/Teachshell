@@ -24,7 +24,8 @@ import { useLibrary } from '../stores/library';
 import { useWorkspaceUI } from '../stores/workspace-ui';
 import { storeToRefs } from 'pinia';
 import TaskEditor from '../components/TaskEditor.vue';
-const creatingPlan = ref(false);
+const creatingPlan = ref(false),
+  editingOccurrence = ref<PlanOccurrence>();
 import Modal from '../components/Modal.vue';
 import { addPlanDays, planEvents } from '../../shared/plans';
 import type { PlanOccurrence } from '../../shared/plans';
@@ -61,7 +62,22 @@ const fixedEditing = ref(false),
   showPlans = ref(true),
   grid = ref<HTMLElement>(),
   scroll = ref<HTMLElement>();
-const selectedEventID = ref('');
+const selectedEventID = ref(''),
+  viewportHeight = ref(600);
+let viewportObserver: ResizeObserver | undefined;
+watch(
+  scroll,
+  (element) => {
+    viewportObserver?.disconnect();
+    if (element) {
+      viewportObserver = new ResizeObserver(() => {
+        viewportHeight.value = element.clientHeight;
+      });
+      viewportObserver.observe(element);
+    }
+  },
+  { flush: 'post' },
+);
 const moveGuard = ref<{ revision: string; root: string }>();
 interface TimelineEvent {
   id: string;
@@ -76,7 +92,7 @@ interface TimelineEvent {
 }
 interface DragState {
   event: TimelineEvent;
-  termID: string;
+  termID: string | undefined;
   pointerID: number;
   originX: number;
   originY: number;
@@ -121,7 +137,10 @@ watch(
 );
 const days = computed(() =>
   Array.from({ length: 7 }, (_, i) => {
-    const day = term.value ? timetableDate(term.value, week.value, i + 1) : undefined;
+    const weekday = (new Date(ui.day + 'T00:00:00Z').getUTCDay() + 6) % 7;
+    const day = term.value
+      ? timetableDate(term.value, week.value, i + 1)
+      : addPlanDays(shanghaiDay(ui.day + 'T00:00:00+08:00'), i - weekday);
     return {
       weekday: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][i],
       day,
@@ -145,7 +164,7 @@ const sections = computed(() =>
 );
 const timeline = computed(() =>
   scheduleTimeline(
-    Math.max(520, sections.value * 48),
+    Math.max(260, viewportHeight.value - 68),
     sections.value,
     term.value?.sectionTimes ?? [],
   ),
@@ -217,6 +236,7 @@ const timelineDays = computed(() =>
     };
   }),
 );
+const selectedDay = computed(() => timelineDays.value.find((d) => d.key === ui.day));
 const chosen = computed(() =>
   timelineDays.value.flatMap((d) => d.events).find((e) => e.id === selectedEventID.value),
 );
@@ -260,8 +280,7 @@ function startDrag(
   item: TimelineEvent,
   edge: 'move' | 'start' | 'end' = 'move',
 ) {
-  if (event.button !== 0 || store.busy || (item.fixed && !fixedEditing.value) || !term.value)
-    return;
+  if (event.button !== 0 || store.busy || (item.fixed && !fixedEditing.value)) return;
   const currentGuard = guard();
   if (!currentGuard) return;
   const element = event.currentTarget as HTMLElement,
@@ -271,7 +290,7 @@ function startDrag(
   capture.focus();
   drag.value = {
     event: item,
-    termID: term.value.id,
+    termID: term.value?.id,
     pointerID: event.pointerId,
     originX: event.clientX,
     originY: event.clientY,
@@ -358,14 +377,15 @@ async function applyEventTime(
   date: number,
   range: MinuteRange,
   expected: { revision: string; root: string },
-  termID: string,
+  termID: string | undefined,
 ) {
   if (store.busy || (item.fixed && !fixedEditing.value)) return;
   if (!guardCurrent(expected) || term.value?.id !== termID) {
     store.error = '资料库已变化，已取消这次时间调整。';
     return;
   }
-  if (!validMinuteRange(range) || timetableWeek(term.value!, date) === undefined) return;
+  if (!validMinuteRange(range) || (term.value && timetableWeek(term.value, date) === undefined))
+    return;
   if (
     shanghaiDayKey(date) === shanghaiDayKey(item.date) &&
     range.start === item.range.start &&
@@ -377,7 +397,7 @@ async function applyEventTime(
     saved = await store.change(
       () =>
         api.rescheduleTimetableClass(
-          termID,
+          termID!,
           item.course!.meeting.id,
           item.course!.originalDate,
           {
@@ -405,7 +425,8 @@ async function applyEventTime(
       '已调整这次计划时间',
     );
   if (saved && store.snapshot?.root === expected.root && term.value?.id === termID) {
-    week.value = timetableWeek(term.value, date) ?? week.value;
+    if (term.value) week.value = timetableWeek(term.value, date) ?? week.value;
+    else ui.day = shanghaiDayKey(date);
     await nextTick();
     selectedEventID.value = item.id;
   }
@@ -426,8 +447,7 @@ function editingKeyContext(event: KeyboardEvent) {
   );
 }
 async function timeKey(event: KeyboardEvent, item: TimelineEvent, edge?: 'start' | 'end') {
-  if (editingKeyContext(event) || drag.value || (item.fixed && !fixedEditing.value) || !term.value)
-    return;
+  if (editingKeyContext(event) || drag.value || (item.fixed && !fixedEditing.value)) return;
   let minutes = 0,
     days = 0;
   if (event.key === 'ArrowUp') minutes = edge ? -1 : -10;
@@ -445,7 +465,7 @@ async function timeKey(event: KeyboardEvent, item: TimelineEvent, edge?: 'start'
     ? resizedRange(item.range, edge, item.range[edge] + minutes, 1)
     : shiftedRange(item.range, minutes);
   if (range)
-    await applyEventTime(item, addPlanDays(item.date, days), range, expected, term.value.id);
+    await applyEventTime(item, addPlanDays(item.date, days), range, expected, term.value?.id);
 }
 function resizeStyle(
   item: TimelineEvent & { top: number; height: number; lane: number; laneCount: number },
@@ -466,10 +486,21 @@ function cancelKey(event: KeyboardEvent) {
 function lostFocus() {
   clearDrag();
 }
-watch([() => store.snapshot?.root, () => term.value?.id, week, mode, showPlans], () => {
-  clearDrag();
-  selectedEventID.value = '';
-});
+watch(
+  [
+    () => store.snapshot?.root,
+    () => term.value?.id,
+    () => ui.day,
+    viewportHeight,
+    week,
+    mode,
+    showPlans,
+  ],
+  () => {
+    clearDrag();
+    selectedEventID.value = '';
+  },
+);
 watch(fixedEditing, () => {
   clearDrag();
   if (chosen.value?.fixed) selectedEventID.value = '';
@@ -492,6 +523,7 @@ onMounted(() => {
 });
 onUnmounted(() => {
   clearDrag();
+  viewportObserver?.disconnect();
   window.removeEventListener('pointermove', movePointer);
   window.removeEventListener('pointerup', endPointer);
   window.removeEventListener('pointercancel', clearDrag);
@@ -694,7 +726,14 @@ function time(item: TimetableOccurrence) {
           <p>按北京时间与学期周次展示课程，保留原有调课与停课记录。</p>
         </div>
         <div class="toolbar-controls">
-          <button title="计划列表" aria-label="计划列表" @click="store.navigate('plans')">
+          <button
+            title="计划列表"
+            aria-label="计划列表"
+            @click="
+              ui.planMode = 'list';
+              store.navigate('plans');
+            "
+          >
             <ArrowLeft :size="15" />计划列表</button
           ><button title="网站读取" aria-label="网站读取" @click="emit('website')">
             <Globe :size="15" />网站读取</button
@@ -709,26 +748,12 @@ function time(item: TimetableOccurrence) {
         </div>
       </header>
       <div class="schedule-view-switch segmented" role="group" aria-label="计划视图">
-        <button
-          @click="
-            ui.planMode = 'month';
-            store.navigate('plans');
-          "
-        >
-          月
-        </button>
-        <button class="active" @click="mode = 'timeline'">周</button>
-        <button
-          @click="
-            ui.planMode = 'agenda';
-            store.navigate('plans');
-          "
-        >
-          日
-        </button>
+        <button @click="ui.openSchedule('month')">月</button>
+        <button class="active" @click="ui.openSchedule('week')">周</button>
+        <button @click="ui.openSchedule('agenda')">日</button>
       </div>
-      <template v-if="term">
-        <div class="filter-bar">
+      <template v-if="term || mode === 'timeline'">
+        <div v-if="term" class="filter-bar">
           <select v-model="selected" aria-label="课表学期">
             <option v-for="t in terms" :key="t.id" :value="t.id">{{ t.name }}</option>
           </select>
@@ -742,7 +767,7 @@ function time(item: TimetableOccurrence) {
             </button>
             <button
               :class="{ active: mode === 'timeline' }"
-              @click="mode = 'timeline'"
+              @click="ui.openSchedule('week')"
               aria-label="课表时间网格"
             >
               时间网格
@@ -793,11 +818,30 @@ function time(item: TimetableOccurrence) {
           ><span v-else class="muted small">选择一个安排查看详情；固定课程默认锁定。</span>
         </div>
       </template>
+      <div class="selected-day-plans" aria-label="所选日期安排">
+        <strong>{{ ui.day }}</strong>
+        <button
+          v-for="item in selectedDay?.untimed ?? []"
+          :key="item.id"
+          @click="editingOccurrence = item"
+        >
+          {{ item.isDeadline ? '截止' : '全天' }} · {{ item.task.title }}
+        </button>
+        <p v-if="!selectedDay?.untimed.length" class="muted small">
+          选择日期查看全天计划与截止提醒。
+        </p>
+      </div>
       <footer class="schedule-create">
-        <button @click="creatingPlan = true">＋ 新建计划</button>
+        <button aria-label="新建计划" @click="creatingPlan = true">＋ 新建计划</button>
       </footer>
     </aside>
-    <TaskEditor v-if="creatingPlan" @close="creatingPlan = false" />
+    <TaskEditor v-if="creatingPlan" :initial-date="ui.day" @close="creatingPlan = false" />
+    <TaskEditor
+      v-if="editingOccurrence"
+      :task="store.state.tasks.find((t) => t.id === editingOccurrence!.task.id)"
+      :occurrence="editingOccurrence"
+      @close="editingOccurrence = undefined"
+    />
     <div v-if="term" class="schedule-datebar">
       <span class="spacer" /><button
         class="icon-button"
@@ -826,10 +870,28 @@ function time(item: TimetableOccurrence) {
         <ChevronRight :size="17" /></button
       ><span class="spacer" />{{ term.name }}
     </div>
-    <div v-else class="schedule-datebar">课程安排</div>
-    <template v-if="term">
+    <div v-else class="schedule-datebar">
+      <button
+        class="icon-button"
+        aria-label="上一周"
+        @click="ui.day = shanghaiDayKey(addPlanDays(ui.day + 'T00:00:00+08:00', -7))"
+      >
+        <ChevronLeft :size="17" />
+      </button>
+      <strong>{{ days[0].key }} — {{ days[6].key }}</strong>
+      <button
+        class="icon-button"
+        aria-label="下一周"
+        @click="ui.day = shanghaiDayKey(addPlanDays(ui.day + 'T00:00:00+08:00', 7))"
+      >
+        <ChevronRight :size="17" />
+      </button>
+      <span class="spacer" /><button @click="ui.day = shanghaiDayKey(swiftNow())">本周</button
+      ><input v-model="ui.day" type="date" aria-label="跳转日期" />
+    </div>
+    <template v-if="term || mode === 'timeline'">
       <div class="timetable-scroll" ref="scroll" @scroll="clearDrag">
-        <div v-if="term.weekOneMonday == null" class="empty-state compact">
+        <div v-if="term && term.weekOneMonday == null" class="empty-state compact">
           <CalendarDays :size="38" />
           <h2>设置第一周的周一日期</h2>
           <p>已有 {{ term.meetings.length }} 个时段，设置起始日期后显示到具体日期。</p>
@@ -842,10 +904,14 @@ function time(item: TimetableOccurrence) {
           <div class="timeline-board" :class="{ 'is-dragging': drag?.active }">
             <div class="timeline-header">
               <span class="timeline-label">北京时间</span>
-              <div
+              <button
                 v-for="day in timelineDays"
                 :key="day.weekday"
-                :class="{ outside: day.day === undefined }"
+                :class="{ outside: day.day === undefined, selected: day.key === ui.day }"
+                :aria-label="'选择日期 ' + day.key"
+                :aria-pressed="day.key === ui.day"
+                :disabled="day.day === undefined"
+                @click="ui.day = day.key"
               >
                 <strong>{{ day.weekday }}</strong
                 ><span>{{ day.key.slice(5) || '学期外' }}</span>
@@ -858,13 +924,13 @@ function time(item: TimetableOccurrence) {
                   "
                   >{{ day.untimed.length }} 项全天 / 截止</small
                 >
-              </div>
+              </button>
             </div>
             <div class="timeline-body" :style="{ height: timeline.height + 'px' }">
               <div class="timeline-axis">
                 <template v-for="s in timeline.times" :key="s.section">
                   <span class="axis-time" :style="{ top: timeline.y(s.startMinute) + 'px' }">{{
-                    term.sectionTimes.some((t) => t.section === s.section)
+                    !term || term.sectionTimes.some((t) => t.section === s.section)
                       ? clock(s.startMinute)
                       : ''
                   }}</span>
@@ -936,7 +1002,9 @@ function time(item: TimetableOccurrence) {
                       "
                       @pointerdown="startDrag($event, item)"
                       @click="chooseEvent(item)"
-                      @dblclick="item.course && openMove(item.course)"
+                      @dblclick="
+                        item.course ? openMove(item.course) : (editingOccurrence = item.plan)
+                      "
                       @lostpointercapture="clearDrag"
                     >
                       <strong>{{ item.title }}</strong
@@ -1047,7 +1115,7 @@ function time(item: TimetableOccurrence) {
             </p>
           </section>
         </div>
-        <div class="timetable-extra">
+        <div v-if="term" class="timetable-extra">
           <template v-if="term.reschedules.length"
             ><h3>调课记录</h3>
             <div v-for="r in term.reschedules" :key="r.id" class="cancel-row">
@@ -1157,6 +1225,20 @@ function time(item: TimetableOccurrence) {
   </section>
 </template>
 <style scoped>
+.timeline-header > button.selected {
+  background: var(--selection);
+  color: var(--accent);
+}
+.selected-day-plans {
+  padding: 14px 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 8px;
+}
+.selected-day-plans button {
+  text-align: left;
+  white-space: normal;
+}
 .timetable-mode {
   display: flex;
   gap: 3px;
@@ -1214,7 +1296,12 @@ function time(item: TimetableOccurrence) {
   height: 66px;
   border-bottom: 1px solid var(--border);
 }
-.timeline-header > div {
+.timeline-header > button {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;

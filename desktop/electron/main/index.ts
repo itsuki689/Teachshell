@@ -1,3 +1,5 @@
+import { validateAppearancePatch } from '../../shared/appearance.ts';
+import type { Appearance, AppearancePatch } from '../../shared/appearance.ts';
 import {
   app,
   BrowserWindow,
@@ -215,7 +217,11 @@ async function switchLibrary(root: string) {
     clearTeachingPreviews?.();
     await closeWebsite();
     await setupWebsite();
-    repository.onChanged = (snapshot) => post('changed', snapshot);
+    repository.onChanged = (snapshot) => {
+      nativeTheme.themeSource = snapshot.state.appearance as Appearance;
+      post('changed', snapshot);
+    };
+    nativeTheme.themeSource = repository.snapshot().state.appearance as Appearance;
     setupChat();
     try {
       await watch();
@@ -528,19 +534,47 @@ function installIPC() {
   const guarded = <T>(
     guard: { root: string; revision: string } | undefined,
     action: (repo: Repository) => Promise<T>,
+    latestPreference = false,
   ) => {
     const active = repository;
     return active.withMutationGuard(
       () => {
         if (
           active !== repository ||
-          (guard && (active.root !== guard.root || active.snapshot().revision !== guard.revision))
+          (guard &&
+            (active.root !== guard.root ||
+              (!latestPreference && active.snapshot().revision !== guard.revision)))
         )
           throw new Error('资料库或日程已变化，请重新选择发生项');
       },
       () => action(active),
     );
   };
+  handle(
+    'saveAppearance',
+    z.tuple([
+      z.custom<AppearancePatch>((value) => {
+        try {
+          validateAppearancePatch(value);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+      workspaceGuard,
+    ]),
+    (input, guard) => {
+      // Swift saves immediate preferences with last-choice-wins semantics.
+      // Keep the root guard and durable queue, allowing unrelated file sync or
+      // consecutive control changes. A modal accent preview keeps its revision guard.
+      const immediate = Object.keys(input).length === 1 && input.accentColor === undefined;
+      return guarded(
+        guard,
+        (repo) => repo.saveAppearance(input, immediate ? undefined : guard.revision),
+        immediate,
+      );
+    },
+  );
   handle(
     'saveToolbarSettings',
     z.tuple([z.array(z.string().max(30)).max(6), workspaceGuard]),
@@ -710,11 +744,15 @@ function installIPC() {
       packaged: app.isPackaged,
     };
   });
-  handle('settings', none, () => settings.view());
+  handle('settings', none, () => ({
+    ...settings.view(),
+    theme: repository.snapshot().state.appearance,
+  }));
   handle('saveSettings', z.tuple([settingsInput]), async (input) => {
     const previous = settings.view();
     const result = await settings.update(input);
-    nativeTheme.themeSource = result.theme as 'system' | 'light' | 'dark';
+    if (input.theme !== undefined)
+      await repository.saveAppearance({ appearance: input.theme as Appearance });
     try {
       await startMCP();
     } catch (e) {
@@ -722,7 +760,7 @@ function installIPC() {
       await startMCP();
       throw new Error('MCP启动失败，已恢复原设置：' + String(e));
     }
-    return result;
+    return { ...result, theme: repository.snapshot().state.appearance };
   });
   handle('chatHistory', none, () => chat.history());
   handle('sendChat', z.tuple([z.string().min(1).max(20000)]), (text) => chat.send(text));
@@ -887,7 +925,11 @@ async function start() {
       : (settings.libraryPath ?? path.join(app.getPath('userData'), 'Library')),
     { create: true },
   );
-  repository.onChanged = (snapshot) => post('changed', snapshot);
+  repository.onChanged = (snapshot) => {
+    nativeTheme.themeSource = snapshot.state.appearance as Appearance;
+    post('changed', snapshot);
+  };
+  nativeTheme.themeSource = repository.snapshot().state.appearance as Appearance;
   if (settings.warning) repository.warnings.push(settings.warning);
   await setupWebsite();
   setupChat();

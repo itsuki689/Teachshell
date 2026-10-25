@@ -1,4 +1,5 @@
 export interface DisplayPreferences {
+  scheduleMode: 'week' | 'month' | 'agenda';
   libraryLayout: 'list' | 'grid';
   planMode: 'list' | 'agenda' | 'month';
   timetableMode: 'list' | 'timeline';
@@ -6,9 +7,11 @@ export interface DisplayPreferences {
 export function readDisplayPreferences(value: unknown): DisplayPreferences {
   const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
   return {
+    scheduleMode:
+      v.scheduleMode === 'month' || v.scheduleMode === 'agenda' ? v.scheduleMode : 'week',
     libraryLayout: v.libraryLayout === 'grid' ? 'grid' : 'list',
     planMode: v.planMode === 'month' || v.planMode === 'agenda' ? v.planMode : 'list',
-    timetableMode: v.timetableMode === 'timeline' ? 'timeline' : 'list',
+    timetableMode: v.timetableMode === 'list' ? 'list' : 'timeline',
   };
 }
 /** Match Swift's whitespace-separated, case-insensitive AND search across fields. */

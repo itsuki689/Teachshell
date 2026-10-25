@@ -270,7 +270,7 @@ defineExpose({
             aria-label="计划日程视图"
             :disabled="listOnly"
             :title="listOnly ? '此状态请在列表中查看' : ''"
-            @click="mode = 'agenda'"
+            @click="ui.openSchedule('agenda')"
           >
             <CalendarDays :size="16" />日程</button
           ><button
@@ -278,12 +278,12 @@ defineExpose({
             aria-label="计划月历视图"
             :disabled="listOnly"
             :title="listOnly ? '此状态请在列表中查看' : ''"
-            @click="mode = 'month'"
+            @click="ui.openSchedule('month')"
           >
             <CalendarDays :size="16" />月历
           </button>
         </div>
-        <button @click="store.navigate('timetable')"><CalendarDays :size="16" />查看课表</button
+        <button @click="ui.openSchedule('week')"><CalendarDays :size="16" />查看课表</button
         ><button class="primary" @click="editing = {}"><Plus :size="16" />新建计划</button>
       </div>
     </header>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, nextTick, onMounted, onUnmounted, ref, watch, watchEffect } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
   AlertCircle,
   ChevronLeft,
@@ -26,6 +26,9 @@ import WebsiteDialog from './components/WebsiteDialog.vue';
 import TaskEditor from './components/TaskEditor.vue';
 import WorkspaceSearch from './components/WorkspaceSearch.vue';
 import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
+import AppearanceHost from './components/AppearanceHost.vue';
+import { useWorkspaceUI } from './stores/workspace-ui';
+const ui = useWorkspaceUI();
 import type { ToolbarAction } from '../shared/toolbar';
 import type { WorkspaceSearchResult } from './composables/workspace-search';
 import LibraryView from './views/LibraryView.vue';
@@ -71,11 +74,6 @@ async function refreshWebsiteBackground() {
     /* Switching/closing a library emits a fresh state after completion. */
   }
 }
-const theme = computed(() => store.settings?.theme ?? store.state.appearance);
-watchEffect(() => {
-  document.documentElement.dataset.theme = theme.value;
-  document.documentElement.style.setProperty('--accent', store.state.accentColor || '#39786B');
-});
 function openWebsite(kind: 'teaching' | 'timetable' = 'teaching', batch = false) {
   websiteKind.value = kind;
   websiteBatch.value = batch;
@@ -90,6 +88,10 @@ async function toolbarAction(
     !(await store.requestLeave())
   )
     return;
+  if (action === 'schedule') {
+    await ui.openSchedule();
+    return;
+  }
   if (action === 'update') openWebsite('teaching', true);
   else if (action === 'connect-website') openWebsite();
   else if (action === 'create-course') editCourse();
@@ -163,7 +165,7 @@ function menu(action: string) {
       store.navigate('all');
       break;
     case 'plans':
-      store.navigate('plans');
+      void ui.openSchedule();
       break;
     case 'ai':
       store.navigate('assistant');
@@ -291,7 +293,7 @@ onUnmounted(() => {
         >
           <RefreshCw :size="17" :class="{ spinning: store.busy }" />
         </button>
-        <WorkspaceToolbar @action="toolbarAction" />
+        <AppearanceHost /><WorkspaceToolbar @action="toolbarAction" />
       </div>
     </div>
     <div v-if="store.snapshot" :key="store.workspaceID" class="app-body">

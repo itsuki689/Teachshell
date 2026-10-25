@@ -217,7 +217,7 @@ try {
     const actions = ['schedule', 'allMaterials', 'favorites', 'recent', 'homework', 'pendingTasks'];
     await replaceActions(actions);
     for (const [action, heading] of [
-      ['schedule', '计划列表'],
+      ['schedule', '计划'],
       ['allMaterials', '全部资料'],
       ['favorites', '我的收藏'],
       ['recent', '最近打开'],

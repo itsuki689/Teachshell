@@ -1,3 +1,4 @@
+import type { AppearancePatch } from './appearance';
 export type { AssignmentPreview } from '../electron/services/website/assignment-sync';
 import type { AssignmentPreview } from '../electron/services/website/assignment-sync';
 export type { LoginStatus } from '../electron/services/website/login-session';
@@ -109,6 +110,7 @@ export interface DesktopAPI {
   rememberWebsiteLogin(enabled: boolean): Promise<LoginStatus>;
   retryWebsiteLogin(): Promise<LoginStatus>;
   onWebsiteLogin(callback: (status: LoginStatus) => void): () => void;
+  saveAppearance(input: AppearancePatch, guard: WorkspaceGuard): Promise<Snapshot>;
   saveToolbarSettings(actions: string[], guard: WorkspaceGuard): Promise<Snapshot>;
   checkWebsiteBatch(input?: BatchCheckInput): Promise<BatchReview>;
   applyWebsiteBatch(input: BatchApplyInput): Promise<BatchApplyResult>;

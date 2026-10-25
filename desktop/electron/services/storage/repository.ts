@@ -1,3 +1,5 @@
+import { validateAppearancePatch } from '../../../shared/appearance.ts';
+import type { AppearancePatch } from '../../../shared/appearance.ts';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -168,6 +170,17 @@ export class Repository {
   }
   restoreIgnoredTeachingItems(id: string) {
     return this.mutate((state) => teaching.restoreIgnoredTeachingItems(state, id));
+  }
+  saveAppearance(input: AppearancePatch, expected?: string) {
+    const patch = validateAppearancePatch(input);
+    return this.mutate((state) => {
+      if (expected !== undefined && digest(JSON.stringify(state)) !== expected)
+        throw new Error('资料库已变化，请重新调整外观');
+      const transition = patch.appearanceTransition;
+      const previous = state.appearanceTransition as Record<string, unknown> | undefined;
+      Object.assign(state, patch);
+      if (transition) state.appearanceTransition = { ...previous, ...transition };
+    });
   }
   saveToolbarSettings(actions: string[], expected?: string) {
     return this.mutate((state) => {

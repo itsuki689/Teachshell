@@ -71,6 +71,8 @@ async function launch() {
 }
 async function goPlans() {
   await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
+  if (await page.getByRole('button', { name: '计划列表', exact: true }).isVisible())
+    await page.getByRole('button', { name: '计划列表', exact: true }).click();
 }
 async function switchLibrary(target) {
   await dialogFiles([target]);
@@ -358,6 +360,7 @@ try {
       await page.getByLabel('课表周次', { exact: true }).fill('4');
       await sidebarCourse(courseA.name).click();
       await goPlans();
+      await page.getByRole('button', { name: '计划月历视图', exact: true }).click();
       assert.match(await page.getByLabel('选中日期安排', { exact: true }).innerText(), /9月30日/);
       await page.getByRole('button', { name: '查看课表', exact: true }).click();
       await assertActive('课表时间网格');
@@ -385,6 +388,12 @@ try {
             exact: true,
           })
           .click();
+        await page.waitForFunction(
+          (theme) =>
+            document.documentElement.dataset.theme === theme &&
+            !document.querySelector('.appearance-curtain'),
+          theme,
+        );
         await sidebarCourse(courseA.name).click();
         await page.getByRole('button', { name: '列表视图', exact: true }).click();
         await page.locator('.materials-table tbody tr[data-browser-id]').last().click();
@@ -401,6 +410,7 @@ try {
           [width, height, width, height],
         );
         await goPlans();
+        await page.getByRole('button', { name: '计划月历视图', exact: true }).click();
         await page.screenshot({
           path: path.join(evidence, `teachshell-ui-parity-calendar-${theme}.png`),
         });
@@ -421,6 +431,8 @@ try {
   await check(
     'New workspace identities reset dates and semester, while safe display preferences survive switching and restart',
     async () => {
+      await goPlans();
+      await page.getByRole('button', { name: '计划月历视图', exact: true }).click();
       await sidebarCourse(courseA.name).click();
       await page.getByRole('button', { name: '封面视图', exact: true }).click();
       await page.getByLabel('学期', { exact: true }).selectOption('2026 秋季');
@@ -455,6 +467,7 @@ try {
         libraryLayout: 'grid',
         planMode: 'month',
         timetableMode: 'timeline',
+        scheduleMode: 'month',
       });
       await app.close();
       await launch();

@@ -9,6 +9,7 @@ const subscribe = (channel: string, callback: (value: any) => void) => {
 };
 const api: DesktopAPI = {
   appInfo: () => invoke('appInfo'),
+  saveAppearance: (input, guard) => invoke('saveAppearance', input, guard),
   saveToolbarSettings: (actions, guard) => invoke('saveToolbarSettings', actions, guard),
   checkWebsiteBatch: (input) => invoke('checkWebsiteBatch', input),
   applyWebsiteBatch: (input) => invoke('applyWebsiteBatch', input),

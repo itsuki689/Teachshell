@@ -157,6 +157,7 @@ try {
     'Plan list retains a permanent detail pane; month and agenda controls occupy the right side',
     async () => {
       await nav('计划');
+      if (await button('计划列表').isVisible()) await button('计划列表').click();
       await button('计划列表视图').click();
       const detail = await page.locator('.plan-detail').boundingBox();
       assert.ok(detail.width >= 230 && detail.width <= 290);
@@ -213,8 +214,14 @@ try {
       await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0].setBounds({ width: 1020, height: 680 }),
       );
+      await page.waitForFunction(
+        () =>
+          document.documentElement.dataset.theme === 'dark' &&
+          !document.querySelector('.appearance-curtain'),
+      );
       await capture('settings-dark-minimum');
       await nav('计划');
+      if (await button('计划列表').isVisible()) await button('计划列表').click();
       await button('计划月历视图').click();
       await capture('month-dark-minimum');
       await button('查看课表').click();

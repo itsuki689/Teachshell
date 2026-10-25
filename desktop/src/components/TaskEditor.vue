@@ -9,7 +9,11 @@ import { shanghaiDayKey } from '../../shared/timetable';
 import Modal from './Modal.vue';
 import { useLibrary } from '../stores/library';
 import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
-const props = defineProps<{ task?: StudyTask; occurrence?: PlanOccurrence }>(),
+const props = defineProps<{
+    task?: StudyTask;
+    occurrence?: PlanOccurrence;
+    initialDate?: string;
+  }>(),
   emit = defineEmits<{ close: [] }>(),
   store = useLibrary();
 const scope = ref<PlanEditScope>(
@@ -40,10 +44,16 @@ function makeForm(task?: StudyTask) {
     kind: source?.kind ?? '任务',
     courseID: source?.courseID ?? store.courseID ?? '',
     materialIDs: [...(source?.materialIDs ?? [])],
-    startsAt: local(source?.startsAt),
+    startsAt: local(
+      source?.startsAt ?? (props.initialDate ? props.initialDate + 'T09:00:00+08:00' : undefined),
+    ),
     endsAt: local(
       source?.endsAt ??
-        (source ? (dateMs(source.startsAt) - SWIFT_EPOCH_MS) / 1000 + 3600 : swiftNow() + 3600),
+        (source
+          ? (dateMs(source.startsAt) - SWIFT_EPOCH_MS) / 1000 + 3600
+          : props.initialDate
+            ? props.initialDate + 'T10:00:00+08:00'
+            : swiftNow() + 3600),
     ),
     hasEnd: source?.endsAt != null,
     hasExecutionTime: source?.hasExecutionTime ?? true,

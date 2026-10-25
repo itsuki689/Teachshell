@@ -298,6 +298,8 @@ try {
   );
   await check('Create plan and mark completed through visible controls', async () => {
     await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
+    if (await page.getByRole('button', { name: '计划列表', exact: true }).isVisible())
+      await page.getByRole('button', { name: '计划列表', exact: true }).click();
     await page.getByRole('button', { name: '新建计划', exact: true }).first().click();
     const pd = page.getByRole('dialog', { name: '新建计划' });
     await pd.getByLabel('计划名称', { exact: true }).fill('UI兼容计划');
@@ -648,7 +650,8 @@ try {
         dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
       }, fixture);
       await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
-      await page.getByRole('button', { name: '查看课表', exact: true }).click();
+      if (await page.getByRole('button', { name: '查看课表', exact: true }).isVisible())
+        await page.getByRole('button', { name: '查看课表', exact: true }).click();
       await page.getByRole('button', { name: '导入课表 JSON', exact: true }).first().click();
       const settings = page.getByRole('dialog', { name: '学期设置' });
       await settings.waitFor();
@@ -668,6 +671,7 @@ try {
       );
       assert.equal(saved.state.timetableTerms[0].meetings.length, 6);
       assert.equal(saved.state.courses.length, 7);
+      await page.getByRole('button', { name: '课表课程列表', exact: true }).click();
       await page.getByLabel('课表周次', { exact: true }).fill('1');
       await page.locator('.week-day').nth(0).getByText('高等数学 A', { exact: true }).waitFor();
       assert.equal(await page.locator('.timetable-event').count(), 4);
@@ -758,7 +762,9 @@ try {
         await agenda.getByRole('button', { name: '查看月历课程 高等数学 A', exact: true }).count(),
         0,
       );
-      await page.getByRole('button', { name: '查看课表', exact: true }).click();
+      if (await page.getByRole('button', { name: '查看课表', exact: true }).isVisible())
+        await page.getByRole('button', { name: '查看课表', exact: true }).click();
+      await page.getByRole('button', { name: '课表课程列表', exact: true }).click();
       await page.getByLabel('课表周次', { exact: true }).fill('1');
       await original.getByRole('checkbox', { name: '月历显示 高等数学 A', exact: true }).check();
       await until(
