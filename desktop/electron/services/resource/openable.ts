@@ -1,4 +1,47 @@
 import path from 'node:path';
 /** Opening an unknown extension may execute an OS handler. Only document/media formats are launched. */
-const allowed=new Set(['pdf','doc','docx','pages','rtf','txt','md','epub','ppt','pptx','key','xls','xlsx','csv','numbers','jpg','jpeg','png','heic','gif','webp','tiff','svg','bmp','mp4','mov','m4v','mkv','webm','mp3','m4a','wav','aac','flac','ogg','zip','rar','7z','tar','gz']);
-export function canOpenDocument(file:string):boolean{return allowed.has(path.extname(file).slice(1).toLowerCase());}
+const allowed = new Set([
+  'pdf',
+  'doc',
+  'docx',
+  'pages',
+  'rtf',
+  'txt',
+  'md',
+  'epub',
+  'ppt',
+  'pptx',
+  'key',
+  'xls',
+  'xlsx',
+  'csv',
+  'numbers',
+  'jpg',
+  'jpeg',
+  'png',
+  'heic',
+  'gif',
+  'webp',
+  'tiff',
+  'svg',
+  'bmp',
+  'mp4',
+  'mov',
+  'm4v',
+  'mkv',
+  'webm',
+  'mp3',
+  'm4a',
+  'wav',
+  'aac',
+  'flac',
+  'ogg',
+  'zip',
+  'rar',
+  '7z',
+  'tar',
+  'gz',
+]);
+export function canOpenDocument(file: string): boolean {
+  return allowed.has(path.extname(file).slice(1).toLowerCase());
+}

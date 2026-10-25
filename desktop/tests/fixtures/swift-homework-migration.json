@@ -1,0 +1,165 @@
+{
+  "entries" : [
+    {
+      "dataBase64" : "b2xkIGFuc3dlcg==",
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/实验/answer.txt"
+    },
+    {
+      "dataBase64" : "c2FtZQ==",
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/实验/shared.txt"
+    },
+    {
+      "dataBase64" : "aGlkZGVuIGNvbmZpZw==",
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/实验/.config"
+    },
+    {
+      "dataBase64" : "cHJpbnQoJ+aXp+S7o+eggScpCg==",
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/代码/main.py"
+    },
+    {
+      "dataBase64" : "AP+ACio=",
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/实验/二进制🌊.bin"
+    },
+    {
+      "directory" : true,
+      "path" : "HomeworkFiles/11111111-2222-4333-8444-000000000101/空目录"
+    },
+    {
+      "dataBase64" : "cHVibGljIGhvbWV3b3Jr",
+      "path" : "HomeworkFiles/Unassigned/public.txt"
+    },
+    {
+      "dataBase64" : "bmV3IGFuc3dlcg==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/answer.txt"
+    },
+    {
+      "dataBase64" : "c2FtZQ==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/shared.txt"
+    },
+    {
+      "dataBase64" : "a2VlcCBmaWxl",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/代码"
+    },
+    {
+      "dataBase64" : "b2xkIGNvdXJzZSBwYXRo",
+      "path" : "files/旧数学 [11111111-2222-4333-8444-000000000101]/作业/extra.txt"
+    }
+  ],
+  "expected" : [
+    {
+      "directory" : true,
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业"
+    },
+    {
+      "dataBase64" : "b2xkIGNvdXJzZSBwYXRo",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/extra.txt",
+      "sha256" : "eefdfae65c248f9b0dafcbc266aa60c0668aa23d9f24819a2c14e32ccec93f80"
+    },
+    {
+      "dataBase64" : "a2VlcCBmaWxl",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/代码",
+      "sha256" : "72275c27fee59ee01a8867c709b526c017aec1ec50039c60ada287b17725cfeb"
+    },
+    {
+      "directory" : true,
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/代码 2"
+    },
+    {
+      "dataBase64" : "cHJpbnQoJ+aXp+S7o+eggScpCg==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/代码 2/main.py",
+      "sha256" : "c9223ec3d59f38df2a64bec165dbb6a338eaaf6c246b8404eb03a96eba0749c5"
+    },
+    {
+      "directory" : true,
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验"
+    },
+    {
+      "dataBase64" : "aGlkZGVuIGNvbmZpZw==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/.config",
+      "sha256" : "ebac05bd8e65185de551fa000a5a6f85faeee978a2b88435d5c2cfb99e9d0bf3"
+    },
+    {
+      "dataBase64" : "b2xkIGFuc3dlcg==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/answer 2.txt",
+      "sha256" : "0caf53ed48d9c8a82a7a1a9e605d0b0439a65e21f21bed26383c01bbe0910953"
+    },
+    {
+      "dataBase64" : "bmV3IGFuc3dlcg==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/answer.txt",
+      "sha256" : "d26194599f070036322237588caec75d8d5dda6d8ca76212f28cea305435838f"
+    },
+    {
+      "dataBase64" : "c2FtZQ==",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/shared.txt",
+      "sha256" : "0967115f2813a3541eaef77de9d9d5773f1c0c04314b0bbfe4ff3b3b1c55b5d5"
+    },
+    {
+      "dataBase64" : "AP+ACio=",
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/实验/二进制🌊.bin",
+      "sha256" : "190435cbc5b48d9f679b7fd5ec6f394f28d85d30bbf92c92acf938918cd69606"
+    },
+    {
+      "directory" : true,
+      "path" : "files/数学 [11111111-2222-4333-8444-000000000101]/作业/空目录"
+    },
+    {
+      "directory" : true,
+      "path" : "files/未分类/作业"
+    },
+    {
+      "dataBase64" : "cHVibGljIGhvbWV3b3Jr",
+      "path" : "files/未分类/作业/public.txt",
+      "sha256" : "1f202647946d42952d477891a5e11af1e1be971078bb19112bd517b2b776417f"
+    }
+  ],
+  "generator" : "GenerateHomeworkFixture.swift with unchanged production LibraryRepository",
+  "library" : {
+    "accentColor" : "#39786B",
+    "appearance" : "system",
+    "appearanceTransition" : {
+      "colorHex" : "#808080",
+      "colorMode" : "solid",
+      "direction" : "top",
+      "isEnabled" : true,
+      "speed" : 1
+    },
+    "courses" : [
+      {
+        "colorHex" : "#39786B",
+        "id" : "11111111-2222-4333-8444-000000000101",
+        "isArchived" : false,
+        "name" : "数学",
+        "semester" : "2026 秋季",
+        "teacher" : "测试教师"
+      }
+    ],
+    "customCategories" : [
+
+    ],
+    "materialFolders" : [
+
+    ],
+    "materials" : [
+
+    ],
+    "schemaVersion" : 8,
+    "showCourseBorders" : true,
+    "tasks" : [
+
+    ],
+    "teachingConnections" : [
+
+    ],
+    "timetableTerms" : [
+
+    ],
+    "toolbarSettings" : {
+      "actions" : [
+        "update",
+        "settings",
+        "import",
+        "create"
+      ]
+    }
+  }
+}

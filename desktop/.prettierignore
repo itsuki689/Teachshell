@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-electron/
+release/
+electron/services/website/scripts/
+tests/fixtures/
+electron/services/mcp/catalog.json

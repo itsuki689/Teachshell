@@ -6,20 +6,20 @@
 
 `Package.swift` 有四个生产 target：`TeachshelfCore`（业务、JSON 与文件）、`TeachshelfMCPKit`（协议/HTTP）、`TeachshelfMCP`（stdio 转发程序）、`Teachshelf`（SwiftUI/AppKit 应用）。包最低 macOS 14，Swift 6 工具链、Swift 5 语言模式；Core 仍使用 Darwin/CryptoKit，不能直接声称可在 Windows/Linux 编译。
 
-| 功能 | 阅读的实现 | 已有行为 | Electron 映射及验收边界 |
-| --- | --- | --- | --- |
-| 窗口与导航 | `ContentView.swift`、`TeachshelfApp.swift`、`SidebarNavigation.swift`、`WorkspaceNavigation.swift` | 默认 1260×800，最小 1020×680；侧栏宽 210–300，默认 235；学期选择、全部/收藏/最近/未分类/作业/待办六个快捷入口；计划与 AI 助手；当前/归档/全部课程；底部状态栏；最多 60 个会话导航历史（包含当前文件夹） | Vue 布局 + Pinia 导航；系统菜单用 `CmdOrCtrl`；课程/文件夹导航不能丢失选择与未保存编辑 |
-| 课程 | `CourseSidebarRow.swift`、`Editors.swift`、`Repository/LibraryRepository+Courses.swift` | 新建、名称/学期/教师/颜色编辑、归档/恢复；改名同步实际课程目录；删除后保留资料和计划，并解除关联/保留课程名快照 | 主进程课程 service；不能以删除目录替代删除课程记录 |
-| 资料列表和封面 | `LibraryWorkspace.swift`、`MaterialBrowser.swift`、`MaterialListView.swift`、`MaterialCoverCard.swift` | 列表/封面切换；搜索标题、课程、标签和备注；格式/类别过滤；全局最近添加/名称/最近打开/大小排序；课程内名称自然顺序/时间/自定义顺序；嵌套文件夹、面包屑、展开折叠；单选右侧信息抽屉不改变表格视口 | Vue 组件和纯数据排序；应测试中文数字自然排序、大小写和嵌套路径，而不只显示文件名 |
-| 资料编辑与导入 | `MaterialManagement.swift`、`Editors.swift`、`Repository/LibraryRepository+Materials.swift` | 复制入库或外部引用、批量导入、收藏、分类/标签/备注、显示标题与实际文件名分开；跨课程/文件夹移动；分组与解散；移除记录保留文件；导出；外部拖入和资料内拖动 | 主进程完成 dialog、文件操作、事务；preload 只暴露明确动作，Renderer 不接受任意路径读写能力 |
-| 预览、打开、显示 | `PreviewService.swift` | Quick Look 预览与系统默认应用打开；QLThumbnailGenerator 缩略图缓存 48 项，键含路径/mtime/size | PDF/图片/音视频限定 MIME 预览 + 系统 `openPath`/`showItemInFolder`；HTML/SVG 不得作为有本地 IPC 权限的页面执行；Office/Quick Look 等价性需另验收 |
-| 作业文件夹 | `HomeworkWorkspace.swift`、`Repository/LibraryRepository+Homework.swift` | 独立真实目录浏览、上级/刷新、复制添加文件和目录、重命名、新建目录、打开/显示、课程外部目录挂载/取消挂载 | 不能用普通课件列表冒充作业 workspace；外部挂载路径在迁移到另一系统后需重新定位 |
-| 文件监听 | `LibraryFileWatcher.swift`、`Repository/LibraryRepository+FileSystemSync.swift` | FSEvents 递归监听 `files/`，0.35 秒合并；AppStore 再 400ms 去抖，busy 时延后，失败最多重试 3 次；窗口激活时也同步；实际身份识别在 Repository | Node watcher 只发变更信号，Repository 负责扫描/身份映射；必须测试外部移动、重命名、缺失恢复和重复事件 |
-| 计划列表 | `TaskWorkspace.swift`、`TaskEditor.swift` | 全部/待安排/未完成/已完成/取消/归档筛选、课程/文本筛选、多选删除、详情、关联资料、状态/归档、撤销；搜索包含重复计划例外内容 | 计划列表服务先保持字段，不将未排期计划伪造成有执行时间的事件 |
-| 周/月/日程 | `ScheduleWorkspace.swift`、`ScheduleWeekView.swift`、`ScheduleMonthView.swift`、`ScheduleAgendaView.swift`、`ScheduleEventEditing.swift`、`PlanPresentation.swift` | 三种日程视图，右栏学期/模式/日期/当天安排；执行和截止是独立事件；重复规则与单次/未来变更；固定计划/活动计划；拖动、键盘编辑、锁定调整、撤销 | 需要完整时间/重复展开算法和冲突测试；仅展示 tasks 表不等于日历迁移完成 |
-| 本科课表 | `NJUWebImporter.swift`、`NJUImportSheet.swift`、`TimetableModels.swift`、`Repository/LibraryRepository+Timetable.swift` | 官方网页登录 DOM 解析或离线 JSON 导入；多表选择、学期/周一/周数/作息设置；课程时段和自由时间；调整/取消/恢复课程安排 | 复用随包 JS 与 JSON 模型；Chromium 页面隔离；时区继续使用 Asia/Shanghai |
-| 全局搜索与快捷操作 | `WorkspaceSearch.swift`、`WorkspaceToolbar.swift`、`TeachshelfApp.swift` | 空格分词 AND 搜索课程/资料/计划，各最多 6 条，精确标题优先；跳转会清除遮挡筛选；自定义顶栏；⌘N 新建、⌘O 导入、⌘S 保存、⌘K 搜索、⌘[/] 前进后退、⌘Return 打开、⌘Y 预览 | 菜单与 Renderer action 用同一入口；Win/Linux 映射 Ctrl |
-| 设置与备份 | `SettingsWorkspace.swift`、`AppearancePreference.swift`、`ToolbarSettingsControl.swift`、`Repository/LibraryRepository+Backups.swift` | 外观/顶栏/资料库/备份/AI/MCP/关于；切换资料库、复制迁移（原库保留）、备份含未索引库内文件；恢复前内容进入 `History`；外部引用仅备份路径 | 用户配置与资料库 JSON 分开；备份应验证文件内容与安全路径，不能只导出 library.json |
+| 功能               | 阅读的实现                                                                                                                                                         | 已有行为                                                                                                                                                                                                | Electron 映射及验收边界                                                                                                                          |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 窗口与导航         | `ContentView.swift`、`TeachshelfApp.swift`、`SidebarNavigation.swift`、`WorkspaceNavigation.swift`                                                                 | 默认 1260×800，最小 1020×680；侧栏宽 210–300，默认 235；学期选择、全部/收藏/最近/未分类/作业/待办六个快捷入口；计划与 AI 助手；当前/归档/全部课程；底部状态栏；最多 60 个会话导航历史（包含当前文件夹） | Vue 布局 + Pinia 导航；系统菜单用 `CmdOrCtrl`；课程/文件夹导航不能丢失选择与未保存编辑                                                           |
+| 课程               | `CourseSidebarRow.swift`、`Editors.swift`、`Repository/LibraryRepository+Courses.swift`                                                                            | 新建、名称/学期/教师/颜色编辑、归档/恢复；改名同步实际课程目录；删除后保留资料和计划，并解除关联/保留课程名快照                                                                                         | 主进程课程 service；不能以删除目录替代删除课程记录                                                                                               |
+| 资料列表和封面     | `LibraryWorkspace.swift`、`MaterialBrowser.swift`、`MaterialListView.swift`、`MaterialCoverCard.swift`                                                             | 列表/封面切换；搜索标题、课程、标签和备注；格式/类别过滤；全局最近添加/名称/最近打开/大小排序；课程内名称自然顺序/时间/自定义顺序；嵌套文件夹、面包屑、展开折叠；单选右侧信息抽屉不改变表格视口         | Vue 组件和纯数据排序；应测试中文数字自然排序、大小写和嵌套路径，而不只显示文件名                                                                 |
+| 资料编辑与导入     | `MaterialManagement.swift`、`Editors.swift`、`Repository/LibraryRepository+Materials.swift`                                                                        | 复制入库或外部引用、批量导入、收藏、分类/标签/备注、显示标题与实际文件名分开；跨课程/文件夹移动；分组与解散；移除记录保留文件；导出；外部拖入和资料内拖动                                               | 主进程完成 dialog、文件操作、事务；preload 只暴露明确动作，Renderer 不接受任意路径读写能力                                                       |
+| 预览、打开、显示   | `PreviewService.swift`                                                                                                                                             | Quick Look 预览与系统默认应用打开；QLThumbnailGenerator 缩略图缓存 48 项，键含路径/mtime/size                                                                                                           | PDF/图片/音视频限定 MIME 预览 + 系统 `openPath`/`showItemInFolder`；HTML/SVG 不得作为有本地 IPC 权限的页面执行；Office/Quick Look 等价性需另验收 |
+| 作业文件夹         | `HomeworkWorkspace.swift`、`Repository/LibraryRepository+Homework.swift`                                                                                           | 独立真实目录浏览、上级/刷新、复制添加文件和目录、重命名、新建目录、打开/显示、课程外部目录挂载/取消挂载                                                                                                 | 不能用普通课件列表冒充作业 workspace；外部挂载路径在迁移到另一系统后需重新定位                                                                   |
+| 文件监听           | `LibraryFileWatcher.swift`、`Repository/LibraryRepository+FileSystemSync.swift`                                                                                    | FSEvents 递归监听 `files/`，0.35 秒合并；AppStore 再 400ms 去抖，busy 时延后，失败最多重试 3 次；窗口激活时也同步；实际身份识别在 Repository                                                            | Node watcher 只发变更信号，Repository 负责扫描/身份映射；必须测试外部移动、重命名、缺失恢复和重复事件                                            |
+| 计划列表           | `TaskWorkspace.swift`、`TaskEditor.swift`                                                                                                                          | 全部/待安排/未完成/已完成/取消/归档筛选、课程/文本筛选、多选删除、详情、关联资料、状态/归档、撤销；搜索包含重复计划例外内容                                                                             | 计划列表服务先保持字段，不将未排期计划伪造成有执行时间的事件                                                                                     |
+| 周/月/日程         | `ScheduleWorkspace.swift`、`ScheduleWeekView.swift`、`ScheduleMonthView.swift`、`ScheduleAgendaView.swift`、`ScheduleEventEditing.swift`、`PlanPresentation.swift` | 三种日程视图，右栏学期/模式/日期/当天安排；执行和截止是独立事件；重复规则与单次/未来变更；固定计划/活动计划；拖动、键盘编辑、锁定调整、撤销                                                             | 需要完整时间/重复展开算法和冲突测试；仅展示 tasks 表不等于日历迁移完成                                                                           |
+| 本科课表           | `NJUWebImporter.swift`、`NJUImportSheet.swift`、`TimetableModels.swift`、`Repository/LibraryRepository+Timetable.swift`                                            | 官方网页登录 DOM 解析或离线 JSON 导入；多表选择、学期/周一/周数/作息设置；课程时段和自由时间；调整/取消/恢复课程安排                                                                                    | 复用随包 JS 与 JSON 模型；Chromium 页面隔离；时区继续使用 Asia/Shanghai                                                                          |
+| 全局搜索与快捷操作 | `WorkspaceSearch.swift`、`WorkspaceToolbar.swift`、`TeachshelfApp.swift`                                                                                           | 空格分词 AND 搜索课程/资料/计划，各最多 6 条，精确标题优先；跳转会清除遮挡筛选；自定义顶栏；⌘N 新建、⌘O 导入、⌘S 保存、⌘K 搜索、⌘[/] 前进后退、⌘Return 打开、⌘Y 预览                                    | 菜单与 Renderer action 用同一入口；Win/Linux 映射 Ctrl                                                                                           |
+| 设置与备份         | `SettingsWorkspace.swift`、`AppearancePreference.swift`、`ToolbarSettingsControl.swift`、`Repository/LibraryRepository+Backups.swift`                              | 外观/顶栏/资料库/备份/AI/MCP/关于；切换资料库、复制迁移（原库保留）、备份含未索引库内文件；恢复前内容进入 `History`；外部引用仅备份路径                                                                 | 用户配置与资料库 JSON 分开；备份应验证文件内容与安全路径，不能只导出 library.json                                                                |
 
 主要 AppKit 专属边界包括 NSOpenPanel/NSSavePanel、NSAlert、NSPasteboard、NSWorkspace、QLPreviewPanel、QLThumbnailGenerator、WKWebView/WKDownload、FSEvents、Keychain、窗口关闭守卫。所有系统侧替代均应留在 Electron main/preload 明确桥接中。
 
@@ -49,33 +49,33 @@
 
 所有 object schema 均禁止未定义字段；分页 `offset` 为 0..1,000,000，`limit` 为 1..100（服务默认 50）。UUID 还需业务层校验。nullable 与省略语义不同：省略筛选表示全部，`null` 表示未分类/根层。
 
-| 工具 | 权限 | 参数/关键语义 |
-| --- | --- | --- |
-| `context` | 读 | 无参数；库 ID、北京时间、课程与工具规则；应用入口合并 `library_revision` 和类别 |
-| `list_plans` | 读 | query/course_id/status/offset/limit；默认 active，返回 id/revision/摘要 |
-| `get_plan` | 读 | id 必需，可选 original_date；返回整组 revision 与该次有效内容 |
-| `list_occurrences` | 读 | from/to 必需，含端点，最多 31 天；可选 course_id；展开执行/DDL 与临时变更 |
-| `search_materials` | 读 | query 必需，可选 course_id；只返回可关联资料 ID，不返回文件内容/磁盘路径 |
-| `create_plan` | 写 | library_id/request_id/fields 必需；fields.title 必需；request_id 为新计划 ID；默认没有执行时间；返回 change_id |
-| `update_plan` | 写 | library_id/id/expected_revision/patch 必需；scope 默认 all；thisOccurrence/thisAndFuture 需要 original_date；单次不可改 repeat_rule/origin |
-| `set_plan_status` | 写 | 上述目标 + action；complete/reopen/cancel/restore/archive/unarchive；每种 action 允许的范围不同 |
-| `delete_plan` | 写 | library_id/id/expected_revision；scope all/thisOccurrence/thisAndFuture；仅本次相当于取消该次 |
-| `undo_change` | 写 | library_id/change_id；当前会话最近 50 次计划变更；若对象后续改变则拒绝覆盖 |
-| `list_courses` | 读 | query/archived/offset/limit；默认含归档，返回数量统计与 library_revision |
-| `get_course` | 读 | id 必需；课程详情与资料/文件夹计数 |
-| `create_course` | 写 | 库 guards + request_id/fields；fields.name 必需；重复 request_id 拒绝，不重复创建 |
-| `update_course` | 写 | 库 guards + id/patch；name/semester/teacher/color_hex/archived；物理目录随改名 |
-| `delete_course` | 写 | 库 guards + id；解除教学连接、资料移未分类、保留计划与真实文件；不能用计划 undo 撤销 |
-| `list_materials` | 读 | query/course_id/folder_id/recursive/category/favorite/missing/offset/limit；默认当前层，可递归 |
-| `get_material` | 读 | id 必需；完整元数据与关联计划 ID；不泄露外部原文件路径 |
-| `update_material` | 写 | 库 guards + id/patch；title/category/tags/notes/favorite/filename；title 仅显示标题；filename 仅库内非缺失文件，必须保留扩展名 |
-| `move_materials` | 写 | 库 guards + ids/course_id/folder_id；原子批量 <=100 个，非空无重复；引用文件原地保留 |
-| `remove_materials` | 写 | 库 guards + ids；移除记录并解除计划关联，保留文件；不能计划 undo |
-| `list_material_folders` | 读 | course_id/parent_id/offset/limit；路径、层级、直接和递归计数 |
-| `get_material_folder` | 读 | id 必需；详情与 revision |
-| `create_material_folder` | 写 | 库 guards + request_id/name/course_id 必需；parent_id/color_hex 可选 |
-| `update_material_folder` | 写 | 库 guards + id/patch；name/color_hex/course_id/parent_id；子树一起移动，换课程且未指定 parent 则移新课程根；禁止循环/同层重名 |
-| `dissolve_material_folder` | 写 | 库 guards + id；整个子树解散，资料回上层，真实文件保留 |
+| 工具                       | 权限 | 参数/关键语义                                                                                                                              |
+| -------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `context`                  | 读   | 无参数；库 ID、北京时间、课程与工具规则；应用入口合并 `library_revision` 和类别                                                            |
+| `list_plans`               | 读   | query/course_id/status/offset/limit；默认 active，返回 id/revision/摘要                                                                    |
+| `get_plan`                 | 读   | id 必需，可选 original_date；返回整组 revision 与该次有效内容                                                                              |
+| `list_occurrences`         | 读   | from/to 必需，含端点，最多 31 天；可选 course_id；展开执行/DDL 与临时变更                                                                  |
+| `search_materials`         | 读   | query 必需，可选 course_id；只返回可关联资料 ID，不返回文件内容/磁盘路径                                                                   |
+| `create_plan`              | 写   | library_id/request_id/fields 必需；fields.title 必需；request_id 为新计划 ID；默认没有执行时间；返回 change_id                             |
+| `update_plan`              | 写   | library_id/id/expected_revision/patch 必需；scope 默认 all；thisOccurrence/thisAndFuture 需要 original_date；单次不可改 repeat_rule/origin |
+| `set_plan_status`          | 写   | 上述目标 + action；complete/reopen/cancel/restore/archive/unarchive；每种 action 允许的范围不同                                            |
+| `delete_plan`              | 写   | library_id/id/expected_revision；scope all/thisOccurrence/thisAndFuture；仅本次相当于取消该次                                              |
+| `undo_change`              | 写   | library_id/change_id；当前会话最近 50 次计划变更；若对象后续改变则拒绝覆盖                                                                 |
+| `list_courses`             | 读   | query/archived/offset/limit；默认含归档，返回数量统计与 library_revision                                                                   |
+| `get_course`               | 读   | id 必需；课程详情与资料/文件夹计数                                                                                                         |
+| `create_course`            | 写   | 库 guards + request_id/fields；fields.name 必需；重复 request_id 拒绝，不重复创建                                                          |
+| `update_course`            | 写   | 库 guards + id/patch；name/semester/teacher/color_hex/archived；物理目录随改名                                                             |
+| `delete_course`            | 写   | 库 guards + id；解除教学连接、资料移未分类、保留计划与真实文件；不能用计划 undo 撤销                                                       |
+| `list_materials`           | 读   | query/course_id/folder_id/recursive/category/favorite/missing/offset/limit；默认当前层，可递归                                             |
+| `get_material`             | 读   | id 必需；完整元数据与关联计划 ID；不泄露外部原文件路径                                                                                     |
+| `update_material`          | 写   | 库 guards + id/patch；title/category/tags/notes/favorite/filename；title 仅显示标题；filename 仅库内非缺失文件，必须保留扩展名             |
+| `move_materials`           | 写   | 库 guards + ids/course_id/folder_id；原子批量 <=100 个，非空无重复；引用文件原地保留                                                       |
+| `remove_materials`         | 写   | 库 guards + ids；移除记录并解除计划关联，保留文件；不能计划 undo                                                                           |
+| `list_material_folders`    | 读   | course_id/parent_id/offset/limit；路径、层级、直接和递归计数                                                                               |
+| `get_material_folder`      | 读   | id 必需；详情与 revision                                                                                                                   |
+| `create_material_folder`   | 写   | 库 guards + request_id/name/course_id 必需；parent_id/color_hex 可选                                                                       |
+| `update_material_folder`   | 写   | 库 guards + id/patch；name/color_hex/course_id/parent_id；子树一起移动，换课程且未指定 parent 则移新课程根；禁止循环/同层重名              |
+| `dissolve_material_folder` | 写   | 库 guards + id；整个子树解散，资料回上层，真实文件保留                                                                                     |
 
 库 guards 指 `library_id` + `expected_library_revision`。计划编辑是单计划 revision；课程/资料/文件夹编辑是整库相关数据 revision。库 ID 是规范化、解析符号链接后的根路径 SHA-256；revision 是规范化 JSON 的 SHA-256（`overriddenFields` 排序）。整库 revision 包含课程、资料、文件夹、计划、类别、网站连接、课表，忽略 UI 偏好和 `lastOpenedAt`。跨语言实现若改变 canonical JSON 的数字/Unicode/可空字段，必须明确 revision 不承诺跨进程缓存可复用，客户端需重新查询。
 
@@ -145,10 +145,22 @@ Moodle 输出 `TeachingPage` 的 `kind/accountID/courseID/title/activities/files
 
 `desktop/electron/services/ai/` 实现了真正的 Chat Completions SSE 增量解码，覆盖跨 UTF-8 字节、CRLF、事件和 tool arguments 分块；同时接受兼容服务返回的普通 JSON。支持停止、逐项写入确认、工具参数校验、请求/响应/循环上限、重定向拒绝，以及 `.desktop-chat.json` 原子持久化。保存消息/工具结果与完整 wire context，失败或中断丢弃不完整 wire 交换，保留已执行操作的可见记录；不保存 API 配置或密钥。旧 Swift 的内存聊天无法在重启后提取，不伪造导入记录。
 
-`desktop/electron/services/mcp/` 实现了回环 HTTP JSON-RPC 与真实 Repository 适配。原 Swift 工具目录保留为 catalog.json 基线，当前实际公开 **24 项**：15 个课程/资料/文件夹工具、context/list_plans/get_plan/search_materials、普通计划 create/update/status/delete/undo。未实现的 `list_occurrences` 不公开。计划写入的 schema 明确收窄为普通非重复活动计划、`scope=all`；固定计划、重复规则和单次例外写入明确拒绝；`get_plan` 暂不接受 `original_date`。因此不能将 24 项目录误解为完整日历行为等价。
+`desktop/electron/services/mcp/` 实现了回环 HTTP JSON-RPC 与真实 Repository 适配。原 Swift 工具目录保留为 catalog.json 基线，当前实际公开全部 **25 项**，schema 逐项与 Swift 导出值比较通过。`list_occurrences` 支持包含端点的 1–31 个上海自然日、最多 2000 个事件；执行和截止分别返回，保留整组 revision 与原始发生日。`get_plan original_date` 返回单次有效内容。计划写入接入已实现的日/周/月重复和 all/thisOccurrence/thisAndFuture 范围；单次禁止修改重复规则/类型，归档只允许整组，非取消状态禁止 thisAndFuture，与 Swift 协议一致。
 
-适配使用 Repository 的 `withMutationGuard`，在资料库串行事务内完成文件同步后再次检查 revision，避免 AI 等待确认期间或其他界面写入后覆盖新内容。整库 revision 排除外观偏好和 lastOpenedAt。返回 revision 使用 `desktop-v1:` 命名空间，复制迁移后客户端须重新查询，不能重用 Swift 缓存 revision。计划撤销仅保存本次服务会话最近 50 项，后续对象修改会阻止撤销覆盖。MCP stop 会等待已开始的工具事务结束。
+适配使用 Repository 的 `withMutationGuard`，在资料库串行事务内完成文件同步后再次检查 revision，避免 AI 等待确认期间或其他界面写入后覆盖新内容。整库 revision 排除外观偏好和 lastOpenedAt。返回 revision 使用 `desktop-v1:` 命名空间，复制迁移后客户端须重新查询，不能重用 Swift 缓存 revision。计划撤销仅保存本次服务会话最近 50 项；拆分操作保存全部受影响计划的 before/after，逐条比较当前内容，仅恢复这些 ID，保留其他计划的后续修改。撤销本身返回可再次撤销的 change_id。before 在实际事务检查时捕获，避免把排队期间无关 UI 修改错误纳入撤销。MCP stop 会等待已开始的工具事务结束。
 
 验证命令：`node --experimental-strip-types --test desktop/tests/ai.test.ts desktop/tests/mcp.test.ts`。测试覆盖真实本地 HTTP 流式工具回合、确认/拒绝/停止、历史重载/损坏/符号链接、secret 不落历史、Host/Origin/token/version/长度/重复头/通知防护、真实文件重命名/移动/移除保留内容、颜色清除、过期 revision/重复 request_id、RFC3339 时间、普通计划状态与冲突安全撤销。运行环境限制本地监听时需要在允许回环监听的测试环境运行，不能把 EPERM 当作业务测试通过。
 
 本轮安全复核另增加 `desktop/tests/security.test.ts`：验证 HTML/XHTML 登录结果拒绝、下载地址与每次重定向限制、失败临时文件清理及目标不覆盖、系统打开文件格式白名单、IPC sender/结构字段校验，以及 API Key 绑定完整规范化 Chat Completions endpoint（换 host/path 清除旧密钥）。`SettingsService` 串行保存设置与资料库路径，密钥绑定不匹配时不解密且保留原设置提示处理。测试只使用临时目录与模拟凭据，不访问真实钥匙串。AI、MCP、安全三个文件合计 **32/32 通过**；普通计划另实际关闭并重新打开 Repository 验证已保存内容，撤销历史按设计不跨服务重启。
+
+高级计划接入后的组合回归为 **100/100 通过**：AI 13、MCP 20、plans 26、Repository 25、作业 9、安全 7。新增覆盖包括原始发生日查询、单次移期后的定位、未来系列拆分、批量撤销/重做、任一拆分记录后改导致撤销拒绝、范围删除/状态规则，以及 AI 写入确认等待期间的真实 Repository revision 冲突保护。上述数量是该次组合命令的结果，不替代后续全套测试报告。
+
+最终 Swift 行为复核补充了目录操作的幂等保护：向已有文件夹重复设置原课程不改变父目录；重复移动资料到原容器保留手工排序与原存储路径；文件夹颜色修改保留已观测路径，重命名仍位于原物理父目录。新增 2 项真实 MCP 回归检查 `changed: false`、文件内容、inode、嵌套关系和未索引文件保留；MCP 测试文件现为 22 项，Repository 25 项单独复跑通过。
+
+## 8. 本轮已接入的教学作业同步（2026-10-25）
+
+`website/teaching.ts`、`website/assignment-sync.ts`、`main/teaching-ipc.ts` 与 `WebsiteDialog.vue` 已接入课程来源绑定、当前作业预览与确认、本地修改保护、截止冲突选择、同步选项和断开连接。主进程限定来源 URL、账号和远端课程；应用前重新解析当前页面，检查库身份、15 分钟期限和整库 revision，并在串行事务内复核。选项局部补丁在事务中读取当前连接，避免并发开关丢失其他设置。切库清除网页和作业预览，网站窗口使用独立会话分区。
+
+页面身份与内容在一次 isolated-world 执行中采集；开始、采集和完成 URL 必须相同。解析加载期间或结果返回前发生导航会拒绝旧结果，不能将另一作业的内容错误标记成旧 URL。新增 6 项执行与解析回归覆盖导航竞态、教学 JSON、课表 URI 编码和大小限制。
+
+作业合并已用未修改的生产 Swift Core 完成 12 组解码/再编码和实际合并差异对照。教学同步 14 项、网页观察 6 项、下载 3 项，组合 **23/23** 通过。这里只代表当前作业逐项确认流程；全部连接自动巡检、文件增量替换/版本保留、缺失附件修复和真实校园账号登录仍需独立验收，详见 [教学同步边界](teaching-sync-migration.md)。

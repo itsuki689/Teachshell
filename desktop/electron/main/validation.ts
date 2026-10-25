@@ -1,12 +1,104 @@
-import {z} from 'zod';
-const id=z.string().uuid();const name=z.string().trim().min(1).max(500);const text=z.string().max(100000).refine(v=>!v.includes('\0'));const optID=id.nullish().transform(v=>v??undefined);const date=z.union([z.number().finite(),z.string().datetime({offset:true})]);
-export const courseInput=z.object({name,semester:text.optional(),teacher:text.optional(),colorHex:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()}).strict();
-export const coursePatch=courseInput.partial().extend({isArchived:z.boolean().optional(),materialSort:z.enum(['name','time','custom']).optional()}).strict();
-export const materialPatch=z.object({title:name.optional(),category:name.optional(),tags:text.optional(),notes:text.optional(),isFavorite:z.boolean().optional(),filename:z.string().min(1).max(255).optional()}).strict();
-export const folderInput=z.object({name,courseID:optID,parentID:optID}).strict();
-export const folderPatch=folderInput.partial().extend({colorHex:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()}).strict();
-export const importInput=z.object({courseID:optID,folderID:optID,category:name.optional(),copy:z.boolean().optional()}).strict();
-export const taskInput=z.object({id:id.optional(),title:name,content:text.optional(),kind:name.optional(),courseID:optID,materialIDs:z.array(id).max(500).optional(),startsAt:date.optional(),endsAt:date.optional(),deadline:date.optional(),completedAt:date.nullish().transform(v=>v??undefined),archivedAt:date.nullish().transform(v=>v??undefined),cancelledAt:date.nullish().transform(v=>v??undefined),isAllDay:z.boolean().optional(),showOnCalendar:z.boolean().optional(),origin:z.enum(['activity','fixed']).optional(),hasExecutionTime:z.boolean().optional(),location:text.optional(),showInMonth:z.boolean().optional(),completionRequired:z.boolean().optional(),deadlineIsAllDay:z.boolean().optional(),colorHex:z.string().optional()}).strict();
-export const settingsInput=z.object({baseURL:z.string().url().max(2000).optional(),model:z.string().max(200).optional(),apiKey:z.string().max(8192).refine(v=>!/[\r\n]/.test(v)).optional(),mcpEnabled:z.boolean().optional(),mcpPort:z.number().int().min(1024).max(65535).optional(),theme:z.enum(['system','light','dark']).optional()}).strict();
-export const schemas={id,ids:z.array(id).min(1).max(5000),empty:z.undefined(),importInput};
-export function trustedSender(senderID:number,frameURL:string|undefined,isMainFrame:boolean,windowID:number,expectedURL:string):boolean{return senderID===windowID&&isMainFrame&&frameURL===expectedURL;}
+import { z } from 'zod';
+const id = z.string().uuid();
+const name = z.string().trim().min(1).max(500);
+const text = z
+  .string()
+  .max(100000)
+  .refine((v) => !v.includes('\0'));
+const optID = id.nullish().transform((v) => v ?? undefined);
+const date = z.union([z.number().finite(), z.string().datetime({ offset: true })]);
+export const courseInput = z
+  .object({
+    name,
+    semester: text.optional(),
+    teacher: text.optional(),
+    colorHex: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+  })
+  .strict();
+export const coursePatch = courseInput
+  .partial()
+  .extend({
+    isArchived: z.boolean().optional(),
+    materialSort: z.enum(['name', 'time', 'custom']).optional(),
+  })
+  .strict();
+export const materialPatch = z
+  .object({
+    title: name.optional(),
+    category: name.optional(),
+    tags: text.optional(),
+    notes: text.optional(),
+    isFavorite: z.boolean().optional(),
+    filename: z.string().min(1).max(255).optional(),
+  })
+  .strict();
+export const folderInput = z.object({ name, courseID: optID, parentID: optID }).strict();
+export const folderPatch = folderInput
+  .partial()
+  .extend({
+    colorHex: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+  })
+  .strict();
+export const importInput = z
+  .object({
+    courseID: optID,
+    folderID: optID,
+    category: name.optional(),
+    copy: z.boolean().optional(),
+  })
+  .strict();
+export const taskInput = z
+  .object({
+    id: id.optional(),
+    title: name,
+    content: text.optional(),
+    kind: name.optional(),
+    courseID: optID,
+    materialIDs: z.array(id).max(500).optional(),
+    startsAt: date.optional(),
+    endsAt: date.optional(),
+    deadline: date.optional(),
+    completedAt: date.nullish().transform((v) => v ?? undefined),
+    archivedAt: date.nullish().transform((v) => v ?? undefined),
+    cancelledAt: date.nullish().transform((v) => v ?? undefined),
+    isAllDay: z.boolean().optional(),
+    showOnCalendar: z.boolean().optional(),
+    origin: z.enum(['activity', 'fixed']).optional(),
+    hasExecutionTime: z.boolean().optional(),
+    location: text.optional(),
+    showInMonth: z.boolean().optional(),
+    completionRequired: z.boolean().optional(),
+    deadlineIsAllDay: z.boolean().optional(),
+    colorHex: z.string().optional(),
+  })
+  .strict();
+export const settingsInput = z
+  .object({
+    baseURL: z.string().url().max(2000).optional(),
+    model: z.string().max(200).optional(),
+    apiKey: z
+      .string()
+      .max(8192)
+      .refine((v) => !/[\r\n]/.test(v))
+      .optional(),
+    mcpEnabled: z.boolean().optional(),
+    mcpPort: z.number().int().min(1024).max(65535).optional(),
+    theme: z.enum(['system', 'light', 'dark']).optional(),
+  })
+  .strict();
+export const schemas = { id, ids: z.array(id).min(1).max(5000), empty: z.undefined(), importInput };
+export function trustedSender(
+  senderID: number,
+  frameURL: string | undefined,
+  isMainFrame: boolean,
+  windowID: number,
+  expectedURL: string,
+): boolean {
+  return senderID === windowID && isMainFrame && frameURL === expectedURL;
+}

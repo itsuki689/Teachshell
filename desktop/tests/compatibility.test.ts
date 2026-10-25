@@ -1,8 +1,75 @@
-import {test} from 'node:test';
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {dateMs,decodeLibrary,emptyLibrary,relativePath} from '../shared/model.ts';
-test('Swift 2001 reference seconds and ISO dates preserve subsecond precision',()=>{assert.equal(dateMs(0),Date.UTC(2001,0,1));assert.equal(dateMs(812345678.125),1790652878125);assert.equal(dateMs('2026-10-25T12:00:00.125Z'),Date.UTC(2026,9,25,12,0,0,125));});
-test('unknown future fields roundtrip without deletion',()=>{const input={...emptyLibrary(),futureField:{nested:['preserve']}};assert.deepEqual(decodeLibrary(input),input);});
-test('invalid and traversal indexes are rejected without modifying source',()=>{for(const path of ['../secret','files/../secret','files/a/../../secret','files\\a','/tmp/secret','files/C:/secret'])assert.throws(()=>relativePath(path));const input={...emptyLibrary(),schemaVersion:10};assert.throws(()=>decodeLibrary(input));assert.equal(input.schemaVersion,10);});
-test('legacy task decoding follows Swift execution/deadline defaults',()=>{const state=emptyLibrary();state.tasks.push({id:'00000000-0000-4000-8000-000000000001',title:'old task',content:'',kind:'任务',materialIDs:[],startsAt:0,deadline:10,isAllDay:false,showOnCalendar:true});const task=decodeLibrary(state).tasks[0];assert.equal(task.hasExecutionTime,false);assert.equal(task.deadlineIsAllDay,false);assert.equal(task.origin,'activity');assert.deepEqual(task.exceptions,[]);});
-test('UUID associations decode with Swift case-insensitive identity',()=>{const state=emptyLibrary();state.courses.push({id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',name:'x',semester:'',teacher:'',colorHex:'#39786B',isArchived:false});state.materials.push({id:'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',courseID:'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',title:'x',originalName:'x.txt',sourcePath:'/tmp/x',storedPath:'files/x.txt',storageDirectory:'files',isManaged:true,category:'课件',tags:'',notes:'',isFavorite:false,size:1,addedAt:0});const result=decodeLibrary(state);assert.equal(result.courses[0].id,result.materials[0].courseID);assert.equal(result.materials[0].storageDirectory,'files');});
+import { dateMs, decodeLibrary, emptyLibrary, relativePath } from '../shared/model.ts';
+test('Swift 2001 reference seconds and ISO dates preserve subsecond precision', () => {
+  assert.equal(dateMs(0), Date.UTC(2001, 0, 1));
+  assert.equal(dateMs(812345678.125), 1790652878125);
+  assert.equal(dateMs('2026-10-25T12:00:00.125Z'), Date.UTC(2026, 9, 25, 12, 0, 0, 125));
+});
+test('unknown future fields roundtrip without deletion', () => {
+  const input = { ...emptyLibrary(), futureField: { nested: ['preserve'] } };
+  assert.deepEqual(decodeLibrary(input), input);
+});
+test('invalid and traversal indexes are rejected without modifying source', () => {
+  for (const path of [
+    '../secret',
+    'files/../secret',
+    'files/a/../../secret',
+    'files\\a',
+    '/tmp/secret',
+    'files/C:/secret',
+  ])
+    assert.throws(() => relativePath(path));
+  const input = { ...emptyLibrary(), schemaVersion: 10 };
+  assert.throws(() => decodeLibrary(input));
+  assert.equal(input.schemaVersion, 10);
+});
+test('legacy task decoding follows Swift execution/deadline defaults', () => {
+  const state = emptyLibrary();
+  state.tasks.push({
+    id: '00000000-0000-4000-8000-000000000001',
+    title: 'old task',
+    content: '',
+    kind: '任务',
+    materialIDs: [],
+    startsAt: 0,
+    deadline: 10,
+    isAllDay: false,
+    showOnCalendar: true,
+  });
+  const task = decodeLibrary(state).tasks[0];
+  assert.equal(task.hasExecutionTime, false);
+  assert.equal(task.deadlineIsAllDay, false);
+  assert.equal(task.origin, 'activity');
+  assert.deepEqual(task.exceptions, []);
+});
+test('UUID associations decode with Swift case-insensitive identity', () => {
+  const state = emptyLibrary();
+  state.courses.push({
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    name: 'x',
+    semester: '',
+    teacher: '',
+    colorHex: '#39786B',
+    isArchived: false,
+  });
+  state.materials.push({
+    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    courseID: 'AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA',
+    title: 'x',
+    originalName: 'x.txt',
+    sourcePath: '/tmp/x',
+    storedPath: 'files/x.txt',
+    storageDirectory: 'files',
+    isManaged: true,
+    category: '课件',
+    tags: '',
+    notes: '',
+    isFavorite: false,
+    size: 1,
+    addedAt: 0,
+  });
+  const result = decodeLibrary(state);
+  assert.equal(result.courses[0].id, result.materials[0].courseID);
+  assert.equal(result.materials[0].storageDirectory, 'files');
+});

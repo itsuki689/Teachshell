@@ -1,3 +1,44 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {compareNames,chapterSortKey} from '../shared/ordering.ts';
-test('Swift Chinese chapter and nested natural ordering fixtures',()=>{const expected=['第零章','第一章','第二章','第三章','第九章','第十章','第十一章','第十九章','第二十章','第二十一章','第九十九章','第一百章','第一百零一章','第一百一十章','第两百章','第九百九十九章','第一千章','第一千零一章','第一千零二十章','第一千二百三十四章'];assert.deepEqual([...expected].reverse().sort(compareNames),expected);assert.equal(compareNames('第二講','第2講'),0);assert.equal(compareNames('第 一〇二 章','第 102 章'),0);});
-test('ordinary words malformed ordinals and overflow retain their original keys',()=>{for(const s of ['统一理论','三维图形','二叉树','十一月课件','第十十章','第百章','第一百二三章','第一百零章','第'+'九'.repeat(100)+'章'])assert.equal(chapterSortKey(s),s);});
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { compareNames, chapterSortKey } from '../shared/ordering.ts';
+test('Swift Chinese chapter and nested natural ordering fixtures', () => {
+  const expected = [
+    '第零章',
+    '第一章',
+    '第二章',
+    '第三章',
+    '第九章',
+    '第十章',
+    '第十一章',
+    '第十九章',
+    '第二十章',
+    '第二十一章',
+    '第九十九章',
+    '第一百章',
+    '第一百零一章',
+    '第一百一十章',
+    '第两百章',
+    '第九百九十九章',
+    '第一千章',
+    '第一千零一章',
+    '第一千零二十章',
+    '第一千二百三十四章',
+  ];
+  assert.deepEqual([...expected].reverse().sort(compareNames), expected);
+  assert.equal(compareNames('第二講', '第2講'), 0);
+  assert.equal(compareNames('第 一〇二 章', '第 102 章'), 0);
+});
+test('ordinary words malformed ordinals and overflow retain their original keys', () => {
+  for (const s of [
+    '统一理论',
+    '三维图形',
+    '二叉树',
+    '十一月课件',
+    '第十十章',
+    '第百章',
+    '第一百二三章',
+    '第一百零章',
+    '第' + '九'.repeat(100) + '章',
+  ])
+    assert.equal(chapterSortKey(s), s);
+});
