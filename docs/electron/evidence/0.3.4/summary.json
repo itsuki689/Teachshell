@@ -1,0 +1,33 @@
+{
+  "version": "0.3.4",
+  "sourceCommit": "7febd7e002f7a23acbe23026c1cf693dfbfd4ce5",
+  "corePassed": 299,
+  "sourceTargetedUIPassed": 31,
+  "installedUIPassed": 130,
+  "installedSuites": {
+    "appearance-week-report.json": 10,
+    "controls-parity-report.json": 9,
+    "page-layout-report.json": 6,
+    "teachshelf-electron-e2e.json": 28,
+    "teachshell-background-e2e.json": 9,
+    "teachshell-component-sync.json": 6,
+    "teachshell-login-ui-packaged.json": 7,
+    "teachshell-review-live-e2e.json": 7,
+    "teachshell-schedule-drag-e2e.json": 9,
+    "teachshell-toolbar-e2e.json": 8,
+    "teachshell-ui-parity-e2e.json": 8,
+    "teachshell-website-batch-e2e.json": 12,
+    "teachshell-website-context-e2e.json": 5,
+    "teachshell-workspace-e2e.json": 6
+  },
+  "installedExecutable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell",
+  "rendererErrors": 0,
+  "packageCount": 5,
+  "nativeAppUnchanged": true,
+  "visualInspection": "Native course popup inspected through CUA without modifying native data; installed sorting popup, keyboard cancel, plus synthetic light/dark and minimum-window screenshots inspected.",
+  "limits": [
+    "Original SVG drawings, not exact SF Symbols asset copies",
+    "Ad-hoc macOS signature, no notarization; Windows unsigned",
+    "Windows/Linux packages verified, runtime not exercised"
+  ]
+}

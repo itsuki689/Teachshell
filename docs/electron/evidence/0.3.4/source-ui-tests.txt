@@ -1,0 +1,33 @@
+PASS Sidebar and toolbar symbols match native meanings and optical sizing
+PASS Mouse selection filters real courses and compact controls retain 12px type
+PASS Arrow highlight is separate from selection; Escape, Home, End and Enter work
+PASS Sorting popup has native row geometry, checkmark, outside dismissal and Tab focus
+PASS Plan modal choices scroll, truncate long names, stay in viewport and preserve modal on Escape
+PASS Recurring occurrence disables protected choices and scope change re-enables them
+PASS Live choice updates preserve focus and check state; keyboard prefix search selects an existing label
+PASS Quick create exposes matching icons and arrow/escape menu navigation
+PASS All pages and website dropdown render in dark minimum window without clipped controls
+PASS Shipped page identity, nonblank layout, isolated renderer and original four toolbar actions
+PASS Settings adds two actions, enforces maximum six, then reorders and removes real persisted shortcuts
+PASS Custom toolbar order survives app restart and stale IPC revision cannot overwrite it
+PASS Removing every shortcut hides the capsule; keyboard settings and restore defaults remain usable
+PASS Original update/import/create shortcuts open their real approval or editor dialogs
+PASS Six navigation shortcuts each show the corresponding real view
+PASS Create menu dismisses on Escape and outside click; settings toggles back to previous route
+PASS No framework overlay or renderer runtime errors
+PASS 8 toolbar UI checks; evidence: /private/tmp/teachshell-controls-source
+PASS Library inspector overlays the unchanged canvas; grid and collection pages render
+PASS All seven settings tabs expose one category and retain real model edits across tabs
+PASS Teaching website uses a 225px course sidebar and isolated login controls
+PASS Homework columns display filesystem metadata and search filters real imported files
+PASS Plan list retains a permanent detail pane; month and agenda controls occupy the right side
+PASS Week view has a 48px date bar and a separate right inspector; minimum dark pages stay reachable
+PASS Shared semester filtering applies to all materials, favorites and unassigned files
+PASS Material search uses case-insensitive AND words across fields and Unicode whitespace
+PASS List keyboard selection follows focus, extends and shrinks a stable Shift range, and protects editors
+PASS Pointer selection asks once before abandoning drafts; normal first-drag selection still moves files
+PASS Cover preference survives course navigation, back navigation and ordinary snapshots
+PASS Month selection and timetable week share a civil date and survive page navigation
+PASS Minimum and normal windows retain readable controls in light and dark modes
+PASS New workspace identities reset dates and semester, while safe display preferences survive switching and restart
+PASS 8 native UI parity checks

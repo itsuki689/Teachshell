@@ -1,0 +1,65 @@
+{
+  "verifiedAt": "2026-10-25T13:26:08.934Z",
+  "release": {
+    "version": "0.3.4",
+    "commit": "7febd7e002f7a23acbe23026c1cf693dfbfd4ce5",
+    "builtAt": "2026-10-25T13:21:11.343Z"
+  },
+  "receipt": {
+    "installed": "/Applications/Teachshell.app",
+    "source": "/Users/theself/Codx/Teachshell/desktop/release/mac-arm64/Teachshell.app",
+    "backup": "/Applications/.Teachshell-backups/2026-10-25T13-21-26-727Z-0622b1b3-64f6-4f4a-9128-1b9d0b3a0c88/Teachshell.app",
+    "asarSHA256": "39b55633aa07791cd9ed7cde1fb7cbf64b885197f4194c651d6f32bd0349e49c",
+    "pids": [
+      92564
+    ],
+    "verifiedAt": "2026-10-25T13:21:31.133Z"
+  },
+  "processes": [
+    {
+      "pid": 92564,
+      "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell"
+    }
+  ],
+  "payload": [
+    {
+      "file": "dist-electron/main.cjs",
+      "sha256": "98ca87561b176dd33ae38bff9025171f992e2170bf361f9269b7e11a338dd989"
+    },
+    {
+      "file": "dist-electron/preload.cjs",
+      "sha256": "7504ca0ded15eb5e44847874065e546e3481f54746fc0c75705b37b84f20399d"
+    },
+    {
+      "file": "dist/assets/index-9_uAwtBx.js",
+      "sha256": "b181efda286ef5a6fb4b721bdc85567c390d71f71f3c7fa407196b66817a4f99"
+    },
+    {
+      "file": "dist/assets/index-Tbphys9O.css",
+      "sha256": "5cdf43003f26acca2fd6f8038cfc72d81cdc6806b47de8a78a93d4d39d52026a"
+    },
+    {
+      "file": "dist/index.html",
+      "sha256": "71c4d0ce26e8a1aa925fba9be50ff1b4ddfe8bbadc34ec4134ca66a5d11234d1"
+    },
+    {
+      "file": "teaching-session-keychain",
+      "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c"
+    },
+    {
+      "file": "mcp-stdio.cjs",
+      "sha256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    }
+  ],
+  "signature": "ad-hoc; deep strict passed; helper strict passed; not notarized",
+  "nativeAppUnchanged": true,
+  "native": {
+    "path": "/Applications/课屿.app",
+    "identifier": "com.teachshelf.mac",
+    "version": "1.16.0",
+    "executableSHA256": "c65b45997bd93bc133444d836ddd307a9c44fcf560ccdc1e85e6d3f53cea42db",
+    "plistSHA256": "82bd7a747d897e7eeb7723d3070e07ec13d43702673f6cc514fb4d749c266281",
+    "mtimeNS": 1792855884425727000
+  },
+  "matchesTestedBuild": true
+}

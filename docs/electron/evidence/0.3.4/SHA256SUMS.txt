@@ -1,0 +1,8 @@
+4ac235c8a799adba94f429f7f3fe665ca412011e328914045953062e37c5dd58  Teachshell-0.3.4-arm64-mac.zip
+4365ff3bbe2a4abb0d40b51cb96f3072277a96322391d49c1565c594a1654c5e  Teachshell-0.3.4-arm64.dmg
+115cb7efa288c5cca56c354e3dc3f21a6702ed212a2db5d942d7c7e841b96dc1  Teachshell Setup 0.3.4.exe
+97fbf004653220c03874f589bce0c3b8fdc5acfe9bd071e60229779f64b621fe  Teachshell-0.3.4.AppImage
+e6b4a4702ab69bb54edf1fa68b1bea70992bc983d6502a5a7a937f68d3f938e5  teachshelf-desktop_0.3.4_amd64.deb
+7c7fa6b32558017a2c27457d672b703b0f0740180139f1fbe7b1cbc842f073e0  Teachshell Setup 0.3.4.exe.blockmap
+dea048bc3d451f5749d42edeb9ff79cf8bf89214f1268c15c786963257aac5cc  Teachshell-0.3.4-arm64-mac.zip.blockmap
+b9217172c8af4df8cf50568c459b962b4dfddb240d227fe905eb7b97617548b6  Teachshell-0.3.4-arm64.dmg.blockmap

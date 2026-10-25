@@ -28,3 +28,31 @@
 ## 明确差异
 
 跨平台图标是原创矢量重绘，并非逐像素复制 SF Symbols；字形渲染仍随系统字体变化。系统级文件选择器、日期时间编辑、多选列表保留平台差异。未声称完成 Windows/Linux 真机 UI 验收，也未声称开发者公证签名或真实校园账号验收；既有迁移报告中的业务待办继续有效。
+
+
+## 0.3.4 安装后验收
+
+功能提交：`7febd7e002f7a23acbe23026c1cf693dfbfd4ce5`。TypeScript、生产构建、定向 Prettier 及 `git diff --check` 通过。核心 **299/299**；源码定向 UI **31/31**；直接运行已安装 `/Applications/Teachshell.app/Contents/MacOS/Teachshell` 的全套 UI **130/130**，14 套报告均无 renderer 错误。所有自动化验收均使用独立临时资料库。
+
+- [汇总与各套件计数](evidence/0.3.4/summary.json)
+- [核心测试日志](evidence/0.3.4/node-tests.txt)、[发布前 UI 日志](evidence/0.3.4/source-ui-tests.txt)、[安装版完整日志](evidence/0.3.4/installed-tests.txt)
+- [本轮控件专项报告](evidence/0.3.4/controls-parity-report.json)
+- [浅色排序菜单](evidence/0.3.4/controls-sort-popup-light.png)、[长标题课程弹层](evidence/0.3.4/controls-plan-course-popup.png)、[快捷新建](evidence/0.3.4/controls-quick-create.png)、[深色顶栏设置](evidence/0.3.4/controls-settings-顶栏.png)、[深色网站下拉框](evidence/0.3.4/controls-website-dark-popup.png)
+
+通过 CUA 再次打开正常安装版，确认页面 URL 位于 `/Applications/Teachshell.app/Contents/Resources/app.asar/dist/index.html`；实际打开排序菜单、用方向键浏览后 Esc 取消，当前排序保持“最近添加”。已检查新图标、勾号、灰色实底与文字对齐。
+
+Release 应用 `codesign --verify --deep --strict` 和 Keychain helper `codesign --verify --strict` 均通过，为 **ad-hoc 本地签名，未公证**。安装器正常退出旧版，完成备份、替换、LaunchServices 注册及启动；已核对实际 PID 可执行路径、版本、构建提交、安装包和受测功能文件哈希一致。[安装与原生保护结果](evidence/0.3.4/installed-verification.json)。
+
+升级前 0.3.3 的可恢复副本保留于：
+`/Applications/.Teachshell-backups/2026-10-25T13-21-26-727Z-0622b1b3-64f6-4f4a-9128-1b9d0b3a0c88/Teachshell.app`。
+原生课屿 1.16.0 的应用目录时间、Info.plist 与可执行文件 SHA-256 均与升级前一致。
+
+五个安装包已实际生成，逐个解包核对版本、提交、主进程/preload/renderer、外置 MCP stdio 及 macOS helper；未运行 Windows/Linux 安装器。[包清单](evidence/0.3.4/release-manifest.json)、[SHA-256](evidence/0.3.4/SHA256SUMS.txt)。文件位于 `desktop/release/`：
+
+- `Teachshell-0.3.4-arm64.dmg`
+- `Teachshell-0.3.4-arm64-mac.zip`
+- `Teachshell Setup 0.3.4.exe`
+- `Teachshell-0.3.4.AppImage`
+- `teachshelf-desktop_0.3.4_amd64.deb`
+
+证据提交仅包含文档和验收记录。按仓库约定仍会从该提交重建并安装 Release，再逐字节比对受测功能文件；最终安装收据与核验结果保留于不入库的 `desktop/release/installed-macos.json`、`installed-verification.json`。

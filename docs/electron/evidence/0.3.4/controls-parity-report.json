@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Sidebar and toolbar symbols match native meanings and optical sizing",
+    "Mouse selection filters real courses and compact controls retain 12px type",
+    "Arrow highlight is separate from selection; Escape, Home, End and Enter work",
+    "Sorting popup has native row geometry, checkmark, outside dismissal and Tab focus",
+    "Plan modal choices scroll, truncate long names, stay in viewport and preserve modal on Escape",
+    "Recurring occurrence disables protected choices and scope change re-enables them",
+    "Live choice updates preserve focus and check state; keyboard prefix search selects an existing label",
+    "Quick create exposes matching icons and arrow/escape menu navigation",
+    "All pages and website dropdown render in dark minimum window without clipped controls"
+  ],
+  "errors": [],
+  "root": "/private/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/teachshell-controls-ZddJKH",
+  "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell"
+}
