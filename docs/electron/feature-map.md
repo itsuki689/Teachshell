@@ -140,3 +140,15 @@ Moodle 输出 `TeachingPage` 的 `kind/accountID/courseID/title/activities/files
 - macOS Keychain 旧项目访问控制与 Chromium session 不会跨平台自动继承；密钥和 session 重设路径需要明确。
 - Windows 保留名/盘符/UNC/大小写/原子替换与 Linux 目录权限/安全存储需要各平台 CI 与运行验证；macOS 构建成功不足以证明三平台可运行。
 - 发布产物必须分别验证构建、安装、签名/公证状态。迁移期间不要替换或删除 Swift 源和现有用户资料库；新 app 使用独立标识、显式选择资料库。
+
+## 7. 本轮已实施的 AI/MCP 模块（2026-10-25）
+
+`desktop/electron/services/ai/` 实现了真正的 Chat Completions SSE 增量解码，覆盖跨 UTF-8 字节、CRLF、事件和 tool arguments 分块；同时接受兼容服务返回的普通 JSON。支持停止、逐项写入确认、工具参数校验、请求/响应/循环上限、重定向拒绝，以及 `.desktop-chat.json` 原子持久化。保存消息/工具结果与完整 wire context，失败或中断丢弃不完整 wire 交换，保留已执行操作的可见记录；不保存 API 配置或密钥。旧 Swift 的内存聊天无法在重启后提取，不伪造导入记录。
+
+`desktop/electron/services/mcp/` 实现了回环 HTTP JSON-RPC 与真实 Repository 适配。原 Swift 工具目录保留为 catalog.json 基线，当前实际公开 **24 项**：15 个课程/资料/文件夹工具、context/list_plans/get_plan/search_materials、普通计划 create/update/status/delete/undo。未实现的 `list_occurrences` 不公开。计划写入的 schema 明确收窄为普通非重复活动计划、`scope=all`；固定计划、重复规则和单次例外写入明确拒绝；`get_plan` 暂不接受 `original_date`。因此不能将 24 项目录误解为完整日历行为等价。
+
+适配使用 Repository 的 `withMutationGuard`，在资料库串行事务内完成文件同步后再次检查 revision，避免 AI 等待确认期间或其他界面写入后覆盖新内容。整库 revision 排除外观偏好和 lastOpenedAt。返回 revision 使用 `desktop-v1:` 命名空间，复制迁移后客户端须重新查询，不能重用 Swift 缓存 revision。计划撤销仅保存本次服务会话最近 50 项，后续对象修改会阻止撤销覆盖。MCP stop 会等待已开始的工具事务结束。
+
+验证命令：`node --experimental-strip-types --test desktop/tests/ai.test.ts desktop/tests/mcp.test.ts`。测试覆盖真实本地 HTTP 流式工具回合、确认/拒绝/停止、历史重载/损坏/符号链接、secret 不落历史、Host/Origin/token/version/长度/重复头/通知防护、真实文件重命名/移动/移除保留内容、颜色清除、过期 revision/重复 request_id、RFC3339 时间、普通计划状态与冲突安全撤销。运行环境限制本地监听时需要在允许回环监听的测试环境运行，不能把 EPERM 当作业务测试通过。
+
+本轮安全复核另增加 `desktop/tests/security.test.ts`：验证 HTML/XHTML 登录结果拒绝、下载地址与每次重定向限制、失败临时文件清理及目标不覆盖、系统打开文件格式白名单、IPC sender/结构字段校验，以及 API Key 绑定完整规范化 Chat Completions endpoint（换 host/path 清除旧密钥）。`SettingsService` 串行保存设置与资料库路径，密钥绑定不匹配时不解密且保留原设置提示处理。测试只使用临时目录与模拟凭据，不访问真实钥匙串。AI、MCP、安全三个文件合计 **32/32 通过**；普通计划另实际关闭并重新打开 Repository 验证已保存内容，撤销历史按设计不跨服务重启。

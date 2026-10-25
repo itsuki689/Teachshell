@@ -1,0 +1,23 @@
+NJU undergraduate timetable parser
+
+This distribution includes a modified version of njubksjw2.js from the
+Nan-Na timetable project by WheretoSleepinNJU and contributors:
+https://github.com/WheretoSleepinNJU/NJU-Class-Shedule-Flutter
+Original source: api/tools/njubksjw2.js, supplied in NJUmacOSImport.zip.
+License: Apache License, Version 2.0 (LICENSE-APACHE-2.0.txt).
+
+Teachshelf modifications (2026-10-14): restrict execution to the official
+undergraduate timetable URL; locate the course table rather than the first
+table; handle single lessons, Chinese separators, odd/even weeks, free-time
+courses, and invalid rows with explicit preview warnings; add offline tests.
+Further modifications (2026-10-14): restrict rows and cells to their owning
+table; exclude ancestor-hidden and nonrendered clones; identify course lists
+by actual time data; collapse only identical canonical row-content tables;
+return stable, content-derived table choices for explicit user selection when
+multiple distinct visible lists remain. Never infer the preferred table from
+row counts or silently merge distinct rooms, weeks, or course meetings.
+
+The Swift importer is adapted from NJUmacOSImport.zip and integrates preview
+and explicit confirmation into the local Teachshelf library. No graduate
+importer is included. It uses a nonpersistent WebKit session and never reads
+or logs login credentials or cookies.

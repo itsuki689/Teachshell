@@ -1,0 +1,1458 @@
+[
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "先调用本工具，获取当前资料库、课程 ID、北京时间和使用规则。支持课屿计划、课程、资料和物理文件夹操作；不执行命令。课程资料写入先查询 library_revision。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+
+      },
+      "required" : [
+
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_context"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "搜索计划（默认仅未完成、未取消、未归档）；返回 ID、revision 和摘要。编辑前调用 get_plan 查看正文。分页 offset/limit。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "course_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "limit" : {
+          "maximum" : 100,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "offset" : {
+          "maximum" : 1000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "query" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "status" : {
+          "enum" : [
+            "active",
+            "completed",
+            "cancelled",
+            "archived",
+            "all"
+          ],
+          "type" : "string"
+        }
+      },
+      "required" : [
+
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_list_plans"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "读取完整计划及 revision。可给 original_date 查看重复计划某一次的有效内容，revision 始终属于整组。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "original_date" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_get_plan"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "按北京时间查询日程与截止事件，包含重复计划和临时变更。from/to 均为包含端点的日期，最多 31 天；同一计划可同时有执行与截止事件。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "course_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "from" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "to" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "from",
+        "to"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_list_occurrences"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "按标题查找可关联的资料 ID；不返回文件内容或磁盘路径。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "course_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "query" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "query"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_search_materials"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "新建计划。request_id 为客户端生成的 UUID，重试必须复用，避免重复创建。fields 至少有 title；默认没有执行时间，时间默认为非全天。成功后返回 change_id，可撤销。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "fields" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "color_hex" : {
+              "anyOf" : [
+                {
+                  "description" : "六位 HEX，如 #34AADC；null 恢复继承。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "completion_required" : {
+              "type" : "boolean"
+            },
+            "content" : {
+              "description" : "计划正文，纯文本或 Markdown。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "course_id" : {
+              "anyOf" : [
+                {
+                  "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "deadline" : {
+              "anyOf" : [
+                {
+                  "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "deadline_is_all_day" : {
+              "type" : "boolean"
+            },
+            "ends_at" : {
+              "anyOf" : [
+                {
+                  "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "has_execution_time" : {
+              "type" : "boolean"
+            },
+            "is_all_day" : {
+              "type" : "boolean"
+            },
+            "kind" : {
+              "description" : "例如 作业、考试、自主规划。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "location" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "material_ids" : {
+              "items" : {
+                "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                "maxLength" : 200000,
+                "type" : "string"
+              },
+              "maxItems" : 500,
+              "type" : "array"
+            },
+            "origin" : {
+              "enum" : [
+                "activity",
+                "fixed"
+              ],
+              "type" : "string"
+            },
+            "repeat_rule" : {
+              "anyOf" : [
+                {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "frequency" : {
+                      "enum" : [
+                        "daily",
+                        "weekly",
+                        "monthly"
+                      ],
+                      "type" : "string"
+                    },
+                    "interval" : {
+                      "maximum" : 366,
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "until" : {
+                      "anyOf" : [
+                        {
+                          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+                          "maxLength" : 200000,
+                          "type" : "string"
+                        },
+                        {
+                          "type" : "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required" : [
+                    "frequency"
+                  ],
+                  "type" : "object"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "show_in_month" : {
+              "type" : "boolean"
+            },
+            "starts_at" : {
+              "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "title" : {
+              "maxLength" : 500,
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [
+            "title"
+          ],
+          "type" : "object"
+        },
+        "library_id" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "request_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "request_id",
+        "fields"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_create_plan"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "局部更新计划：只修改 patch 中的字段，null 清空可空字段。scope 默认为 all；本次/本次及以后必须提供 original_date。仅本次不能修改 repeat_rule 或 origin。修改执行时间时可同时更新 ends_at。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_revision" : {
+          "description" : "最近一次读取返回的 revision；冲突后重新读取，不能盲目重试。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "teachshelf_context 返回的资料库标识。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "original_date" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "patch" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "color_hex" : {
+              "anyOf" : [
+                {
+                  "description" : "六位 HEX，如 #34AADC；null 恢复继承。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "completion_required" : {
+              "type" : "boolean"
+            },
+            "content" : {
+              "description" : "计划正文，纯文本或 Markdown。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "course_id" : {
+              "anyOf" : [
+                {
+                  "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "deadline" : {
+              "anyOf" : [
+                {
+                  "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "deadline_is_all_day" : {
+              "type" : "boolean"
+            },
+            "ends_at" : {
+              "anyOf" : [
+                {
+                  "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "has_execution_time" : {
+              "type" : "boolean"
+            },
+            "is_all_day" : {
+              "type" : "boolean"
+            },
+            "kind" : {
+              "description" : "例如 作业、考试、自主规划。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "location" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "material_ids" : {
+              "items" : {
+                "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                "maxLength" : 200000,
+                "type" : "string"
+              },
+              "maxItems" : 500,
+              "type" : "array"
+            },
+            "origin" : {
+              "enum" : [
+                "activity",
+                "fixed"
+              ],
+              "type" : "string"
+            },
+            "repeat_rule" : {
+              "anyOf" : [
+                {
+                  "additionalProperties" : false,
+                  "properties" : {
+                    "frequency" : {
+                      "enum" : [
+                        "daily",
+                        "weekly",
+                        "monthly"
+                      ],
+                      "type" : "string"
+                    },
+                    "interval" : {
+                      "maximum" : 366,
+                      "minimum" : 1,
+                      "type" : "integer"
+                    },
+                    "until" : {
+                      "anyOf" : [
+                        {
+                          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+                          "maxLength" : 200000,
+                          "type" : "string"
+                        },
+                        {
+                          "type" : "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required" : [
+                    "frequency"
+                  ],
+                  "type" : "object"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "show_in_month" : {
+              "type" : "boolean"
+            },
+            "starts_at" : {
+              "description" : "RFC3339 时间，必须含时区，如 2026-10-23T09:00:00+08:00。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "title" : {
+              "maxLength" : 500,
+              "minLength" : 1,
+              "type" : "string"
+            }
+          },
+          "required" : [
+
+          ],
+          "type" : "object"
+        },
+        "scope" : {
+          "enum" : [
+            "all",
+            "thisOccurrence",
+            "thisAndFuture"
+          ],
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "id",
+        "expected_revision",
+        "patch"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_update_plan"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "设置完成、未完成、取消、恢复、归档或取消归档。完成/未完成/恢复支持 all 和 thisOccurrence；取消另支持 thisAndFuture；归档操作只允许 all。restore 恢复取消状态，保留本次其他修改。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "action" : {
+          "enum" : [
+            "complete",
+            "reopen",
+            "cancel",
+            "restore",
+            "archive",
+            "unarchive"
+          ],
+          "type" : "string"
+        },
+        "expected_revision" : {
+          "description" : "最近一次读取返回的 revision；冲突后重新读取，不能盲目重试。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "teachshelf_context 返回的资料库标识。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "original_date" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "scope" : {
+          "enum" : [
+            "all",
+            "thisOccurrence",
+            "thisAndFuture"
+          ],
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "id",
+        "expected_revision",
+        "action"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_set_plan_status"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "删除整组或本次及以后；仅本次等同于取消该次。请按用户指定的范围执行。返回 change_id 可撤销。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_revision" : {
+          "description" : "最近一次读取返回的 revision；冲突后重新读取，不能盲目重试。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "teachshelf_context 返回的资料库标识。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "original_date" : {
+          "description" : "Asia/Shanghai 的日期，格式 YYYY-MM-DD。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "scope" : {
+          "enum" : [
+            "all",
+            "thisOccurrence",
+            "thisAndFuture"
+          ],
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "id",
+        "expected_revision"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_delete_plan"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "撤销本次应用会话中最近 50 次 MCP 修改之一；如相关计划之后又被修改，会拒绝撤销，避免覆盖新内容。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "change_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "change_id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_undo_change"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "搜索课程及数量统计，返回 library_revision 供所有课程资料写入使用。默认含归档，可过滤 archived；同名课程靠 ID 区分。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "archived" : {
+          "type" : "boolean"
+        },
+        "limit" : {
+          "maximum" : 100,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "offset" : {
+          "maximum" : 1000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "query" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_list_courses"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "读取课程详情、归档状态、资料和文件夹数量，以及当前 library_revision。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_get_course"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "创建课程及物理目录。request_id 是客户端 UUID，也是新课程 ID；重试复用，已存在时拒绝重复创建。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "fields" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "archived" : {
+              "type" : "boolean"
+            },
+            "color_hex" : {
+              "description" : "六位 HEX 颜色。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "name" : {
+              "maxLength" : 500,
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "semester" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "teacher" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            }
+          },
+          "required" : [
+            "name"
+          ],
+          "type" : "object"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "request_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "request_id",
+        "fields"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_create_course"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "局部修改课程名称、学期、教师、颜色、归档状态。改名同步物理目录；未提供的字段保持原样。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "patch" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "archived" : {
+              "type" : "boolean"
+            },
+            "color_hex" : {
+              "description" : "六位 HEX 颜色。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "name" : {
+              "maxLength" : 500,
+              "minLength" : 1,
+              "type" : "string"
+            },
+            "semester" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "teacher" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            }
+          },
+          "required" : [
+
+          ],
+          "type" : "object"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "id",
+        "patch"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_update_course"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "删除课程及其教学网站连接；资料移为未分类，关联计划和实际文件保留，课程文件夹分组解除。不可用计划 undo_change 撤销。仅在用户要求删除课程时调用。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_delete_course"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "分页搜索资料标题、原名、标签、备注。course_id/folder_id 不传表示全部，null 表示未分类/根目录；folder_id 默认仅当前层，recursive=true 包含子文件夹。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "category" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "course_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "favorite" : {
+          "type" : "boolean"
+        },
+        "folder_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "limit" : {
+          "maximum" : 100,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "missing" : {
+          "type" : "boolean"
+        },
+        "offset" : {
+          "maximum" : 1000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "query" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "recursive" : {
+          "type" : "boolean"
+        }
+      },
+      "required" : [
+
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_list_materials"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "读取资料元数据、标签、备注、所属位置及关联计划 ID。不读取文件正文，也不返回外部原文件路径。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_get_material"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "局部修改资料标题、分类、标签、备注、收藏。title 只改显示标题；filename 重命名库内实际文件，必须保留扩展名；外部引用文件不能重命名。移动请用 move_materials。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "patch" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "category" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "favorite" : {
+              "type" : "boolean"
+            },
+            "filename" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "notes" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "tags" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "title" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            }
+          },
+          "required" : [
+
+          ],
+          "type" : "object"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "id",
+        "patch"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_update_material"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "原子批量移动资料到课程/物理文件夹，支持跨课程；course_id=null 移到未分类，folder_id=null 移到课程根目录。只移动库内副本，外部引用原文件留在原处。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "course_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "folder_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "ids" : {
+          "items" : {
+            "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+            "maxLength" : 200000,
+            "type" : "string"
+          },
+          "maxItems" : 100,
+          "type" : "array"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "ids",
+        "course_id",
+        "folder_id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_move_materials"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "移除资料记录并解除计划关联，保留实际文件（不移入废纸篓）。不可用计划 undo_change 撤销。仅在用户要求移除记录时调用。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "ids" : {
+          "items" : {
+            "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+            "maxLength" : 200000,
+            "type" : "string"
+          },
+          "maxItems" : 100,
+          "type" : "array"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "ids"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_remove_materials"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "列出物理文件夹，返回路径、层级、课程和资料数量。course_id 不传表示全部，null 表示未分类；parent_id 不传表示所有层，null 仅根层。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "course_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "limit" : {
+          "maximum" : 100,
+          "minimum" : 1,
+          "type" : "integer"
+        },
+        "offset" : {
+          "maximum" : 1000000,
+          "minimum" : 0,
+          "type" : "integer"
+        },
+        "parent_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        }
+      },
+      "required" : [
+
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_list_material_folders"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : false,
+      "openWorldHint" : false,
+      "readOnlyHint" : true
+    },
+    "description" : "读取文件夹详情及 library_revision。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_get_material_folder"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "创建物理文件夹；request_id 是 UUID，也是新文件夹 ID。可指定课程和父目录，null 表示未分类/根目录。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "color_hex" : {
+          "anyOf" : [
+            {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "course_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "name" : {
+          "description" : "",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "parent_id" : {
+          "anyOf" : [
+            {
+              "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            {
+              "type" : "null"
+            }
+          ]
+        },
+        "request_id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "request_id",
+        "name",
+        "course_id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_create_material_folder"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "重命名、改色或移动物理文件夹，连同所有子目录和资料一起移动。换课程时未指定 parent_id 会移到新课程根目录；禁止循环嵌套和同层重名。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "patch" : {
+          "additionalProperties" : false,
+          "properties" : {
+            "color_hex" : {
+              "anyOf" : [
+                {
+                  "description" : "",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "course_id" : {
+              "anyOf" : [
+                {
+                  "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            },
+            "name" : {
+              "description" : "",
+              "maxLength" : 200000,
+              "type" : "string"
+            },
+            "parent_id" : {
+              "anyOf" : [
+                {
+                  "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+                  "maxLength" : 200000,
+                  "type" : "string"
+                },
+                {
+                  "type" : "null"
+                }
+              ]
+            }
+          },
+          "required" : [
+
+          ],
+          "type" : "object"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "id",
+        "patch"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_update_material_folder"
+  },
+  {
+    "annotations" : {
+      "destructiveHint" : true,
+      "openWorldHint" : false,
+      "readOnlyHint" : false
+    },
+    "description" : "解散当前文件夹及所有子文件夹，资料移回上一级，实际文件保留；这会解除整个子树的分组。不可用计划 undo_change 撤销。",
+    "inputSchema" : {
+      "additionalProperties" : false,
+      "properties" : {
+        "expected_library_revision" : {
+          "description" : "最近一次课程/资料查询返回的 library_revision。任一课程、资料、文件夹或关联计划更新后须重新读取。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "id" : {
+          "description" : "UUID；必须从查询结果获取关联 ID，不要猜测。",
+          "maxLength" : 200000,
+          "type" : "string"
+        },
+        "library_id" : {
+          "description" : "当前资料库 ID，来自 context。",
+          "maxLength" : 200000,
+          "type" : "string"
+        }
+      },
+      "required" : [
+        "library_id",
+        "expected_library_revision",
+        "id"
+      ],
+      "type" : "object"
+    },
+    "name" : "teachshelf_dissolve_material_folder"
+  }
+]
