@@ -8,6 +8,8 @@ const tests = [
   'schedule-drag.e2e.mjs',
   'toolbar.e2e.mjs',
   'website-login-ui.e2e.mjs',
+  'website-background.e2e.mjs',
+  'website-review-live.e2e.mjs',
 ];
 // The transport test bundles the source into a separate minimal Electron host.
 // The other suites exercise the actual installed app when an executable is set.

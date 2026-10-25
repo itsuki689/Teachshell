@@ -3,12 +3,20 @@ import { randomUUID } from 'node:crypto';
 import type { Repository } from '../services/storage/repository.ts';
 import type { WebsiteBrowser } from '../services/website/browser.ts';
 import { TeachingBatchService } from '../services/website/batch-sync.ts';
+import type { BatchReview } from '../services/website/batch-sync.ts';
+import { BackgroundTeachingSyncService } from '../services/website/background-sync.ts';
+import type { BackgroundReadiness, BackgroundStatus } from '../services/website/background-sync.ts';
 
 interface Context {
   handle: (name: string, args: z.ZodType, fn: (...args: any[]) => unknown) => void;
   repository: () => Repository;
   browser: () => WebsiteBrowser;
   cacheRoot: string;
+  background?: {
+    settingsRoot: string;
+    readiness: () => BackgroundReadiness;
+    onChange: (status: BackgroundStatus) => void;
+  };
 }
 
 /** Remote pages never supply IPC arguments; only the trusted application can approve updates. */
@@ -26,6 +34,58 @@ export function installWebsiteUpdateIPC(ctx: Context) {
     transport: ctx.browser,
     cacheRoot: ctx.cacheRoot,
   });
+  let review: BatchReview | undefined;
+  let generation = 0;
+  let active: Promise<unknown> | undefined;
+  const background =
+    ctx.background &&
+    new BackgroundTeachingSyncService({
+      ...ctx.background,
+      repository: ctx.repository,
+      batch,
+      onChange: (status) => {
+        review = status.review;
+        ctx.background!.onChange(status);
+      },
+    });
+  function foreground<T>(operation: () => Promise<T>): Promise<T> {
+    if (active) return Promise.reject(new Error('教学网站操作正在进行，请稍候'));
+    const current = generation;
+    const task = Promise.resolve()
+      .then(async () => {
+        await background?.pauseForForeground();
+        if (current !== generation) throw new Error('资料库已切换');
+        return operation();
+      })
+      .finally(() => {
+        active = undefined;
+        if (current === generation) background?.resumeAfterForeground(review);
+      });
+    active = task;
+    return task;
+  }
+  handle('websiteBackgroundStatus', z.tuple([]), () => {
+    background?.notifyReadinessChanged();
+    return background?.getStatus();
+  });
+  handle(
+    'saveWebsiteBackground',
+    z.tuple([
+      z
+        .object({
+          enabled: z.boolean().optional(),
+          intervalMinutes: z.number().int().min(5).max(1440).optional(),
+        })
+        .strict(),
+    ]),
+    (input) => background?.updatePreferences(input),
+  );
+  handle('discardWebsiteReview', z.tuple([]), () =>
+    foreground(async () => {
+      batch.clear();
+      review = undefined;
+    }),
+  );
   handle(
     'checkWebsiteBatch',
     z.tuple([
@@ -37,12 +97,15 @@ export function installWebsiteUpdateIPC(ctx: Context) {
         .strict()
         .optional(),
     ]),
-    async (input) => {
-      const repo = ctx.repository();
-      const review = await batch.check(input);
-      if (repo !== ctx.repository()) throw new Error('资料库已切换，请重新检查');
-      return review;
-    },
+    (input) =>
+      foreground(async () => {
+        const repo = ctx.repository();
+        review = undefined;
+        const result = await batch.check(input);
+        if (repo !== ctx.repository()) throw new Error('资料库已切换，请重新检查');
+        review = result;
+        return result;
+      }),
   );
   handle(
     'applyWebsiteBatch',
@@ -59,12 +122,14 @@ export function installWebsiteUpdateIPC(ctx: Context) {
         })
         .strict(),
     ]),
-    async (input) => {
-      const repo = ctx.repository();
-      const result = await batch.apply(input);
-      if (repo !== ctx.repository()) throw new Error('资料库已切换，请重新检查');
-      return result;
-    },
+    (input) =>
+      foreground(async () => {
+        const repo = ctx.repository();
+        const result = await batch.apply(input);
+        if (repo !== ctx.repository()) throw new Error('资料库已切换，请重新检查');
+        review = result.review;
+        return result;
+      }),
   );
   handle('cancelWebsiteBatch', z.tuple([]), () => batch.cancel());
   handle('listMaterialVersions', z.tuple([id]), async (materialID) => {
@@ -112,8 +177,19 @@ export function installWebsiteUpdateIPC(ctx: Context) {
       return result;
     },
   );
-  return () => {
-    versions.clear();
-    batch.clear();
-  };
+  return Object.assign(
+    async () => {
+      generation++;
+      versions.clear();
+      await background?.stop();
+      batch.clear();
+      await active?.catch(() => {});
+      review = undefined;
+    },
+    {
+      start: () => background?.start(),
+      notify: () => background?.notifyReadinessChanged(),
+      foreground,
+    },
+  );
 }

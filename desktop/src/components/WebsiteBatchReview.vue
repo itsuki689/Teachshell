@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Download, FileSearch, Square } from 'lucide-vue-next';
-import type { BatchReview, BatchReviewRow, BatchApplyResult } from '../../shared/api';
+import type {
+  BatchReview,
+  BatchReviewRow,
+  BatchApplyResult,
+  BackgroundStatus,
+} from '../../shared/api';
 import type { SwiftDate } from '../../shared/model';
 import { dateMs } from '../../shared/model';
 import { useLibrary } from '../stores/library';
@@ -13,23 +18,48 @@ const props = defineProps<{
   }>(),
   emit = defineEmits<{ close: [] }>();
 const connectionIDs = ref(props.connections.map((c) => c.id)),
+  loading = ref(true),
   includeExisting = ref(true),
   review = ref<BatchReview | null>(null),
   selected = ref<string[]>([]),
   decisions = ref<Record<string, string>>({}),
   approvedLocal = ref<string[]>([]),
   running = ref<'check' | 'apply' | null>(null),
-  lastResult = ref<BatchApplyResult | null>(null);
+  lastResult = ref<BatchApplyResult | null>(null),
+  invalidated = ref(false),
+  newerReview = ref<BatchReview>();
+let adoptingScope = false,
+  allowAutomaticReview = true;
+function clearSelection() {
+  selected.value = [];
+  decisions.value = {};
+  approvedLocal.value = [];
+}
+function adoptReview(value: BatchReview) {
+  adoptingScope = true;
+  connectionIDs.value = [...value.connectionIDs];
+  adoptingScope = false;
+  review.value = value;
+  selected.value = value.rows.filter((row) => row.selectedByDefault).map((row) => row.id);
+  decisions.value = {};
+  approvedLocal.value = [];
+  invalidated.value = false;
+  newerReview.value = undefined;
+  lastResult.value = null;
+  allowAutomaticReview = false;
+}
 watch(
   [connectionIDs, includeExisting],
   () => {
+    if (adoptingScope) return;
+    allowAutomaticReview = false;
+    invalidated.value = false;
+    newerReview.value = undefined;
     review.value = null;
     lastResult.value = null;
-    selected.value = [];
-    decisions.value = {};
-    approvedLocal.value = [];
+    clearSelection();
   },
-  { deep: true },
+  { deep: true, flush: 'sync' },
 );
 const statusLabels: Record<BatchReviewRow['status'], string> = {
   'new-file': '新增资料',
@@ -42,17 +72,71 @@ const statusLabels: Record<BatchReviewRow['status'], string> = {
 };
 const now = ref(Date.now());
 let expiryTimer: ReturnType<typeof setInterval> | undefined;
-onMounted(() => {
+let active = true,
+  eventSequence = 0,
+  authoritative: BackgroundStatus | undefined,
+  unsubscribe: (() => void) | undefined;
+function reconcile(status: BackgroundStatus) {
+  const pending = status.review?.rows.length ? status.review : undefined;
+  now.value = Date.now();
+  if (review.value) {
+    if (
+      pending?.id === review.value.id &&
+      pending.revision === review.value.revision &&
+      !invalidated.value
+    ) {
+      // Status-only broadcasts must never replace the user's choices.
+      review.value = pending;
+      newerReview.value = undefined;
+    } else if (!pending && !review.value.rows.length) {
+      newerReview.value = undefined;
+    } else {
+      invalidated.value = true;
+      newerReview.value = pending;
+    }
+  } else if (pending && allowAutomaticReview) adoptReview(pending);
+  else newerReview.value = pending;
+}
+function receive(status: BackgroundStatus) {
+  eventSequence++;
+  authoritative = status;
+  if (active && !running.value) reconcile(status);
+}
+async function readStatus() {
+  const before = eventSequence;
+  try {
+    const value = await api.websiteBackgroundStatus();
+    if (active && before === eventSequence) authoritative = value;
+  } catch (error) {
+    if (active) store.error = String(error);
+  }
+}
+async function finishOperation() {
+  // Foreground check/apply publishes intermediate states. Reconcile only the
+  // authoritative state after its result; late mount responses cannot win.
+  await readStatus();
+  running.value = null;
+  if (active && authoritative) reconcile(authoritative);
+}
+onMounted(async () => {
   expiryTimer = setInterval(() => {
     now.value = Date.now();
   }, 1000);
+  unsubscribe = api.onWebsiteBackground(receive);
+  await readStatus();
+  if (active && !running.value && authoritative) reconcile(authoritative);
+  loading.value = false;
 });
 onUnmounted(() => {
+  active = false;
+  unsubscribe?.();
   if (expiryTimer) clearInterval(expiryTimer);
 });
 const expired = computed(() => !!review.value && review.value.expiresAt <= now.value);
 const stale = computed(
-  () => !!review.value && (review.value.revision !== store.snapshot?.revision || expired.value),
+  () =>
+    !!review.value &&
+    (invalidated.value || review.value.revision !== store.snapshot?.revision || expired.value),
 );
 const selectedRows = computed(
   () => review.value?.rows.filter((row) => selected.value.includes(row.id)) ?? [],
@@ -73,6 +157,10 @@ const groups = computed(() =>
     .filter((group) => group.rows.length),
 );
 async function check() {
+  if (loading.value || running.value) return;
+  allowAutomaticReview = false;
+  invalidated.value = false;
+  newerReview.value = undefined;
   now.value = Date.now();
   running.value = 'check';
   review.value = null;
@@ -86,19 +174,22 @@ async function check() {
         }),
       '网站更新检查完成',
     );
-    if (value) {
-      review.value = value;
-      selected.value = value.rows.filter((row) => row.selectedByDefault).map((row) => row.id);
-      decisions.value = {};
-      approvedLocal.value = [];
-    }
+    if (active && value) adoptReview(value);
   } finally {
-    running.value = null;
+    await finishOperation();
   }
 }
 async function apply() {
   now.value = Date.now();
-  if (!review.value || !selected.value.length || unresolved.value || stale.value) return;
+  if (
+    loading.value ||
+    running.value ||
+    !review.value ||
+    !selected.value.length ||
+    unresolved.value ||
+    stale.value
+  )
+    return;
   running.value = 'apply';
   const previous = [...selected.value];
   try {
@@ -117,9 +208,11 @@ async function apply() {
         }),
       '所选更新已处理',
     );
-    if (value) {
+    if (active && value) {
       store.accept(value.snapshot);
       review.value = value.review;
+      invalidated.value = false;
+      newerReview.value = undefined;
       lastResult.value = value;
       selected.value = value.review.rows
         .filter((row) => previous.includes(row.id) && row.status !== 'local-modified')
@@ -128,7 +221,7 @@ async function apply() {
       store.status = `更新成功 ${value.results.filter((r) => r.success).length} 项，保留待处理 ${value.review.rows.length} 项`;
     }
   } finally {
-    running.value = null;
+    await finishOperation();
   }
 }
 async function cancel() {
@@ -145,6 +238,23 @@ async function close() {
     return;
   }
   emit('close');
+}
+async function discard() {
+  if (running.value) return;
+  const discarded = await store.run(async () => {
+    await api.discardWebsiteReview();
+    return true;
+  }, '已丢弃审核清单，下次检查将重新读取网页');
+  if (active && discarded) {
+    allowAutomaticReview = false;
+    invalidated.value = false;
+    newerReview.value = undefined;
+    review.value = null;
+    selected.value = [];
+    decisions.value = {};
+    approvedLocal.value = [];
+    lastResult.value = null;
+  }
 }
 function selectAll() {
   if (!review.value) return;
@@ -179,7 +289,7 @@ function deadline(value?: SwiftDate, allDay = false) {
       <p class="muted">
         先读取课程与活动清单，再由你选择需要下载或应用的项目。已存在的资料正文只有确认后才会下载核验。
       </p>
-      <fieldset :disabled="!!running" class="batch-connections">
+      <fieldset :disabled="!!running || loading" class="batch-connections">
         <legend>检查课程</legend>
         <label v-for="connection in connections" :key="connection.id" class="check-label"
           ><input type="checkbox" v-model="connectionIDs" :value="connection.id" />{{
@@ -192,12 +302,17 @@ function deadline(value?: SwiftDate, allDay = false) {
         ><input
           type="checkbox"
           v-model="includeExisting"
-          :disabled="!!running"
+          :disabled="!!running || loading"
         />列出已有资料，供选择后下载核验</label
       >
       <div class="setting-actions">
-        <button class="primary" :disabled="!!running || !connectionIDs.length" @click="check">
+        <button
+          class="primary"
+          :disabled="!!running || loading || !connectionIDs.length"
+          @click="check"
+        >
           <FileSearch :size="15" />{{ review ? '重新检查网站更新' : '检查网站更新' }}</button
+        ><button v-if="review && !running" @click="discard">丢弃当前审核</button
         ><button v-if="running" @click="cancel">
           <Square :size="14" />停止{{ running === 'check' ? '检查' : '更新' }}</button
         ><span v-if="running" class="muted small">{{
@@ -205,6 +320,14 @@ function deadline(value?: SwiftDate, allDay = false) {
             ? '正在读取官方课程和活动页面…'
             : '正在处理已选项目；完成项会立即保存。'
         }}</span>
+      </div>
+      <p v-if="invalidated" class="warning-banner" role="status">
+        当前审核已失效，不能继续应用。请加载最新审核或重新检查网站更新；原选择暂时保留。
+      </p>
+      <div v-if="newerReview && !running && !loading" class="info-note">
+        有另一份待审核清单（{{ newerReview.rows.length }}
+        项）。加载后将采用该清单的课程并重置当前选择。
+        <button @click="adoptReview(newerReview)">加载最新审核</button>
       </div>
       <template v-if="review"
         ><p class="info-note">
@@ -224,7 +347,7 @@ function deadline(value?: SwiftDate, allDay = false) {
           本次操作已中止；成功项保留，请检查下方结果或重新检查。
         </p>
         <p v-if="expired" class="warning-banner">更新清单已过期，请重新检查网站更新。</p>
-        <p v-else-if="stale" class="warning-banner">
+        <p v-else-if="stale && !invalidated" class="warning-banner">
           资料库已变化，当前清单不能继续应用，请重新检查网站更新。
         </p>
         <div v-if="lastResult" class="batch-results" aria-label="批量更新结果">

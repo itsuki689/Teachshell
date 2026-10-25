@@ -29,6 +29,10 @@ function profileName(profile: string) {
 export class LoginStorage implements LoginSessionStorage {
   private queue: Promise<unknown> = Promise.resolve();
   readonly filename: string;
+  private enabled = false;
+  private cleanupPending = false;
+  warning = '';
+  preferencesValid = false;
   private root: string;
   private secret: LoginSecretStore;
   constructor(root: string, profile: string, secret: LoginSecretStore) {
@@ -44,16 +48,48 @@ export class LoginStorage implements LoginSessionStorage {
   async loadEnabled() {
     await fs.mkdir(this.root, { recursive: true, mode: 0o700 });
     const filename = await safePath(this.root, this.filename, true);
-    if (!(await exists(filename))) return false;
+    if (!(await exists(filename))) {
+      this.preferencesValid = true;
+      return false;
+    }
     const stat = await fs.stat(filename);
     if (stat.size > 1024) throw new Error('登录偏好文件无效');
     const data = JSON.parse(await fs.readFile(filename, 'utf8'));
-    return data?.enabled === true;
+    if (data?.version !== 1 || typeof data.enabled !== 'boolean')
+      throw new Error('登录偏好文件无效');
+    this.preferencesValid = true;
+    this.enabled = data?.enabled === true;
+    this.cleanupPending = data?.cleanupPending === true;
+    if (this.cleanupPending) {
+      // A previous explicit disable authorizes retrying its unfinished deletion, never restoration.
+      this.enabled = false;
+      try {
+        await this.secret.remove(false);
+        await this.savePreference(false, false);
+        this.warning = '';
+      } catch {
+        this.warning = '此前关闭登录记忆时未能清除安全存储副本，已停止恢复；请点击重试。';
+      }
+    }
+    return this.enabled;
+  }
+  private async savePreference(enabled: boolean, cleanupPending: boolean) {
+    await fs.mkdir(this.root, { recursive: true, mode: 0o700 });
+    await atomicWrite(
+      this.root,
+      this.filename,
+      JSON.stringify({ version: 1, enabled, ...(cleanupPending ? { cleanupPending: true } : {}) }) +
+        '\n',
+    );
+    this.preferencesValid = true;
+    this.enabled = enabled;
+    this.cleanupPending = cleanupPending;
   }
   setEnabled(enabled: boolean) {
     return this.serial(async () => {
-      await fs.mkdir(this.root, { recursive: true, mode: 0o700 });
-      await atomicWrite(this.root, this.filename, JSON.stringify({ version: 1, enabled }) + '\n');
+      if (enabled && this.cleanupPending) await this.secret.remove(true);
+      await this.savePreference(enabled, !enabled);
+      if (enabled) this.warning = '';
     });
   }
   read(allowInteraction: boolean) {
@@ -65,7 +101,16 @@ export class LoginStorage implements LoginSessionStorage {
     });
   }
   remove(allowInteraction = false) {
-    return this.serial(() => this.secret.remove(allowInteraction));
+    return this.serial(async () => {
+      try {
+        await this.secret.remove(allowInteraction);
+        if (this.cleanupPending) await this.savePreference(this.enabled, false);
+        this.warning = '';
+      } catch (error) {
+        this.warning = '安全存储副本未能清除；已停止恢复，请重试。';
+        throw error;
+      }
+    });
   }
   cancel() {
     this.secret.cancel?.();
@@ -114,12 +159,16 @@ export class EncryptedLoginFile implements LoginSecretStore {
   }
 }
 export class KeychainLoginStore implements LoginSecretStore {
-  private children = new Set<ReturnType<typeof spawn>>();
+  private children = new Map<
+    ReturnType<typeof spawn>,
+    { operation: string; interactive: boolean }
+  >();
   private closed = false;
   cancel() {
     this.closed = true;
-    for (const child of this.children) child.kill();
-    this.children.clear();
+    // Already-authorized noninteractive deletion may finish; credential reads/writes and prompts stop.
+    for (const [child, request] of this.children)
+      if (request.operation !== 'remove' || request.interactive) child.kill();
   }
   private executable: string;
   private profile: string;
@@ -134,13 +183,14 @@ export class KeychainLoginStore implements LoginSecretStore {
     allowInteraction: boolean,
     data?: string,
   ): Promise<string | undefined> {
-    if (this.closed) return Promise.reject(new Error('登录存储已关闭'));
+    if (this.closed && operation !== 'remove') return Promise.reject(new Error('登录存储已关闭'));
+    if (this.closed) allowInteraction = false;
     return new Promise((resolve, reject) => {
       const child = spawn(this.executable, [], {
         stdio: ['pipe', 'pipe', 'pipe'],
         windowsHide: true,
       });
-      this.children.add(child);
+      this.children.set(child, { operation, interactive: allowInteraction });
       child.once('close', () => this.children.delete(child));
       let output = Buffer.alloc(0),
         finished = false;
@@ -199,6 +249,12 @@ export class KeychainLoginStore implements LoginSecretStore {
     if (valid()) await this.request('write', allowInteraction, data);
   }
   async remove(allowInteraction = false) {
-    await this.request('remove', allowInteraction);
+    const mayRetry = allowInteraction && !this.closed;
+    try {
+      await this.request('remove', allowInteraction);
+    } catch (error) {
+      if (this.closed && mayRetry) await this.request('remove', false);
+      else throw error;
+    }
   }
 }

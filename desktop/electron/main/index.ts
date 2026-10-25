@@ -10,6 +10,7 @@ import {
   nativeTheme,
   session,
   clipboard,
+  powerMonitor,
 } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -48,7 +49,21 @@ import { installWebsiteUpdateIPC } from './website-update-ipc.ts';
 import { teachingConnections } from '../services/website/teaching.ts';
 import { swiftNow } from '../../shared/model.ts';
 let clearTeachingPreviews: (() => void) | undefined;
-let clearWebsiteUpdates: (() => void) | undefined;
+let websiteUpdates: ReturnType<typeof installWebsiteUpdateIPC> | undefined;
+let suspended = false;
+const foregroundWebsiteActions = new Set([
+  'openWebsite',
+  'inspectWebsite',
+  'importWebsite',
+  'connectWebsite',
+  'previewWebsiteAssignment',
+  'applyWebsiteAssignment',
+  'disconnectWebsite',
+  'updateWebsiteOptions',
+  'resolveWebsiteDeadline',
+  'rememberWebsiteLogin',
+  'retryWebsiteLogin',
+]);
 const testRoot = process.env.TEACHSHELF_TEST_ROOT;
 // Keep the existing data location across the Teachshell product-name change.
 app.setPath(
@@ -118,7 +133,10 @@ async function setupWebsite() {
     digest(repository.root).slice(0, 16),
     {
       onLoginState: (status) => {
-        if (website === instance && !quitting) post('website-login', status);
+        if (website === instance && !quitting) {
+          post('website-login', status);
+          websiteUpdates?.notify();
+        }
       },
     },
   );
@@ -174,7 +192,7 @@ async function switchLibrary(root: string) {
   if (switching) throw new Error('资料库正在切换，请稍候');
   if ((await fs.realpath(root)) === repository.root) return repository.snapshot();
   switching = true;
-  clearWebsiteUpdates?.();
+  await websiteUpdates?.();
   const previous = repository;
   let next: Repository | undefined;
   let saved = false;
@@ -211,6 +229,7 @@ async function switchLibrary(root: string) {
     throw error;
   } finally {
     switching = false;
+    await websiteUpdates?.start();
   }
 }
 async function chooseDirectory(title: string) {
@@ -233,8 +252,10 @@ function installIPC() {
         )
       )
         throw new Error('拒绝不可信页面调用');
-      if (switching) throw new Error('资料库正在切换，请稍候');
+      if (switching || quitting) throw new Error('资料库正在切换或关闭，请稍候');
       const parsed = args.parse(input) as unknown[];
+      if (foregroundWebsiteActions.has(name) && websiteUpdates)
+        return websiteUpdates.foreground(async () => fn(...parsed));
       return fn(...parsed);
     });
   clearTeachingPreviews = installTeachingIPC({
@@ -243,11 +264,25 @@ function installIPC() {
     browser: () => website,
     proposals,
   });
-  clearWebsiteUpdates = installWebsiteUpdateIPC({
+  websiteUpdates = installWebsiteUpdateIPC({
     handle,
     repository: () => repository,
     browser: () => website,
     cacheRoot: path.join(app.getPath('userData'), 'WebsiteDownloads'),
+    background: {
+      settingsRoot: path.join(app.getPath('userData'), 'WebsitePreferences'),
+      readiness: () => {
+        const login = website.loginStatus();
+        return {
+          online: net.isOnline(),
+          idle: !switching && !quitting && !suspended,
+          loginState: login.loginState,
+          accountID: login.accountID,
+          allowSessionProbe: login.canProbe,
+        };
+      },
+      onChange: (status) => post('website-background', status),
+    },
   });
   const none = z.tuple([]);
   handle('websiteLoginStatus', none, () => website.loginStatus());
@@ -899,12 +934,27 @@ async function start() {
     // Electron allows the unload only when this event is prevented.
     if (response === 1) event.preventDefault();
   });
-  mainWindow.on('closed', () => void closeWebsite().catch(() => {}));
+  mainWindow.on('closed', () => {
+    void (async () => {
+      await websiteUpdates?.();
+      await closeWebsite();
+    })().catch(() => {});
+  });
   rendererURL =
     !app.isPackaged && process.env.TEACHSHELF_DEV_URL === 'http://127.0.0.1:5173'
       ? 'http://127.0.0.1:5173/'
       : pathToFileURL(path.join(__dirname, '../dist/index.html')).href;
   installIPC();
+  await websiteUpdates?.start();
+  powerMonitor.on('suspend', () => {
+    suspended = true;
+    websiteUpdates?.notify();
+  });
+  powerMonitor.on('resume', () => {
+    suspended = false;
+    websiteUpdates?.notify();
+  });
+  mainWindow.on('focus', () => websiteUpdates?.notify());
   menu();
   await mainWindow.loadURL(rendererURL);
   mainWindow.show();
@@ -939,11 +989,13 @@ app.on('will-quit', (event) => {
   quitting = true;
   chat?.cancel();
   if (timer) clearTimeout(timer);
-  clearWebsiteUpdates?.();
-  Promise.allSettled([
-    closeWebsite(),
-    watcher?.close(),
-    server?.stop(),
-    repository?.close(),
-  ]).finally(() => app.quit());
+  void (async () => {
+    await websiteUpdates?.();
+    await Promise.allSettled([
+      closeWebsite(),
+      watcher?.close(),
+      server?.stop(),
+      repository?.close(),
+    ]);
+  })().finally(() => app.quit());
 });

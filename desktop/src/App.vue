@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-vue-next';
 import type { Course, StudyTask } from '../shared/model';
+import type { BackgroundStatus } from '../shared/api';
 import { useLibrary } from './stores/library';
 import Sidebar from './components/Sidebar.vue';
 import CourseEditor from './components/CourseEditor.vue';
@@ -45,6 +46,14 @@ const store = useLibrary(),
   showSearch = ref(false),
   loaded = ref(false);
 const releases: (() => void)[] = [];
+const websiteBackground = ref<BackgroundStatus>();
+async function refreshWebsiteBackground() {
+  try {
+    websiteBackground.value = await api.websiteBackgroundStatus();
+  } catch {
+    /* Switching/closing a library emits a fresh state after completion. */
+  }
+}
 const theme = computed(() => store.settings?.theme ?? store.state.appearance);
 watchEffect(() => {
   document.documentElement.dataset.theme = theme.value;
@@ -198,16 +207,27 @@ onMounted(async () => {
     loaded.value = true;
     return;
   }
-  releases.push(api.onChanged(store.accept), api.onMenu(menu));
+  releases.push(
+    api.onChanged(store.accept),
+    api.onMenu(menu),
+    api.onWebsiteBackground((status) => {
+      websiteBackground.value = status;
+    }),
+  );
   window.addEventListener('keydown', key);
+  window.addEventListener('online', refreshWebsiteBackground);
+  window.addEventListener('offline', refreshWebsiteBackground);
   await store.refresh();
   const settings = await store.run(() => api.settings(), '本地资料库已就绪');
   if (settings) store.settings = settings;
+  await refreshWebsiteBackground();
   loaded.value = true;
 });
 onUnmounted(() => {
   releases.forEach((fn) => fn());
   window.removeEventListener('keydown', key);
+  window.removeEventListener('online', refreshWebsiteBackground);
+  window.removeEventListener('offline', refreshWebsiteBackground);
 });
 </script>
 <template>
@@ -281,6 +301,14 @@ onUnmounted(() => {
             v-else
             class="status-dot"
           /><span>{{ store.status }}</span
+          ><button
+            v-if="websiteBackground?.review?.rows.length"
+            class="background-review-link"
+            aria-label="审核网站更新"
+            :disabled="!!store.busy"
+            @click="toolbarAction('update')"
+          >
+            网站更新 {{ websiteBackground.review.rows.length }} 项待审核</button
           ><span class="spacer" /><span
             >{{ store.state.courses.length }} 门课程 ·
             {{ store.state.materials.length }} 份资料</span

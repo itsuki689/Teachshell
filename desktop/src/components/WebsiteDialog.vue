@@ -16,6 +16,7 @@ import { useLibrary } from '../stores/library';
 import Modal from './Modal.vue';
 import WebsiteBatchReview from './WebsiteBatchReview.vue';
 import WebsiteLoginSettings from './WebsiteLoginSettings.vue';
+import WebsiteSyncSettings from './WebsiteSyncSettings.vue';
 const showBatch = ref(false);
 const api = window.teachshelf,
   store = useLibrary();
@@ -331,6 +332,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
     ><div class="form-stack">
       <p class="muted">在独立窗口完成登录。先读取课程首页，再打开作业或资料条目读取详情。</p>
       <WebsiteLoginSettings v-if="kind === 'teaching'" />
+      <WebsiteSyncSettings v-if="kind === 'teaching'" @review="showBatch = true" />
       <div class="form-row">
         <label
           >网站类型<select aria-label="网站类型" v-model="kind">

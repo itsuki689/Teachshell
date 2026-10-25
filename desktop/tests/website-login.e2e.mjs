@@ -272,6 +272,52 @@ try {
       0,
     );
     assert.equal(await app.evaluate(() => globalThis.reader.loginStatus().enabled), false);
+    if (process.platform === 'darwin') {
+      const faultProfile = profile + '-pending';
+      await fs.writeFile(
+        path.join(userData, 'TeachingSessions', faultProfile + '.preferences.json'),
+        JSON.stringify({ version: 1, enabled: false, cleanupPending: true }),
+      );
+      const retried = await app.evaluate(async (_electron, profile) => {
+        const cp = process.getBuiltinModule('node:child_process'),
+          original = cp.spawn;
+        let fail = true;
+        cp.spawn = function (...args) {
+          const child = original.apply(this, args);
+          if (String(args[0]).endsWith('teaching-session-keychain')) {
+            const end = child.stdin.end.bind(child.stdin);
+            child.stdin.end = function (chunk, ...rest) {
+              let request;
+              try {
+                request = JSON.parse(String(chunk));
+              } catch {}
+              if (fail && request?.operation === 'remove' && request.profile === profile)
+                return end(JSON.stringify({ ...request, profile: 'invalid profile' }), ...rest);
+              return end(chunk, ...rest);
+            };
+          }
+          return child;
+        };
+        const browser = new globalThis.Browser(globalThis.scripts, profile, globalThis.options);
+        try {
+          await browser.prepareLogin();
+          const before = browser.loginStatus();
+          fail = false;
+          const after = await browser.retryLogin();
+          return { before, after };
+        } finally {
+          await browser.close();
+          cp.spawn = original;
+        }
+      }, faultProfile);
+      assert.equal(retried.before.hasIssue, true);
+      assert.match(retried.before.status, /未能清除/);
+      assert.equal(retried.after.hasIssue, false);
+      assert.equal(retried.after.enabled, false);
+      console.log(
+        'PASS actual Electron cleanup failure warning clears after successful secure-store retry',
+      );
+    }
     console.log(
       'PASS actual Electron: default-off, no persistent partition, scoped legacy cleanup, authenticated opt-in, secret retention across restart, Moodle-only HTTPS cookie restore, profile isolation, disable without logout, disabled restart',
     );

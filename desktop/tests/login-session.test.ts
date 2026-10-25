@@ -295,3 +295,80 @@ test('cookie rotation cancels an older asynchronous capture and disable still re
     g.session.close();
   }
 });
+
+test('close waits for an already-authorized disable while invalidating late credential writes', async () => {
+  const f = fixture(true);
+  let release!: () => void,
+    entered = false;
+  f.session.didAuthenticate('99');
+  await f.session.saveNow();
+  const remove = f.storage.remove;
+  f.storage.remove = async () => {
+    entered = true;
+    await new Promise<void>((r) => (release = r));
+    await remove();
+  };
+  const disabling = f.session.setEnabled(false);
+  while (!entered) await Promise.resolve();
+  let done = false;
+  const closing = f.session.close().then(() => {
+    done = true;
+  });
+  await Promise.resolve();
+  assert.equal(done, false);
+  assert.equal(f.session.state().enabled, false);
+  release();
+  await Promise.all([disabling, closing]);
+  assert.equal(done, true);
+  assert.equal(f.readData(), undefined);
+  assert.equal(f.session.state().hasIssue, false);
+});
+test('failed shutdown deletion retains a clear error and the disabled state', async () => {
+  const f = fixture(true);
+  f.session.didAuthenticate('99');
+  await f.session.saveNow();
+  f.storage.remove = async () => {
+    throw Error('locked deletion');
+  };
+  const disabling = f.session.setEnabled(false);
+  await f.session.close();
+  await disabling;
+  assert.equal(f.session.state().enabled, false);
+  assert.equal(f.session.state().hasIssue, true);
+  assert.match(f.session.state().status, /未清除/);
+  assert.equal(f.counts().pref, false);
+});
+test('transient checks restore only their own trusted baseline, never override new authentication or close', async () => {
+  const f = fixture();
+  f.session.didAuthenticate('99');
+  let check = f.session.beginCheck();
+  f.session.continueCheck(check);
+  f.session.failCheck(check);
+  assert.equal(f.session.state().loginState, 'signedIn');
+  assert.equal(f.session.state().accountID, '99');
+  check = f.session.beginCheck();
+  await f.session.needsLogin();
+  f.session.failCheck(check);
+  assert.equal(f.session.state().loginState, 'needsLogin');
+  assert.equal(f.session.state().accountID, undefined);
+  check = f.session.beginCheck();
+  f.session.didAuthenticate('88');
+  f.session.failCheck(check);
+  f.session.didAuthenticate('99', check);
+  assert.equal(f.session.state().accountID, '88');
+  check = f.session.beginCheck();
+  await f.session.close();
+  f.session.failCheck(check);
+  assert.equal(f.session.state().loginState, 'checking');
+  const g = fixture(true);
+  g.setData(
+    JSON.stringify({ version: 1, savedAt: now, cookies: [savedLoginCookie(cookie(), now)] }),
+  );
+  await g.session.prepare();
+  const probe = g.session.beginCheck();
+  g.session.failCheck(probe);
+  assert.equal(g.session.state().loginState, 'unknown');
+  assert.equal(g.session.state().canProbe, true);
+  assert.equal(g.session.state().accountID, undefined);
+  await g.session.close();
+});

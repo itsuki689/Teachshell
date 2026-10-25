@@ -86,7 +86,7 @@ test('version restore authorization binds the listed revision and library identi
     copied = await Repository.open(destination);
     assert.equal(copied.snapshot().revision, approved.revision);
     active = copied;
-    clear();
+    await clear();
     await assert.rejects(
       async () =>
         handlers.get('restoreMaterialVersion')!(
@@ -101,6 +101,79 @@ test('version restore authorization binds the listed revision and library identi
     assert.equal(repo.state.materials.length, 2);
   } finally {
     await copied?.close();
+    await repo.close();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('website foreground takeover is exclusive and library shutdown awaits it without publishing late work', async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'website-foreground-')));
+  const repo = await Repository.open(path.join(root, 'library'), { create: true });
+  const events: unknown[] = [];
+  const handlers = new Map<string, (...args: any[]) => unknown>();
+  const controller = installWebsiteUpdateIPC({
+    handle: (name, schema, fn) =>
+      handlers.set(name, (...args) => fn(...(schema.parse(args) as unknown[]))),
+    repository: () => repo,
+    browser: () => ({}) as WebsiteBrowser,
+    cacheRoot: path.join(root, 'cache'),
+    background: {
+      settingsRoot: path.join(root, 'preferences'),
+      readiness: () => ({ online: true, idle: true, loginState: 'unknown' }),
+      onChange: (status) => events.push(status),
+    },
+  });
+  let release!: () => void;
+  let started!: () => void;
+  const entered = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    await controller.start();
+    for (const input of [
+      { enabled: 'true' },
+      { intervalMinutes: 4 },
+      { intervalMinutes: 5.5 },
+      { intervalMinutes: 1441 },
+      { root: '/other' },
+    ])
+      assert.throws(() => handlers.get('saveWebsiteBackground')!(input));
+    const operation = controller.foreground(async () => {
+      started();
+      await held;
+      return 'done';
+    });
+    await entered;
+    await assert.rejects(
+      controller.foreground(async () => 'overlap'),
+      /正在进行/,
+    );
+    let stopped = false;
+    const stopping = controller().then(() => {
+      stopped = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    assert.equal(stopped, false);
+    const count = events.length;
+    release();
+    assert.equal(await operation, 'done');
+    await stopping;
+    assert.equal(
+      events.length,
+      count,
+      'a retired foreground operation cannot resume the stopped scheduler',
+    );
+    await controller.start();
+    assert.equal(
+      await controller.foreground(async () => 'new library operation'),
+      'new library operation',
+    );
+  } finally {
+    release?.();
+    await controller();
     await repo.close();
     await fs.rm(root, { recursive: true, force: true });
   }

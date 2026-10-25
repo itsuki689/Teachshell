@@ -36,10 +36,16 @@ macOS helper 必须为目标应用架构编译并随应用签名，放在 `proce
 
 ## 验证
 
-- `node --test desktop/tests/login-session.test.ts desktop/tests/login-storage.test.ts`：14 个测试，包含日期和白名单边界、锁定模拟、取消竞态、加密文件隔离、符号链接拒绝及 Linux 后端规则。
+- `node --test desktop/tests/login-session.test.ts desktop/tests/login-storage.test.ts`：18 个测试，包含日期和白名单边界、锁定模拟、取消竞态、加密文件隔离、符号链接拒绝及 Linux 后端规则。
 - 原 Swift `TeachingLoginSessionTests` 与 `TeachingLoginRecoveryTests`：15 个测试通过。使用已有未修改测试构建，测试命令中的模块缓存、scratch/cache/config/security 路径均位于临时目录。
-- `node desktop/tests/website-login.e2e.mjs`：真实 Electron Cookie jar 与 macOS 独立随机 Keychain profile，验证重启、Secure/HttpOnly/session-only、库隔离、禁用不登出、旧 partition 清理及关闭竞态。仅使用合成账号/Cookie，结束删除测试钥匙串项。
-- `node desktop/tests/website-login-ui.e2e.mjs`：实际应用 main/preload/Vue 界面验证默认关闭、非法 IPC 参数拒绝、开关按资料库持久化、切库清理及重启。支持 `TEACHSHELF_EXECUTABLE` 指定已打包应用。
+- `node desktop/tests/website-login.e2e.mjs`：真实 Electron Cookie jar 与 macOS 独立随机 Keychain profile，验证重启、Secure/HttpOnly/session-only、库隔离、禁用不登出、旧 partition 清理、关闭竞态及清理失败后成功重试消除警告。仅使用合成账号/Cookie，结束删除测试钥匙串项。
+- `node desktop/tests/website-login-ui.e2e.mjs`：实际应用 main/preload/Vue 界面验证默认关闭、非法 IPC 参数拒绝、开关按资料库持久化、切库清理及重启；新增实际默认 helper 的已认证 Cookie 保存、正常退出时轮换刷新，以及点击禁用后立即退出的确定性回归，共 7 项。支持 `TEACHSHELF_EXECUTABLE` 指定已打包应用。
 - 既有 `website-browser.e2e.mjs` 验证 Chromium 解析、隔离世界、未选择资料禁止正文 GET，以及 HEAD 重定向限制。
 
 本机已验证 macOS；Windows/Linux 运行验证由对应 CI 主机执行，不能用本机测试替代这些系统的实际结果。
+
+## 关闭与检查失败恢复
+
+关闭立即使旧捕获和恢复请求失效，同时等待已经发起的“禁用登录记忆”删除完成。辅助程序的非交互删除保留执行；正在交互的删除被取消后，仅重新尝试一次无交互删除，使用 10 秒超时。偏好先原子保存为关闭并记录 `cleanupPending`，删除成功才清除标记。失败时下次启动继续关闭恢复、显示待清理警告；明确重试成功后动态清除该警告。尚未解决的偏好读取和旧 partition 清理错误独立保留。
+
+每次教学页面检查带有登录状态令牌。非认证网络错误和取消只恢复该请求开始前已确认的 `signedIn` 或 `unknown + canProbe` 状态；新的账号验证、登录失效或关闭会使旧令牌无效，旧请求不能覆盖它们。真实 Chromium 回归覆盖网络失败和取消后再次读取成功。

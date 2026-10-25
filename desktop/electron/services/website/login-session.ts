@@ -111,6 +111,10 @@ export function restoredLoginCookie(c: SavedLoginCookie): LoginCookie {
   };
 }
 const issue = (error: unknown) => (error instanceof Error ? error.message : String(error));
+export interface LoginCheck {
+  generation: number;
+  previous: Pick<LoginStatus, 'loginState' | 'accountID' | 'canProbe'>;
+}
 export class TeachingLoginSession {
   private value: LoginStatus;
   private storage: LoginSessionStorage;
@@ -121,6 +125,10 @@ export class TeachingLoginSession {
   private preparation?: Promise<void>;
   private generation = 0;
   private closed = false;
+  private closing?: Promise<void>;
+  private disables = new Set<Promise<void>>();
+  private loginGeneration = 0;
+  private stable: LoginCheck['previous'] = { loginState: 'unknown', canProbe: false };
   private verified = false;
   private mayInvalidate = false;
   private savedCookies: SavedLoginCookie[] = [];
@@ -149,6 +157,13 @@ export class TeachingLoginSession {
   }
   private update(patch: Partial<LoginStatus>) {
     Object.assign(this.value, patch);
+    if (!['checking', 'renewing'].includes(this.value.loginState))
+      this.stable = {
+        loginState: this.value.loginState,
+        accountID: this.value.accountID,
+        canProbe: this.value.canProbe,
+      };
+    else if (patch.canProbe === false) this.stable.canProbe = false;
     if (!this.closed) this.changed?.(this.state());
   }
   private invalidate() {
@@ -195,10 +210,18 @@ export class TeachingLoginSession {
       this.preparation = undefined;
     }
   }
-  async setEnabled(enabled: boolean) {
-    if (this.closed) return;
+  setEnabled(enabled: boolean): Promise<void> {
+    if (this.closed) return Promise.resolve();
     this.invalidate();
     this.update({ enabled, ...(!enabled ? { canProbe: false } : {}) });
+    const operation = this.changeEnabled(enabled);
+    if (!enabled) {
+      this.disables.add(operation);
+      void operation.finally(() => this.disables.delete(operation));
+    }
+    return operation;
+  }
+  private async changeEnabled(enabled: boolean) {
     try {
       if (enabled) {
         await this.storage.setEnabled(true);
@@ -225,17 +248,40 @@ export class TeachingLoginSession {
     }
   }
   setLoginState(state: LoginState) {
+    if (this.closed) return;
+    this.loginGeneration++;
     this.update({ loginState: state });
   }
-  didAuthenticate(accountID?: string) {
-    if (this.closed) return;
+  beginCheck(): LoginCheck {
+    const check = { generation: ++this.loginGeneration, previous: { ...this.stable } };
+    if (!this.closed) this.update({ loginState: 'checking' });
+    return check;
+  }
+  continueCheck(check: LoginCheck) {
+    if (!this.closed && check.generation === this.loginGeneration)
+      this.update({ loginState: 'renewing' });
+  }
+  failCheck(check: LoginCheck) {
+    if (
+      this.closed ||
+      check.generation !== this.loginGeneration ||
+      !['checking', 'renewing'].includes(this.value.loginState)
+    )
+      return;
+    this.loginGeneration++;
+    this.update({ ...check.previous, canProbe: check.previous.canProbe && this.value.enabled });
+  }
+  didAuthenticate(accountID?: string, check?: LoginCheck) {
+    if (this.closed || (check && check.generation !== this.loginGeneration)) return;
+    this.loginGeneration++;
     this.verified = true;
     this.mayInvalidate = true;
     this.update({ loginState: 'signedIn', accountID, canProbe: false });
     if (this.value.enabled) this.cookiesChanged();
   }
-  async needsLogin(explicitLogout = false) {
-    if (this.closed) return;
+  async needsLogin(explicitLogout = false, check?: LoginCheck) {
+    if (this.closed || (check && check.generation !== this.loginGeneration)) return;
+    this.loginGeneration++;
     this.verified = false;
     this.invalidate();
     this.savedCookies = [];
@@ -311,10 +357,14 @@ export class TeachingLoginSession {
       void this.saveNow();
     }, 200);
   }
-  close() {
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
     this.closed = true;
+    this.loginGeneration++;
     this.invalidate();
     this.storage.cancel?.();
+    this.closing = Promise.allSettled([...this.disables]).then(() => {});
+    return this.closing;
   }
 }
 /** Matches Swift's one official SSO attempt, with no credential/form submission. */

@@ -115,3 +115,50 @@ test('Linux rejects basic_text even for explicit actions and never accesses a ke
   assert.doesNotThrow(() => assertLoginBackend('linux', 'gnome_libsecret', true));
   assert.doesNotThrow(() => assertLoginBackend('win32', '', false));
 });
+
+test('failed disable cleanup persists off and retries deletion before any later restoration or re-enabling', async () => {
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'login-pending-')));
+  let fail = true,
+    secret = 'synthetic',
+    reads = 0;
+  const vault = {
+    read: async () => {
+      reads++;
+      return secret;
+    },
+    write: async () => {},
+    remove: async () => {
+      if (fail) throw Error('locked');
+      secret = '';
+    },
+  };
+  try {
+    const first = new LoginStorage(root, 'A', vault);
+    await first.loadEnabled();
+    await first.setEnabled(true);
+    await first.setEnabled(false);
+    await assert.rejects(first.remove(), /locked/);
+    const disk = JSON.parse(await fs.readFile(path.join(root, first.filename), 'utf8'));
+    assert.equal(disk.enabled, false);
+    assert.equal(disk.cleanupPending, true);
+    const restarted = new LoginStorage(root, 'A', vault);
+    assert.equal(await restarted.loadEnabled(), false);
+    assert.match(restarted.warning, /未能清除/);
+    assert.equal(reads, 0);
+    await assert.rejects(restarted.setEnabled(true), /locked/);
+    fail = false;
+    await restarted.setEnabled(false);
+    await restarted.remove(true);
+    assert.equal(restarted.warning, '');
+    const recovered = new LoginStorage(root, 'A', vault);
+    assert.equal(await recovered.loadEnabled(), false);
+    assert.equal(secret, '');
+    assert.equal(reads, 0);
+    assert.equal(
+      JSON.parse(await fs.readFile(path.join(root, first.filename), 'utf8')).cleanupPending,
+      undefined,
+    );
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

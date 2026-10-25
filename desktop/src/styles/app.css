@@ -929,6 +929,13 @@ button.primary:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.statusbar .background-review-link {
+  min-height: 22px;
+  padding: 1px 7px;
+  font-size: 10px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
 .status-separator {
   width: 1px;
   height: 11px;

@@ -43,7 +43,7 @@ try {
     );
     await session
       .fromPartition('teachshelf-test-batch-teaching')
-      .protocol.handle('https', (request) => {
+      .protocol.handle('https', async (request) => {
         const url = new URL(request.url);
         globalThis.requests.push({ url: request.url, method: request.method });
         if (url.hostname !== 'selearning.nju.edu.cn')
@@ -67,6 +67,11 @@ try {
               },
             },
           );
+        if (globalThis.failRead) return Response.error();
+        if (globalThis.holdRead) {
+          globalThis.readHeld = true;
+          await new Promise((resolve) => (globalThis.releaseRead = resolve));
+        }
         const html =
           '<nav class="usermenu"><a href="https://selearning.nju.edu.cn/user/profile.php?id=99">用户</a></nav><h1>课程</h1><main id="region-main"><div class="course-content"><section class="section" data-sectionid="1"><h3 class="sectionname">资料</h3><a href="https://selearning.nju.edu.cn/mod/resource/view.php?id=11"><span class="instancename">讲义</span></a><img src="https://selearning.nju.edu.cn/pluginfile.php/1/mod_resource/content/0/lecture.txt"></section></div></main>';
         return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } });
@@ -132,6 +137,56 @@ try {
     ),
   );
   console.log('PASS actual session HEAD rejects off-origin redirects before fetching');
+  assert.equal(await app.evaluate(() => globalThis.reader.loginStatus().loginState), 'signedIn');
+  await app.evaluate(() => {
+    globalThis.failRead = true;
+  });
+  await assert.rejects(
+    app.evaluate(() =>
+      globalThis.reader.readTeaching(
+        'https://selearning.nju.edu.cn/course/view.php?id=42',
+        { accountID: '99', courseID: '42' },
+        new AbortController().signal,
+      ),
+    ),
+  );
+  assert.equal(await app.evaluate(() => globalThis.reader.loginStatus().loginState), 'signedIn');
+  assert.equal(await app.evaluate(() => globalThis.reader.loginStatus().accountID), '99');
+  await app.evaluate(() => {
+    globalThis.failRead = false;
+    globalThis.holdRead = true;
+    globalThis.pendingRead = globalThis.reader
+      .readTeaching(
+        'https://selearning.nju.edu.cn/course/view.php?id=42',
+        { accountID: '99', courseID: '42' },
+        new AbortController().signal,
+      )
+      .then(
+        () => false,
+        () => true,
+      );
+  });
+  for (let n = 0; n < 100 && !(await app.evaluate(() => globalThis.readHeld)); n++)
+    await new Promise((r) => setTimeout(r, 10));
+  assert.equal(await app.evaluate(() => globalThis.readHeld), true);
+  await app.evaluate(() => globalThis.reader.cancelTeaching());
+  assert.equal(await app.evaluate(() => globalThis.pendingRead), true);
+  assert.equal(await app.evaluate(() => globalThis.reader.loginStatus().loginState), 'signedIn');
+  await app.evaluate(() => {
+    globalThis.holdRead = false;
+    globalThis.releaseRead?.();
+  });
+  const retry = await app.evaluate(() =>
+    globalThis.reader.readTeaching(
+      'https://selearning.nju.edu.cn/course/view.php?id=42',
+      { accountID: '99', courseID: '42' },
+      new AbortController().signal,
+    ),
+  );
+  assert.equal(retry.data.accountID, '99');
+  console.log(
+    'PASS actual Chromium network error and cancellation restore verified login state and permit retry',
+  );
 } finally {
   await app?.evaluate(() => globalThis.reader.close()).catch(() => {});
   await app?.close();

@@ -3,6 +3,14 @@ import type { AssignmentPreview } from '../electron/services/website/assignment-
 export type { LoginStatus } from '../electron/services/website/login-session';
 import type { LoginStatus } from '../electron/services/website/login-session';
 export type {
+  BackgroundStatus,
+  BackgroundPreferences,
+} from '../electron/services/website/background-sync';
+import type {
+  BackgroundStatus,
+  BackgroundPreferences,
+} from '../electron/services/website/background-sync';
+export type {
   BatchReview,
   BatchReviewRow,
   BatchCheckInput,
@@ -90,6 +98,10 @@ export interface AppInfo {
 }
 export interface DesktopAPI {
   appInfo(): Promise<AppInfo>;
+  websiteBackgroundStatus(): Promise<BackgroundStatus>;
+  saveWebsiteBackground(input: Partial<BackgroundPreferences>): Promise<BackgroundStatus>;
+  discardWebsiteReview(): Promise<void>;
+  onWebsiteBackground(callback: (status: BackgroundStatus) => void): () => void;
   websiteLoginStatus(): Promise<LoginStatus>;
   rememberWebsiteLogin(enabled: boolean): Promise<LoginStatus>;
   retryWebsiteLogin(): Promise<LoginStatus>;

@@ -8,7 +8,8 @@ import { teachingPageURL } from './teaching.ts';
 import { sessionFetch } from './session-fetch.ts';
 import { teachingPage } from './download.ts';
 import { TeachingLoginSession, TeachingLoginRecovery } from './login-session.ts';
-import type { LoginStatus } from './login-session.ts';
+import type { LoginStatus, LoginCheck } from './login-session.ts';
+import type { LoginStorage } from './login-storage.ts';
 import { desktopLoginStorage, clearLegacyLoginPartitions } from './login-electron.ts';
 import type { LoginBrowserOptions } from './login-electron.ts';
 export type WebsiteKind = 'teaching' | 'timetable';
@@ -38,7 +39,9 @@ export class WebsiteBrowser {
   private cancellation = new AbortController();
   private login?: TeachingLoginSession;
   private initialization: Promise<void>;
-  private startupIssue = '';
+  private preferenceIssue = '';
+  private legacyIssue = '';
+  private storage: LoginStorage;
   private closed = false;
   private closing?: Promise<void>;
   private visibleRecovery = new TeachingLoginRecovery();
@@ -49,17 +52,18 @@ export class WebsiteBrowser {
     const isolated = session.fromPartition(this.partition('teaching'));
     isolated.cookies.on('changed', this.cookieChanged);
     const storage = desktopLoginStorage(scope, options);
+    this.storage = storage;
     this.initialization = (async () => {
       let enabled = false;
       try {
         enabled = await storage.loadEnabled();
       } catch {
-        this.startupIssue = '登录偏好无法读取；本次不会恢复保存的会话';
+        this.preferenceIssue = '登录偏好无法读取；本次不会恢复保存的会话';
       }
       try {
         await clearLegacyLoginPartitions(scope);
       } catch {
-        this.startupIssue = '旧版登录缓存未能清除；当前仅使用隔离内存会话';
+        this.legacyIssue = '旧版登录缓存未能清除；当前仅使用隔离内存会话';
       }
       this.login = new TeachingLoginSession({
         enabled,
@@ -110,38 +114,47 @@ export class WebsiteBrowser {
       loginState: 'unknown',
       canProbe: false,
     };
-    return this.startupIssue ? { ...status, status: this.startupIssue, hasIssue: true } : status;
+    const startupIssue = [
+      this.storage.preferencesValid ? '' : this.preferenceIssue,
+      this.legacyIssue,
+      this.storage.warning,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    return startupIssue ? { ...status, status: startupIssue, hasIssue: true } : status;
   }
   async setRememberLogin(enabled: boolean) {
     await this.initialization;
     await this.login!.setEnabled(enabled);
-    if (!this.login!.state().hasIssue && this.startupIssue) await this.retryStartupCleanup();
+    if (this.storage.preferencesValid) this.preferenceIssue = '';
+    if (this.legacyIssue) await this.retryStartupCleanup();
     return this.loginStatus();
   }
   async retryLogin() {
     await this.initialization;
     await this.login!.retry();
-    if (!this.login!.state().hasIssue && this.startupIssue) await this.retryStartupCleanup();
+    if (this.storage.preferencesValid) this.preferenceIssue = '';
+    if (this.legacyIssue) await this.retryStartupCleanup();
     return this.loginStatus();
   }
   private async retryStartupCleanup() {
     try {
       await clearLegacyLoginPartitions(this.scope);
-      this.startupIssue = '';
+      this.legacyIssue = '';
     } catch {
-      this.startupIssue = '旧版登录缓存未能清除；当前仅使用隔离内存会话';
+      this.legacyIssue = '旧版登录缓存未能清除；当前仅使用隔离内存会话';
     }
   }
   async flushLogin() {
     await this.initialization;
     await this.login!.saveNow();
   }
-  observeLogin(result: WebsiteResult) {
+  observeLogin(result: WebsiteResult, check?: LoginCheck) {
     const source = teachingPageURL(result.url),
       page = teachingPage.parse(result.data);
     if (source.kind !== page.kind || (source.kind === 'course' && source.id !== page.courseID))
       throw new Error('登录观察来源不匹配');
-    this.login?.didAuthenticate(page.accountID);
+    this.login?.didAuthenticate(page.accountID, check);
   }
   fetch: typeof fetch = async (input, init) => {
     await this.prepareLogin();
@@ -346,26 +359,26 @@ export class WebsiteBrowser {
         };
         bounded.addEventListener('abort', abort, { once: true });
       });
+      const loginCheck = this.login!.beginCheck();
       try {
         return await Promise.race([
           aborted,
           (async () => {
             const recovery = new TeachingLoginRecovery();
             recovery.begin(url);
-            this.login!.setLoginState('checking');
             let target = url;
             for (let n = 0; n < 3; n++) {
               await win.loadURL(target);
               bounded.throwIfAborted();
               const next = recovery.next(win.webContents.getURL());
               if (!next) break;
-              this.login!.setLoginState('renewing');
+              this.login!.continueCheck(loginCheck);
               target = next;
             }
             bounded.throwIfAborted();
             const loaded = win.webContents.getURL();
             if (this.isLoginURL(loaded)) {
-              await this.login!.needsLogin();
+              await this.login!.needsLogin(false, loginCheck);
               throw new Error('需要在官方网页完成登录');
             }
             const actual = teachingPageURL(loaded);
@@ -382,12 +395,14 @@ export class WebsiteBrowser {
               win.webContents.getURL(),
             );
             if (generation !== this.generation) throw new Error('网站检查已取消');
-            this.observeLogin(result);
+            this.observeLogin(result, loginCheck);
             return result;
           })(),
         ]);
       } catch (error) {
-        if (!bounded.aborted && String(error).includes('登录')) await this.login?.needsLogin();
+        if (!bounded.aborted && String(error).includes('登录'))
+          await this.login?.needsLogin(false, loginCheck);
+        else this.login?.failCheck(loginCheck);
         throw error;
       } finally {
         bounded.removeEventListener('abort', abort);
@@ -413,7 +428,7 @@ export class WebsiteBrowser {
     this.cancelTeaching();
     this.closing = (async () => {
       await this.initialization;
-      this.login?.close();
+      await this.login?.close();
       session
         .fromPartition(this.partition('teaching'))
         .cookies.removeListener('changed', this.cookieChanged);
