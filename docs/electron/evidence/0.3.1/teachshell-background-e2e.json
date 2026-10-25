@@ -1,0 +1,57 @@
+{
+  "platform": "darwin",
+  "viewport": {
+    "width": 1350,
+    "height": 859
+  },
+  "browser": "Browser plugin not available; Playwright Electron",
+  "steps": [
+    {
+      "name": "Official page observation establishes the login and course binding; background defaults off",
+      "status": "passed",
+      "durationMs": 541
+    },
+    {
+      "name": "Strict background IPC rejects malformed fields and interval bounds without changing settings",
+      "status": "passed",
+      "durationMs": 6
+    },
+    {
+      "name": "A real 30-second background timer creates review rows with zero downloads and byte-identical JSON",
+      "status": "passed",
+      "durationMs": 30505
+    },
+    {
+      "name": "Status-bar handoff reuses the same review; closing and reopening do not recheck or download",
+      "status": "passed",
+      "durationMs": 136
+    },
+    {
+      "name": "Explicit review selection is the first download and commits one linked assignment",
+      "status": "passed",
+      "durationMs": 682
+    },
+    {
+      "name": "Foreground check takes over a running real timer without concurrent hidden readers or writes",
+      "status": "passed",
+      "durationMs": 30675
+    },
+    {
+      "name": "Turning off a newly scheduled timer prevents all reads after its real due time",
+      "status": "passed",
+      "durationMs": 31374
+    },
+    {
+      "name": "Restart retains preferences and switching real libraries keeps independent settings",
+      "status": "passed",
+      "durationMs": 1123
+    },
+    {
+      "name": "No renderer error, warning or framework overlay",
+      "status": "passed",
+      "durationMs": 1
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

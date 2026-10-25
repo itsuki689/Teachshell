@@ -1,0 +1,46 @@
+PASS Actual Electron imports the Swift timetable sample and renders its minute grid
+PASS Locked fixed courses do not move; unlocked drag preserves original occurrence and exact duration
+PASS A repeated drag preserves identity and overlapping occurrences remain separately selectable
+PASS Escape, out-of-grid drops and concurrent changes cancel the drag without stale writes
+PASS A moved course can be cancelled, restored to the move, then returned to its recurring slot
+PASS Selected-event time keys preserve duration and anchor while inputs and locked courses stay untouched
+PASS Mouse edge resizing changes only the chosen boundary, clamps positive duration and keeps one-off identity
+PASS Recurring plan dragging changes only one execution time while preserving deadline and the following occurrence
+PASS Minimum viewport remains scrollable and no renderer errors or framework overlays appear
+PASS 9 schedule drag acceptance checks
+PASS Shipped page identity, nonblank layout, isolated renderer and original four toolbar actions
+PASS Settings adds two actions, enforces maximum six, then reorders and removes real persisted shortcuts
+PASS Custom toolbar order survives app restart and stale IPC revision cannot overwrite it
+PASS Removing every shortcut hides the capsule; keyboard settings and restore defaults remain usable
+PASS Original update/import/create shortcuts open their real approval or editor dialogs
+PASS Six navigation shortcuts each show the corresponding real view
+PASS Create menu dismisses on Escape and outside click; settings toggles back to previous route
+PASS No framework overlay or renderer runtime errors
+PASS 8 toolbar UI checks; evidence: /private/tmp/teachshell-ui-final
+PASS Default-off login UI and strict boolean IPC validation
+PASS Library switching clears the old memory session and isolates remembered preferences
+PASS A restart retains the opt-in preference and never saves unverified anonymous cookies
+PASS Disabled preference persists on the next actual application launch
+PASS Authenticated UI opt-in uses the application default helper and normal quit flushes a rotated synthetic session
+PASS Restored cookies remain unverified until the real parser runs; disabling clears default secure storage across restart
+PASS Clicking disable and quitting immediately completes the authorized secure-store deletion
+{"passed":7,"rendererErrors":0,"mode":"source","secureStorageAvailable":true}
+PASS Official page observation establishes the login and course binding; background defaults off
+PASS Strict background IPC rejects malformed fields and interval bounds without changing settings
+WAIT real background timer: at least 30 seconds
+PASS A real 30-second background timer creates review rows with zero downloads and byte-identical JSON
+PASS Status-bar handoff reuses the same review; closing and reopening do not recheck or download
+PASS Explicit review selection is the first download and commits one linked assignment
+WAIT second real timer before foreground takeover
+PASS Foreground check takes over a running real timer without concurrent hidden readers or writes
+WAIT 31 seconds with background polling disabled
+PASS Turning off a newly scheduled timer prevents all reads after its real due time
+PASS Restart retains preferences and switching real libraries keeps independent settings
+PASS No renderer error, warning or framework overlay
+PASS 9 background UI checks; evidence: /private/tmp/teachshell-ui-final
+PASS actual Chromium course parser, worker isolation, blocked attachment GET and HEAD-only resource redirect
+PASS explicit main-process download streams the selected response body
+PASS actual session HEAD rejects off-origin redirects before fetching
+PASS actual Chromium network error and cancellation restore verified login state and permit retry
+PASS actual Electron cleanup failure warning clears after successful secure-store retry
+PASS actual Electron: default-off, no persistent partition, scoped legacy cleanup, authenticated opt-in, secret retention across restart, Moodle-only HTTPS cookie restore, profile isolation, disable without logout, disabled restart

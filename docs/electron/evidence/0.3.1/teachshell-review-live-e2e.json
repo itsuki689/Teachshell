@@ -1,0 +1,48 @@
+{
+  "browser": "Browser plugin not available; Playwright Electron",
+  "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell",
+  "root": "/private/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/teachshell-live-review-yXsFYb",
+  "viewport": {
+    "width": 1350,
+    "height": 940
+  },
+  "steps": [
+    {
+      "name": "Empty open review receives a real newly published review without reopening or downloads",
+      "status": "passed",
+      "durationMs": 843
+    },
+    {
+      "name": "Same-review state broadcasts preserve selection and own apply handles its intermediate events",
+      "status": "passed",
+      "durationMs": 931
+    },
+    {
+      "name": "Same ID broadcasts preserve deadline choices and explicit local-version approval",
+      "status": "passed",
+      "durationMs": 766
+    },
+    {
+      "name": "Public discard invalidates the open review immediately without losing its choices",
+      "status": "passed",
+      "durationMs": 89
+    },
+    {
+      "name": "Replacement is offered explicitly; adopting it resets choices only after user action",
+      "status": "passed",
+      "durationMs": 226
+    },
+    {
+      "name": "Changing the scope prevents old events from silently restoring the prior review",
+      "status": "passed",
+      "durationMs": 67
+    },
+    {
+      "name": "An observed official account change invalidates the open review without a library mutation",
+      "status": "passed",
+      "durationMs": 31
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

@@ -1,0 +1,2 @@
+PASS ZIP extracted app deep strict code signature
+PASS DMG read-only mounted app deep strict code signature
