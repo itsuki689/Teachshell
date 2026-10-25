@@ -162,6 +162,7 @@ export async function commitTransaction(
   next: unknown,
   operations: FileOp[],
   fault?: (point: string) => void,
+  beforeCommit?: () => void | Promise<void>,
 ) {
   if (operations.length > 100000) throw new Error('文件操作超过事务恢复支持的数量，请分批处理');
   const index = await safePath(root, 'library.json', true);
@@ -259,6 +260,17 @@ export async function commitTransaction(
       else await fs.rename(await target(root, op.from!), to);
     }
     fault?.('files');
+    // Teaching versions and legacy migration promise that the approved source
+    // bytes are still current when publishing the new index. Original paths are
+    // never removed by these copy operations, including on a failed recheck.
+    for (const op of ops)
+      if (op.kind === 'copy' && op.sourceHash !== undefined) {
+        if ((await digestFile(await safeExternal(op.from!))) !== op.sourceHash)
+          throw new Error('提交前原文件已变化，原文件与旧索引保留，请重新确认');
+      }
+    await beforeCommit?.();
+    if (digest(await fs.readFile(index)) !== digest(before))
+      throw new Error('提交期间索引被另一程序修改，保留文件和事务日志等待核对');
     await atomicWrite(root, 'library.json', data, true);
     fault?.('index');
   } catch (error) {

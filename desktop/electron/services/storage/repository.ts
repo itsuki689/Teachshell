@@ -43,6 +43,7 @@ import {
 } from './atomic.ts';
 import type { FileOp } from './atomic.ts';
 import { prepareLegacyHomework } from './legacy-homework.ts';
+import * as teachingMaterials from '../website/material-sync.ts';
 import {
   importUndergraduateTimetable,
   updateTimetableSettings,
@@ -186,16 +187,77 @@ export class Repository {
       Promise.resolve(teaching.mergeTeachingAssignment(state, id, activity, page, now)),
     );
   }
+  teachingFileState(
+    connectionID: string,
+    activity: teaching.TeachingActivity,
+    file: teachingMaterials.TeachingFile,
+  ) {
+    return this.withWorkspace((state) =>
+      Promise.resolve(teachingMaterials.teachingFileState(state, connectionID, activity, file)),
+    );
+  }
+  async syncTeachingFile(
+    connectionID: string,
+    activity: teaching.TeachingActivity,
+    file: teachingMaterials.TeachingFile,
+    downloadedPath: string,
+    options: teachingMaterials.TeachingFileOptions = {},
+  ) {
+    return this.serial(async () => {
+      await this.synchronize();
+      this.mutationGuard.getStore()?.(this.state);
+      const state = this.state,
+        ops: FileOp[] = [];
+      const { changed, ...result } = await teachingMaterials.prepareTeachingFile(
+        this.root,
+        state,
+        connectionID,
+        activity,
+        file,
+        downloadedPath,
+        options,
+        ops,
+      );
+      this.mutationGuard.getStore()?.(this.state);
+      return { snapshot: changed ? await this.write(state, ops) : this.snapshot(), ...result };
+    });
+  }
+  listMaterialVersions(materialID: string) {
+    return this.withWorkspace((state) =>
+      Promise.resolve(teachingMaterials.materialVersions(state, materialID)),
+    );
+  }
+  async restoreMaterialVersion(currentID: string, versionID: string, expectedRevision?: string) {
+    let result!: { materialID: string; message: string };
+    const snapshot = await this.mutate(async (state, ops) => {
+      if (expectedRevision !== undefined && digest(JSON.stringify(state)) !== expectedRevision)
+        throw new Error('资料库已变化，请重新读取版本列表');
+      result = await teachingMaterials.prepareRestoreMaterialVersion(
+        this.root,
+        state,
+        currentID,
+        versionID,
+        ops,
+      );
+    });
+    return { snapshot, ...result };
+  }
   async syncTeachingAssignment(
     id: string,
     activity: teaching.TeachingActivity,
     page: teaching.TeachingPage,
     now = swiftNow(),
     newID?: string,
+    deadlineChoice?: boolean,
   ) {
     let change!: teaching.TeachingAssignmentChange;
     const snapshot = await this.mutate((state) => {
       change = teaching.mergeTeachingAssignment(state, id, activity, page, now, newID);
+      if (change.pendingDeadline && deadlineChoice !== undefined) {
+        teaching.resolveTeachingDeadline(state, id, 'plan:' + activity.id, deadlineChoice);
+        change.proposed = state.tasks.find((t) => t.id === change.proposed?.id);
+        delete change.pendingDeadline;
+      }
     });
     return { snapshot, change, message: change.message };
   }
@@ -345,7 +407,19 @@ export class Repository {
   }
   private async write(next: LibraryState, ops: FileOp[] = []) {
     decodeLibrary(next);
-    await commitTransaction(this.root, next, ops);
+    const disk = decodeLibrary(
+      JSON.parse(await fs.readFile(await safePath(this.root, 'library.json', true), 'utf8')),
+    );
+    if (digest(JSON.stringify(disk)) !== digest(JSON.stringify(this.stateValue)))
+      throw new Error('索引被另一程序修改，请重新打开资料库，防止覆盖');
+    const guard = this.mutationGuard.getStore();
+    await commitTransaction(
+      this.root,
+      next,
+      ops,
+      undefined,
+      guard ? () => guard(this.state) : undefined,
+    );
     this.stateValue = next;
     await this.refreshObservations();
     this.onChanged?.(this.snapshot());
