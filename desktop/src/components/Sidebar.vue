@@ -3,6 +3,7 @@ const api = window.teachshelf;
 import { computed, ref, watch } from 'vue';
 import { Archive } from 'lucide-vue-next';
 import AppSymbol from './AppSymbol.vue';
+import appIcon from '../../build-assets/icon.png';
 import type { Course } from '../../shared/model';
 import { useLibrary } from '../stores/library';
 import { useWorkspaceUI } from '../stores/workspace-ui';
@@ -74,7 +75,14 @@ async function drop(e: DragEvent, courseID?: string) {
 <template>
   <aside class="sidebar">
     <div class="brand">
-      <AppSymbol name="books-filled" :size="27" />
+      <img
+        class="brand-app-icon"
+        :src="appIcon"
+        alt="Teachshell 应用图标"
+        width="40"
+        height="40"
+        draggable="false"
+      />
       <div><strong>Teachshell</strong><span>每一份知识，都有位置</span></div>
     </div>
     <select v-choice v-model="semester" aria-label="学期" class="semester">

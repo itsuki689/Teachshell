@@ -569,17 +569,16 @@ try {
         .locator('.breadcrumb-bar')
         .getByRole('button', { name: '复习资料', exact: true })
         .waitFor();
-      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
-      let search = page.getByRole('dialog', { name: '全局搜索' });
+      await page.getByRole('combobox', { name: '搜索课程、资料和计划', exact: true }).click();
+      const search = page.getByRole('search', { name: '全局搜索', exact: true });
       await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('迁移测试 测试教师');
       await search
-        .getByRole('button', { name: '打开课程 迁移测试：计算机导论', exact: true })
+        .getByRole('option', { name: '打开课程 迁移测试：计算机导论', exact: true })
         .click();
       await page.getByRole('heading', { name: '迁移测试：计算机导论', exact: true }).waitFor();
-      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
-      search = page.getByRole('dialog', { name: '全局搜索' });
+      await page.getByRole('combobox', { name: '搜索课程、资料和计划', exact: true }).click();
       await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('资料接收 课堂笔记');
-      await search.getByRole('button', { name: '打开资料 课堂笔记', exact: true }).click();
+      await search.getByRole('option', { name: '打开资料 课堂笔记', exact: true }).click();
       const inspector = page.locator('.inspector');
       await inspector.waitFor();
       assert.equal(
@@ -597,10 +596,9 @@ try {
         '导航前未保存草稿',
       );
       await inspector.getByRole('button', { name: '还原', exact: true }).click();
-      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
-      search = page.getByRole('dialog', { name: '全局搜索' });
+      await page.getByRole('combobox', { name: '搜索课程、资料和计划', exact: true }).click();
       await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('UI兼容计划');
-      await search.getByRole('button', { name: '打开计划 UI兼容计划', exact: true }).click();
+      await search.getByRole('option', { name: '打开计划 UI兼容计划', exact: true }).click();
       const editor = page.getByRole('dialog', { name: '编辑计划' });
       assert.equal(await editor.getByLabel('计划名称', { exact: true }).inputValue(), 'UI兼容计划');
       await editor.getByRole('button', { name: '取消', exact: true }).click();

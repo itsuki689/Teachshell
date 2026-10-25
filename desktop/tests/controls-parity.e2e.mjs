@@ -64,7 +64,10 @@ try {
     return (await window.teachshelf.snapshot()).state.courses;
   });
   await check('Sidebar and toolbar symbols match native meanings and optical sizing', async () => {
-    assert.equal(await page.locator('.brand [data-symbol=books-filled]').count(), 1);
+    assert.equal(
+      await page.locator('.brand-app-icon').evaluate((img) => img.complete && img.naturalWidth > 0),
+      true,
+    );
     const symbols = await page
       .locator('.shortcuts svg')
       .evaluateAll((nodes) => nodes.map((n) => n.dataset.symbol));

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const api = window.teachshelf;
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { AlertCircle, ChevronLeft, ChevronRight, Search, LoaderCircle, X } from 'lucide-vue-next';
+import { AlertCircle, ChevronLeft, ChevronRight, LoaderCircle, X } from 'lucide-vue-next';
 import type { Course, StudyTask } from '../shared/model';
 import type { BackgroundStatus } from '../shared/api';
 import { useLibrary } from './stores/library';
@@ -34,7 +34,7 @@ const store = useLibrary(),
   showTask = ref(false),
   taskInitialDate = ref<string>(),
   searchedTask = ref<StudyTask | undefined>(),
-  showSearch = ref(false),
+  searchControl = ref<InstanceType<typeof WorkspaceSearch>>(),
   loaded = ref(false);
 const releases: (() => void)[] = [];
 const websiteBackground = ref<BackgroundStatus>();
@@ -44,7 +44,7 @@ watch(
   (_value, previous) => {
     if (!previous) return;
     courseEditor.value = undefined;
-    showImport.value = showWebsite.value = showTask.value = showSearch.value = false;
+    showImport.value = showWebsite.value = showTask.value = false;
     searchedTask.value = undefined;
     backgroundSequence++;
     websiteBackground.value = undefined;
@@ -115,30 +115,31 @@ async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
 function editCourse(course?: Course) {
   courseEditor.value = course ?? null;
 }
-async function activateSearch(result: WorkspaceSearchResult) {
-  if (store.busy) return;
+async function activateSearch(result: WorkspaceSearchResult): Promise<boolean> {
+  if (store.busy || document.querySelector('[role=dialog]')) return false;
   if (result.kind === 'material') {
-    if (!(await store.revealMaterial(result.id))) return;
+    if (!(await store.revealMaterial(result.id))) return false;
   } else if (result.kind === 'course') {
     if (
       !store.state.courses.some((c) => c.id === result.id) ||
       !(await store.navigate('course:' + result.id))
     )
-      return;
+      return false;
     store.searchNavigationID++;
   } else {
+    if (!(await store.requestLeave())) return false;
     const task = store.state.tasks.find((t) => t.id === result.id);
-    if (!task || !(await store.requestLeave())) return;
+    if (!task) return false;
     searchedTask.value = task;
   }
-  showSearch.value = false;
+  return true;
 }
 function menu(action: string) {
   // Native menu accelerators can reach the renderer while a modal is open.
   if (store.busy || document.querySelector('[role=dialog]')) return;
   switch (action) {
     case 'search':
-      showSearch.value = true;
+      searchControl.value?.focus();
       break;
     case 'back':
       void store.goBack();
@@ -271,15 +272,7 @@ onUnmounted(() => {
         >
           <ChevronRight :size="17" />
         </button>
-        <button
-          class="global-search-trigger"
-          aria-label="全局搜索"
-          title="全局搜索 · ⌘ / Ctrl K"
-          :disabled="!store.snapshot"
-          @click="showSearch = true"
-        >
-          <Search :size="17" /><span>搜索课程、资料与计划</span>
-        </button>
+        <WorkspaceSearch ref="searchControl" :activate="activateSearch" />
         <AppearanceHost /><WorkspaceToolbar :activate="toolbarAction" />
       </div>
     </div>
@@ -343,11 +336,7 @@ onUnmounted(() => {
         <X :size="17" />
       </button>
     </div>
-    <WorkspaceSearch
-      v-if="showSearch"
-      @close="showSearch = false"
-      @activate="activateSearch"
-    /><TaskEditor v-if="searchedTask" :task="searchedTask" @close="searchedTask = undefined" />
+    <TaskEditor v-if="searchedTask" :task="searchedTask" @close="searchedTask = undefined" />
     <CourseEditor
       v-if="courseEditor !== undefined"
       :course="courseEditor ?? undefined"

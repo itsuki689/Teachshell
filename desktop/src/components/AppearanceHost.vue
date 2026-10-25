@@ -195,12 +195,15 @@ onUnmounted(() => {
 .day-night-control {
   position: relative;
   display: flex;
+  align-items: center;
+  height: 36px;
+  flex: 0 0 auto;
   -webkit-app-region: no-drag;
 }
 .appearance-menu {
   position: absolute;
   right: 0;
-  top: 36px;
+  top: calc(100% + 8px);
   z-index: 10002;
   width: 150px;
   padding: 5px;
@@ -222,6 +225,9 @@ onUnmounted(() => {
 
 .day-night-toggle {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 72px;
   height: 29px;
   min-height: 29px;

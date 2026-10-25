@@ -104,7 +104,7 @@ try {
     };
   });
   await check(
-    'Four-book brand artwork and every toolbar hit area render without clipping or drag interception',
+    'Application brand artwork and every toolbar hit area render without clipping or drag interception',
     async () => {
       assert.match(page.url(), /^file:.*index\.html$/);
       assert.equal(await page.title(), 'Teachshell · 课屿');
@@ -112,7 +112,12 @@ try {
         await page.locator('vite-error-overlay, #webpack-dev-server-client-overlay').count(),
         0,
       );
-      assert.equal(await page.locator('.brand [data-symbol=books-filled] > path').count(), 4);
+      assert.equal(
+        await page
+          .locator('.brand-app-icon')
+          .evaluate((img) => img.complete && img.naturalWidth > 0),
+        true,
+      );
       for (const action of ['update', 'settings', 'import', 'create']) {
         const box = await button(action).boundingBox();
         assert.equal(box.width, 36);
@@ -122,9 +127,7 @@ try {
         );
         assert.equal(area, 'no-drag');
       }
-      await page
-        .locator('.brand')
-        .screenshot({ path: path.join(evidence, 'brand-four-books.png') });
+      await page.locator('.brand').screenshot({ path: path.join(evidence, 'brand-app-icon.png') });
       await page
         .locator('.titlebar')
         .screenshot({ path: path.join(evidence, 'toolbar-feedback-light.png') });
