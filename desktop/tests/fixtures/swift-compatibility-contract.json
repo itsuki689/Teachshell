@@ -1,0 +1,39 @@
+{
+  "date" : {
+    "iso" : "2026-10-05T02:30:00.125Z",
+    "swift" : 812860200.125,
+    "unixMilliseconds" : 1791167400125
+  },
+  "generator" : "desktop/scripts/GenerateSwiftFixtures.swift compiled with unchanged Sources/TeachshelfCore",
+  "managedFile" : {
+    "content" : "Swift fixture: 课程资料与 Unicode é 🌊\n",
+    "schema6Path" : "files/legacy/11111111-2222-4333-8444-000000000004-网络概述.txt",
+    "schema9Path" : "files/计算机网络 [11111111-2222-4333-8444-000000000001]/资料/第一章/11111111-2222-4333-8444-000000000004-网络概述.txt",
+    "sha256" : "0b2aa4add3696bf09af18672fa776a1566d028f950fdd697ee0cffe159c036b4",
+    "size" : 48
+  },
+  "swiftReferenceEpochUnixSeconds" : 978307200,
+  "validation" : [
+    {
+      "fixture" : "swift-schema9.json",
+      "managedBytesPreserved" : true,
+      "resultSchemaVersion" : 9,
+      "resultStoredPath" : "files/计算机网络 [11111111-2222-4333-8444-000000000001]/资料/第一章/11111111-2222-4333-8444-000000000004-网络概述.txt",
+      "swiftRepositoryOpened" : true
+    },
+    {
+      "fixture" : "swift-schema6.json",
+      "managedBytesPreserved" : true,
+      "resultSchemaVersion" : 9,
+      "resultStoredPath" : "files/计算机网络 [11111111-2222-4333-8444-000000000001]/资料/第一章/11111111-2222-4333-8444-000000000004-网络概述.txt",
+      "swiftRepositoryOpened" : true
+    },
+    {
+      "fixture" : "swift-legacy-iso.json",
+      "managedBytesPreserved" : true,
+      "resultSchemaVersion" : 9,
+      "resultStoredPath" : "files/计算机网络 [11111111-2222-4333-8444-000000000001]/资料/11111111-2222-4333-8444-000000000004-网络概述.txt",
+      "swiftRepositoryOpened" : true
+    }
+  ]
+}

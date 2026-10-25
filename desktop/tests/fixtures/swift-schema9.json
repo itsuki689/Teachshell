@@ -1,0 +1,309 @@
+{
+  "accentColor" : "#39786B",
+  "appearance" : "system",
+  "appearanceTransition" : {
+    "colorHex" : "#808080",
+    "colorMode" : "solid",
+    "direction" : "top",
+    "isEnabled" : true,
+    "speed" : 1
+  },
+  "courses" : [
+    {
+      "colorHex" : "#39786B",
+      "id" : "11111111-2222-4333-8444-000000000001",
+      "isArchived" : false,
+      "materialSort" : "name",
+      "name" : "计算机网络",
+      "semester" : "2026 秋季",
+      "teacher" : "测试教师"
+    }
+  ],
+  "customCategories" : [
+    "实验记录"
+  ],
+  "materialFolders" : [
+    {
+      "colorHex" : "#39786B",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "createdAt" : 812860200.125,
+      "id" : "11111111-2222-4333-8444-000000000002",
+      "name" : "第一章",
+      "storageDirectory" : "files\/计算机网络 [11111111-2222-4333-8444-000000000001]\/资料\/第一章"
+    },
+    {
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "createdAt" : 812860200.125,
+      "id" : "11111111-2222-4333-8444-000000000003",
+      "name" : "空目录",
+      "parentID" : "11111111-2222-4333-8444-000000000002"
+    }
+  ],
+  "materials" : [
+    {
+      "addedAt" : 812860200.125,
+      "category" : "课件",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "customOrder" : 0,
+      "folderID" : "11111111-2222-4333-8444-000000000002",
+      "id" : "11111111-2222-4333-8444-000000000004",
+      "isFavorite" : true,
+      "isManaged" : true,
+      "lastOpenedAt" : 812860230.125,
+      "notes" : "保留原有备注",
+      "originalName" : "网络概述.txt",
+      "size" : 48,
+      "sourcePath" : "\/original\/网络概述.txt",
+      "storedPath" : "files\/计算机网络 [11111111-2222-4333-8444-000000000001]\/资料\/第一章\/11111111-2222-4333-8444-000000000004-网络概述.txt",
+      "tags" : "复习,网络",
+      "title" : "网络概述"
+    },
+    {
+      "addedAt" : 812860200.125,
+      "category" : "参考资料",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "folderID" : "11111111-2222-4333-8444-000000000003",
+      "id" : "11111111-2222-4333-8444-000000000005",
+      "isFavorite" : false,
+      "isManaged" : false,
+      "notes" : "",
+      "originalName" : "reference.pdf",
+      "size" : 0,
+      "sourcePath" : "\/original\/reference.pdf",
+      "storedPath" : "\/original\/reference.pdf",
+      "tags" : "",
+      "title" : "外部参考"
+    }
+  ],
+  "schemaVersion" : 9,
+  "showCourseBorders" : true,
+  "tasks" : [
+    {
+      "colorHex" : "#39786B",
+      "completionRequired" : true,
+      "content" : "真实 Codable 测试样例",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "courseNameSnapshot" : "计算机网络",
+      "deadline" : 812946600.125,
+      "deadlineIsAllDay" : false,
+      "endsAt" : 812863800.125,
+      "exceptions" : [
+        {
+          "completedOverride" : false,
+          "details" : {
+            "colorHex" : "#39786B",
+            "completionRequired" : true,
+            "content" : "真实 Codable 测试样例",
+            "courseID" : "11111111-2222-4333-8444-000000000001",
+            "courseNameSnapshot" : "计算机网络",
+            "deadline" : 812946600.125,
+            "deadlineIsAllDay" : false,
+            "endsAt" : 813472200.125,
+            "hasExecutionTime" : true,
+            "isAllDay" : false,
+            "kind" : "任务",
+            "location" : "图书馆",
+            "materialIDs" : [
+              "11111111-2222-4333-8444-000000000004"
+            ],
+            "overriddenFields" : [
+              "startsAt",
+              "endsAt",
+              "title"
+            ],
+            "showInMonth" : true,
+            "startsAt" : 813468600.125,
+            "title" : "调整后的复习"
+          },
+          "originalDate" : 813465000.125
+        }
+      ],
+      "hasExecutionTime" : true,
+      "id" : "11111111-2222-4333-8444-000000000006",
+      "isAllDay" : false,
+      "kind" : "任务",
+      "location" : "图书馆",
+      "materialIDs" : [
+        "11111111-2222-4333-8444-000000000004"
+      ],
+      "origin" : "activity",
+      "repeatRule" : {
+        "frequency" : "weekly",
+        "interval" : 1,
+        "until" : 815279400.125
+      },
+      "showInMonth" : true,
+      "showOnCalendar" : true,
+      "startsAt" : 812860200.125,
+      "title" : "网络课程复习"
+    }
+  ],
+  "teachingConnections" : [
+    {
+      "accountID" : "202600001",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "folders" : [
+        {
+          "key" : "section:1",
+          "localID" : "11111111-2222-4333-8444-000000000002"
+        }
+      ],
+      "id" : "11111111-2222-4333-8444-000000000011",
+      "includeAssignments" : true,
+      "includeExperiments" : true,
+      "includeHistory" : false,
+      "includeMaterials" : true,
+      "items" : [
+        {
+          "content" : "",
+          "digest" : "0b2aa4add3696bf09af18672fa776a1566d028f950fdd697ee0cffe159c036b4",
+          "folderID" : "11111111-2222-4333-8444-000000000002",
+          "id" : "file:resource:456",
+          "ignored" : false,
+          "localID" : "11111111-2222-4333-8444-000000000004",
+          "submitted" : false,
+          "title" : "网络概述"
+        }
+      ],
+      "lastSyncAt" : 812860200.125,
+      "messages" : [
+
+      ],
+      "remoteCourseID" : "12345",
+      "remoteTitle" : "计算机网络",
+      "timeZone" : "Asia\/Shanghai"
+    }
+  ],
+  "timetableTerms" : [
+    {
+      "cancellations" : [
+        {
+          "date" : 813427200,
+          "id" : "11111111-2222-4333-8444-000000000009",
+          "meetingID" : "11111111-2222-4333-8444-000000000007",
+          "reason" : "测试停课",
+          "title" : "计算机网络"
+        }
+      ],
+      "id" : "11111111-2222-4333-8444-000000000008",
+      "meetings" : [
+        {
+          "classroom" : "教学楼 101",
+          "colorHex" : "#39786B",
+          "courseCode" : "CS101",
+          "courseID" : "11111111-2222-4333-8444-000000000001",
+          "id" : "11111111-2222-4333-8444-000000000007",
+          "note" : "单双周按 weeks 数组保存",
+          "sectionCount" : 2,
+          "showInMonth" : true,
+          "startSection" : 3,
+          "teacher" : "测试教师",
+          "title" : "计算机网络",
+          "weekday" : 1,
+          "weeks" : [
+            1,
+            2,
+            3,
+            4
+          ]
+        }
+      ],
+      "name" : "2026 秋季",
+      "reschedules" : [
+        {
+          "date" : 814118400,
+          "id" : "11111111-2222-4333-8444-000000000010",
+          "meeting" : {
+            "classroom" : "教学楼 101",
+            "colorHex" : "#39786B",
+            "courseCode" : "CS101",
+            "courseID" : "11111111-2222-4333-8444-000000000001",
+            "id" : "11111111-2222-4333-8444-000000000007",
+            "note" : "单双周按 weeks 数组保存",
+            "sectionCount" : 2,
+            "showInMonth" : true,
+            "startSection" : 3,
+            "teacher" : "测试教师",
+            "title" : "计算机网络",
+            "weekday" : 2,
+            "weeks" : [
+              1,
+              2,
+              3,
+              4
+            ]
+          },
+          "meetingID" : "11111111-2222-4333-8444-000000000007",
+          "originalDate" : 814032000
+        }
+      ],
+      "sectionTimes" : [
+        {
+          "endMinute" : 530,
+          "section" : 1,
+          "startMinute" : 480
+        },
+        {
+          "endMinute" : 590,
+          "section" : 2,
+          "startMinute" : 540
+        },
+        {
+          "endMinute" : 660,
+          "section" : 3,
+          "startMinute" : 610
+        },
+        {
+          "endMinute" : 720,
+          "section" : 4,
+          "startMinute" : 670
+        },
+        {
+          "endMinute" : 890,
+          "section" : 5,
+          "startMinute" : 840
+        },
+        {
+          "endMinute" : 950,
+          "section" : 6,
+          "startMinute" : 900
+        },
+        {
+          "endMinute" : 1020,
+          "section" : 7,
+          "startMinute" : 970
+        },
+        {
+          "endMinute" : 1080,
+          "section" : 8,
+          "startMinute" : 1030
+        },
+        {
+          "endMinute" : 1160,
+          "section" : 9,
+          "startMinute" : 1110
+        },
+        {
+          "endMinute" : 1220,
+          "section" : 10,
+          "startMinute" : 1170
+        },
+        {
+          "endMinute" : 1280,
+          "section" : 11,
+          "startMinute" : 1230
+        }
+      ],
+      "weekCount" : 20,
+      "weekOneMonday" : 812822400
+    }
+  ],
+  "toolbarSettings" : {
+    "actions" : [
+      "update",
+      "settings",
+      "import",
+      "create"
+    ]
+  }
+}

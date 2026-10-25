@@ -1,0 +1,68 @@
+{
+  "accentColor" : "#39786B",
+  "appearance" : "system",
+  "courses" : [
+    {
+      "colorHex" : "#39786B",
+      "id" : "11111111-2222-4333-8444-000000000001",
+      "isArchived" : false,
+      "name" : "计算机网络",
+      "semester" : "2026 秋季",
+      "teacher" : "测试教师"
+    }
+  ],
+  "customCategories" : [
+    "实验记录"
+  ],
+  "materials" : [
+    {
+      "addedAt" : "2026-10-05T02:30:00.125Z",
+      "category" : "课件",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "id" : "11111111-2222-4333-8444-000000000004",
+      "isFavorite" : true,
+      "isManaged" : true,
+      "lastOpenedAt" : "2026-10-05T02:30:30.125Z",
+      "notes" : "保留原有备注",
+      "originalName" : "网络概述.txt",
+      "size" : 48,
+      "sourcePath" : "/original/网络概述.txt",
+      "storedPath" : "files/legacy/11111111-2222-4333-8444-000000000004-网络概述.txt",
+      "tags" : "复习,网络",
+      "title" : "网络概述"
+    },
+    {
+      "addedAt" : "2026-10-05T02:30:00.125Z",
+      "category" : "参考资料",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "id" : "11111111-2222-4333-8444-000000000005",
+      "isFavorite" : false,
+      "isManaged" : false,
+      "notes" : "",
+      "originalName" : "reference.pdf",
+      "size" : 0,
+      "sourcePath" : "/original/reference.pdf",
+      "storedPath" : "/original/reference.pdf",
+      "tags" : "",
+      "title" : "外部参考"
+    }
+  ],
+  "schemaVersion" : 1,
+  "tasks" : [
+    {
+      "content" : "真实 Codable 测试样例",
+      "courseID" : "11111111-2222-4333-8444-000000000001",
+      "courseNameSnapshot" : "计算机网络",
+      "deadline" : "2026-10-06T02:30:00.125Z",
+      "id" : "11111111-2222-4333-8444-000000000006",
+      "isAllDay" : false,
+      "kind" : "任务",
+      "materialIDs" : [
+        "11111111-2222-4333-8444-000000000004"
+      ],
+      "showOnCalendar" : true,
+      "startsAt" : "2026-10-05T02:30:00.125Z",
+      "title" : "网络课程复习"
+    }
+  ]
+}
