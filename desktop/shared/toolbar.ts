@@ -11,6 +11,7 @@ export const toolbarActions = [
   'pendingTasks',
 ] as const;
 export type ToolbarAction = (typeof toolbarActions)[number];
+export type ToolbarRequest = ToolbarAction | 'create-course' | 'create-plan' | 'connect-website';
 export const defaultToolbarActions: ToolbarAction[] = ['update', 'settings', 'import', 'create'];
 export const toolbarTitles: Record<ToolbarAction, string> = {
   update: '全局更新',

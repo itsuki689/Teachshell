@@ -74,7 +74,7 @@ async function drop(e: DragEvent, courseID?: string) {
 <template>
   <aside class="sidebar">
     <div class="brand">
-      <AppSymbol name="books" :size="27" />
+      <AppSymbol name="books-filled" :size="27" />
       <div><strong>Teachshell</strong><span>每一份知识，都有位置</span></div>
     </div>
     <select v-choice v-model="semester" aria-label="学期" class="semester">

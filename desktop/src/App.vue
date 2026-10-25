@@ -16,7 +16,7 @@ import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
 import AppearanceHost from './components/AppearanceHost.vue';
 import { useWorkspaceUI } from './stores/workspace-ui';
 const ui = useWorkspaceUI();
-import type { ToolbarAction } from '../shared/toolbar';
+import type { ToolbarRequest } from '../shared/toolbar';
 import type { WorkspaceSearchResult } from './composables/workspace-search';
 import LibraryView from './views/LibraryView.vue';
 import PlansView from './views/PlansView.vue';
@@ -32,6 +32,7 @@ const store = useLibrary(),
   websiteBatch = ref(false),
   websiteKind = ref<'teaching' | 'timetable'>('teaching'),
   showTask = ref(false),
+  taskInitialDate = ref<string>(),
   searchedTask = ref<StudyTask | undefined>(),
   showSearch = ref(false),
   loaded = ref(false);
@@ -66,29 +67,36 @@ function openWebsite(kind: 'teaching' | 'timetable' = 'teaching', batch = false)
   websiteBatch.value = batch;
   showWebsite.value = true;
 }
-async function toolbarAction(
-  action: ToolbarAction | 'create-course' | 'create-plan' | 'connect-website',
-) {
-  if (store.busy) return;
+async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
+  if (!store.snapshot || store.busy || document.querySelector('[role=dialog]')) return false;
+  const workspace = store.workspaceID;
   if (
     ['create-course', 'create-plan', 'connect-website', 'update', 'import'].includes(action) &&
     !(await store.requestLeave())
   )
-    return;
+    return false;
+  // Confirmation can run while the workspace or live eligibility changes.
+  if (workspace !== store.workspaceID || store.busy || document.querySelector('[role=dialog]'))
+    return false;
   if (action === 'schedule') {
-    await ui.openSchedule();
-    return;
+    return ui.openSchedule();
   }
-  if (action === 'update') openWebsite('teaching', true);
-  else if (action === 'connect-website') openWebsite();
+  if (action === 'update') {
+    if (!store.state.teachingConnections.length || showWebsite.value) return false;
+    openWebsite('teaching', true);
+  } else if (action === 'connect-website') openWebsite();
   else if (action === 'create-course') editCourse();
-  else if (action === 'create-plan') showTask.value = true;
-  else if (action === 'import') showImport.value = true;
+  else if (action === 'create-plan') {
+    taskInitialDate.value = ['plans', 'timetable'].includes(store.route) ? ui.day : undefined;
+    showTask.value = true;
+  } else if (action === 'import') showImport.value = true;
   else if (action === 'settings') {
+    const previous = store.route;
     if (store.route === 'settings') {
       if (store.canGoBack) await store.goBack();
       else await store.navigate('all');
     } else await store.navigate('settings');
+    return previous !== store.route;
   } else {
     const route = (
       {
@@ -100,8 +108,9 @@ async function toolbarAction(
         pendingTasks: 'pending',
       } as Record<string, string>
     )[action];
-    if (route) await store.navigate(route);
+    return route ? store.navigate(route) : false;
   }
+  return true;
 }
 function editCourse(course?: Course) {
   courseEditor.value = course ?? null;
@@ -271,7 +280,7 @@ onUnmounted(() => {
         >
           <Search :size="17" /><span>搜索课程、资料与计划</span>
         </button>
-        <AppearanceHost /><WorkspaceToolbar @action="toolbarAction" />
+        <AppearanceHost /><WorkspaceToolbar :activate="toolbarAction" />
       </div>
     </div>
     <div v-if="store.snapshot" :key="store.workspaceID" class="app-body">
@@ -345,6 +354,7 @@ onUnmounted(() => {
       @close="courseEditor = undefined"
     /><ImportDialog v-if="showImport" @close="showImport = false" /><TaskEditor
       v-if="showTask"
+      :initial-date="taskInitialDate"
       @close="showTask = false"
     /><WebsiteDialog
       v-if="showWebsite"

@@ -64,7 +64,7 @@ try {
     return (await window.teachshelf.snapshot()).state.courses;
   });
   await check('Sidebar and toolbar symbols match native meanings and optical sizing', async () => {
-    assert.equal(await page.locator('.brand [data-symbol=books]').count(), 1);
+    assert.equal(await page.locator('.brand [data-symbol=books-filled]').count(), 1);
     const symbols = await page
       .locator('.shortcuts svg')
       .evaluateAll((nodes) => nodes.map((n) => n.dataset.symbol));
@@ -232,7 +232,7 @@ try {
     const menu = page.getByRole('menu', { name: '快捷新建菜单' });
     assert.deepEqual(
       await menu.locator('[data-symbol]').evaluateAll((ns) => ns.map((n) => n.dataset.symbol)),
-      ['books', 'calendar', 'globe'],
+      ['books', 'calendar-plus', 'globe'],
     );
     assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), '新建课程…');
     await page.keyboard.press('ArrowDown');

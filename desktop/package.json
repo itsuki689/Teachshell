@@ -1,6 +1,6 @@
 {
   "name": "teachshelf-desktop",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "private": true,
   "type": "module",
   "description": "课屿跨平台课程资料管理",
