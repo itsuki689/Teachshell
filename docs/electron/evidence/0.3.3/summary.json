@@ -1,0 +1,24 @@
+{
+  "version": "0.3.3",
+  "sourceCommit": "5bf86e23b20928b657cbddfb426951e5caf4ee01",
+  "corePassed": 299,
+  "installedUIPassed": 121,
+  "installedUIFailed": 0,
+  "sourceTransportPassed": 6,
+  "packagedArtifactsVerified": 5,
+  "installedExecutable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell",
+  "nativeApplicationUnchanged": true,
+  "manualInstalledUI": [
+    "Actual installed file URL inspected with native accessibility",
+    "Plan navigation opened current week without an academic term",
+    "Appearance tab exposed color, border, direction, speed, palette and preview controls",
+    "About tab showed 0.3.3, exact source commit and installed executable path"
+  ],
+  "runtimePlatformsTested": [
+    "macOS arm64"
+  ],
+  "packageOnlyPlatforms": [
+    "Windows x64",
+    "Linux x64"
+  ]
+}

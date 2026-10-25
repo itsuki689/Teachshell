@@ -1,0 +1,13 @@
+{
+  "checks": [
+    "Library inspector overlays the unchanged canvas; grid and collection pages render",
+    "All seven settings tabs expose one category and retain real model edits across tabs",
+    "Teaching website uses a 225px course sidebar and isolated login controls",
+    "Homework columns display filesystem metadata and search filters real imported files",
+    "Plan list retains a permanent detail pane; month and agenda controls occupy the right side",
+    "Week view has a 48px date bar and a separate right inspector; minimum dark pages stay reachable"
+  ],
+  "errors": [],
+  "root": "/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/teachshell-layout-JPmW8t",
+  "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell"
+}

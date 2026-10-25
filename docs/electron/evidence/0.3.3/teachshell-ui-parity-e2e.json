@@ -1,0 +1,48 @@
+{
+  "browser": "Browser plugin not available; Playwright Electron",
+  "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell",
+  "steps": [
+    {
+      "name": "Shared semester filtering applies to all materials, favorites and unassigned files",
+      "status": "passed",
+      "durationMs": 739
+    },
+    {
+      "name": "Material search uses case-insensitive AND words across fields and Unicode whitespace",
+      "status": "passed",
+      "durationMs": 18
+    },
+    {
+      "name": "List keyboard selection follows focus, extends and shrinks a stable Shift range, and protects editors",
+      "status": "passed",
+      "durationMs": 316
+    },
+    {
+      "name": "Pointer selection asks once before abandoning drafts; normal first-drag selection still moves files",
+      "status": "passed",
+      "durationMs": 510
+    },
+    {
+      "name": "Cover preference survives course navigation, back navigation and ordinary snapshots",
+      "status": "passed",
+      "durationMs": 110
+    },
+    {
+      "name": "Month selection and timetable week share a civil date and survive page navigation",
+      "status": "passed",
+      "durationMs": 536
+    },
+    {
+      "name": "Minimum and normal windows retain readable controls in light and dark modes",
+      "status": "passed",
+      "durationMs": 2313
+    },
+    {
+      "name": "New workspace identities reset dates and semester, while safe display preferences survive switching and restart",
+      "status": "passed",
+      "durationMs": 1184
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

@@ -1,0 +1,15 @@
+{
+  "checks": [
+    "Default plans entry renders seven real civil days without an academic timetable",
+    "Local week plans create, keyboard move, double-click edit and preserve linked metadata",
+    "Month/day choice is remembered while plan list remains a separate entry",
+    "Accent presets preview throughout the window, invalid hex cannot save, cancel reverts bytes",
+    "Accent, course borders and animation settings persist in Swift fields, IPC rejects invalid writes",
+    "Unrelated file updates preserve transition HEX drafts; context menu exposes system mode",
+    "Preview paints ten strips without saving; rapid day/night toggles settle on the last request",
+    "Reduced motion and disabled effects skip the curtain; follow-system responds to OS appearance",
+    "Every settings tab and workspace renders at normal/light and minimum/dark sizes",
+    "Restart retains preferences; switching libraries applies their appearance without an animation"
+  ],
+  "errors": []
+}

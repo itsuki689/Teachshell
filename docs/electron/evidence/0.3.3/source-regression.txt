@@ -1,0 +1,23 @@
+PASS Default plans entry renders seven real civil days without an academic timetable
+PASS Local week plans create, keyboard move, double-click edit and preserve linked metadata
+PASS Month/day choice is remembered while plan list remains a separate entry
+PASS Accent presets preview throughout the window, invalid hex cannot save, cancel reverts bytes
+PASS Accent, course borders and animation settings persist in Swift fields, IPC rejects invalid writes
+PASS Unrelated file updates preserve transition HEX drafts; context menu exposes system mode
+PASS Preview paints ten strips without saving; rapid day/night toggles settle on the last request
+PASS Reduced motion and disabled effects skip the curtain; follow-system responds to OS appearance
+PASS Every settings tab and workspace renders at normal/light and minimum/dark sizes
+PASS Restart retains preferences; switching libraries applies their appearance without an animation
+{"passed":10,"evidence":"/private/tmp/teachshell-appearance-source","root":"/private/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/teachshell-appearance-y9rPaA"}
+PASS Late website open cannot overwrite a newly selected website type
+PASS Single-assignment expiry disables approval and visibly requests a fresh observation
+PASS Observed account change invalidates the prior single-assignment observation
+PASS A fresh observation restores approval and applies exactly one plan without file downloads
+PASS Late initial settings responses cannot replace newer subscription events
+PASS 5 website context UI checks
+PASS actual Chromium course parser, worker isolation, blocked attachment GET and HEAD-only resource redirect
+PASS explicit main-process download streams the selected response body
+PASS actual session HEAD rejects off-origin redirects before fetching
+PASS actual Chromium network error and cancellation restore verified login state and permit retry
+PASS actual Electron cleanup failure warning clears after successful secure-store retry
+PASS actual Electron: default-off, no persistent partition, scoped legacy cleanup, authenticated opt-in, secret retention across restart, Moodle-only HTTPS cookie restore, profile isolation, disable without logout, disabled restart

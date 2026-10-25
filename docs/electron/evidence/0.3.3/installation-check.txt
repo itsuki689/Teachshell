@@ -1,0 +1,16 @@
+{
+  "release": {
+    "version": "0.3.3",
+    "commit": "5bf86e23b20928b657cbddfb426951e5caf4ee01",
+    "builtAt": "2026-10-25T12:41:16.961Z"
+  },
+  "processes": [
+    {
+      "pid": 73037,
+      "executable": "/Applications/Teachshell.app/Contents/MacOS/Teachshell"
+    }
+  ],
+  "nativeAppUnchanged": true,
+  "matchesTestedBuild": false,
+  "backup": "/Applications/.Teachshell-backups/2026-10-25T12-41-30-914Z-12d1f84c-bab2-495c-abbd-f84f608518fb/Teachshell.app"
+}

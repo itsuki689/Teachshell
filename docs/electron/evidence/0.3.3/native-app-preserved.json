@@ -1,0 +1,19 @@
+{
+  "before": {
+    "path": "/Applications/课屿.app",
+    "identifier": "com.teachshelf.mac",
+    "version": "1.16.0",
+    "executableSHA256": "c65b45997bd93bc133444d836ddd307a9c44fcf560ccdc1e85e6d3f53cea42db",
+    "plistSHA256": "82bd7a747d897e7eeb7723d3070e07ec13d43702673f6cc514fb4d749c266281",
+    "mtimeNS": 1792855884425727000
+  },
+  "after": {
+    "path": "/Applications/课屿.app",
+    "identifier": "com.teachshelf.mac",
+    "version": "1.16.0",
+    "executableSHA256": "c65b45997bd93bc133444d836ddd307a9c44fcf560ccdc1e85e6d3f53cea42db",
+    "plistSHA256": "82bd7a747d897e7eeb7723d3070e07ec13d43702673f6cc514fb4d749c266281",
+    "mtimeNS": 1792855884425727000
+  },
+  "unchanged": true
+}

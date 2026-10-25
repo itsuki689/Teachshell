@@ -1,0 +1,11 @@
+VERIFYING Teachshell-0.3.3-arm64-mac.zip
+VERIFIED Teachshell-0.3.3-arm64-mac.zip 5bf86e2 f7e5a9ca183a61bda7931c665b162fcf62e36dd9e6d95361a259772474f7b2cd
+VERIFYING Teachshell-0.3.3-arm64.dmg
+VERIFIED Teachshell-0.3.3-arm64.dmg 5bf86e2 008db56d457f837346088117a00306b1202a67eabae713fb0e6a90495f0df6b7
+VERIFYING Teachshell Setup 0.3.3.exe
+VERIFIED Teachshell Setup 0.3.3.exe 5bf86e2 f9e8bd1df457522d576f866fe4e871ac00ce0af11a52442c2ccefbea0b789742
+VERIFYING Teachshell-0.3.3.AppImage
+VERIFIED Teachshell-0.3.3.AppImage 5bf86e2 eb801330ff76cdfbb6aa2f259cf4b2b0479ea2de72f0a2876bb5b9e3fffb5412
+VERIFYING teachshelf-desktop_0.3.3_amd64.deb
+VERIFIED teachshelf-desktop_0.3.3_amd64.deb 5bf86e2 ae2ec3c16ab6f71c7254c19a3361778b3965fbd2601e863048523b82063e29d0
+WROTE /private/tmp/teachshell-appearance-packages/release-manifest.json /private/tmp/teachshell-appearance-packages/SHA256SUMS.txt

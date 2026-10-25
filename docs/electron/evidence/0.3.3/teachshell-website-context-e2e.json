@@ -1,0 +1,32 @@
+{
+  "root": "/private/var/folders/9z/0z05llm16jbckqm2ff7lqlq40000gn/T/teachshell-website-context-joYosp",
+  "steps": [
+    {
+      "name": "Late website open cannot overwrite a newly selected website type",
+      "status": "passed",
+      "durationMs": 330
+    },
+    {
+      "name": "Single-assignment expiry disables approval and visibly requests a fresh observation",
+      "status": "passed",
+      "durationMs": 1311
+    },
+    {
+      "name": "Observed account change invalidates the prior single-assignment observation",
+      "status": "passed",
+      "durationMs": 157
+    },
+    {
+      "name": "A fresh observation restores approval and applies exactly one plan without file downloads",
+      "status": "passed",
+      "durationMs": 139
+    },
+    {
+      "name": "Late initial settings responses cannot replace newer subscription events",
+      "status": "passed",
+      "durationMs": 225
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

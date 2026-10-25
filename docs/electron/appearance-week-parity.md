@@ -22,7 +22,39 @@
 - 逐页检查：全部资料、课程、收藏、最近、未分类、作业、计划列表、月/周/日、AI、教学网站、七个设置分类，以及课程/计划/颜色编辑器。正常 1260×800 浅色与最小 1020×680 深色；检查非空页面、无框架错误遮罩、无控制台异常、实际鼠标/键盘和数据持久化。
 - 浏览器插件不可用，使用 Playwright Electron。所有自动化使用临时合成资料库及受控网络夹具，不打开原生真实资料库进行写入。
 
-安装版逐页报告、Release 签名、备份路径、原生应用保留记录和安装包校验在本页后续验收记录中归档。最新机器回执保存在 `desktop/release/installed-macos.json` 与 `installed-verification.json`。
+安装版 **121/121** 全部通过，直接启动 `/Applications/Teachshell.app/Contents/MacOS/Teachshell`，未使用开发服务器。完整日志：[核心测试](evidence/0.3.3/node-tests.txt)、[安装版逐页验收](evidence/0.3.3/installed-tests.txt)、[外观与周视图报告](evidence/0.3.3/appearance-week-report.json)、[其余传输回归](evidence/0.3.3/source-regression.txt)。
+
+| 安装版套件 | 通过 |
+| --- | ---: |
+| 课程、课件、计划、课表、AI/MCP 主闭环 | 28 |
+| 增量同步、批量审核与版本恢复 | 12 |
+| 调课/计划拖拽、键盘微调和边界缩放 | 9 |
+| 自定义顶栏 | 8 |
+| 登录记忆、安全存储及立即退出 | 7 |
+| 后台实际计时巡检 | 9 |
+| 打开中的审核实时变化 | 7 |
+| 工作区身份与快照顺序 | 6 |
+| 草稿、作业目录、聊天竞态 | 6 |
+| 筛选、选择、日期与视图同步 | 8 |
+| 逐页布局 | 6 |
+| 本轮默认周视图与外观 | 10 |
+| 网站上下文与单项失效 | 5 |
+
+截图：[本地周计划](evidence/0.3.3/screenshots/appearance-week-local-plan.png)、[强调色编辑](evidence/0.3.3/screenshots/appearance-accent-preview.png)、[切换动效](evidence/0.3.3/screenshots/appearance-transition.png)、[最小深色窗口](evidence/0.3.3/screenshots/appearance-dark-settings-外观.png)。其余页面和套件明细在同一证据目录。
+
+## Release 与安装
+
+功能提交 `5bf86e2`，版本 0.3.3。从该提交构建的应用及 Keychain helper 均通过严格签名验证；正常退出旧 Teachshell、备份、替换、注册并打开新版。实际窗口已用原生界面工具核对计划周视图、外观设置和关于页；页面 file URL、可执行路径、版本和提交一致。[安装回执](evidence/0.3.3/installed-5bf86e2.json) 包含备份路径与载荷哈希。[更新前 0.3.2 备份](evidence/0.3.3/previous-release-backup.json) 仍可完整恢复。[原生课屿保留证据](evidence/0.3.3/native-app-preserved.json) 确认 1.16.0 的可执行文件、Info.plist 和 bundle 修改时间均未变化。
+
+本轮五个安装包位于 `desktop/release/`，均为 0.3.3 / `5bf86e2` 的相同功能载荷：
+
+- `Teachshell-0.3.3-arm64.dmg`、`Teachshell-0.3.3-arm64-mac.zip`
+- `Teachshell Setup 0.3.3.exe`
+- `Teachshell-0.3.3.AppImage`、`teachshelf-desktop_0.3.3_amd64.deb`
+
+归档完整性、版本、主进程/preload/renderer/stdio、架构及 Mac helper 已校验：[安装包清单](evidence/0.3.3/release-manifest.json)、[SHA256](evidence/0.3.3/SHA256SUMS.txt)、[校验日志](evidence/0.3.3/package-verification.txt)。Mac 为 ad-hoc 签名，未公证；Windows 未签名。没有远程推送、合并或发布。
+
+报告提交之后仍按项目约定重建、备份安装，并核对功能载荷与以上 121 项验收版本逐字节一致。最新机器回执为 `desktop/release/installed-macos.json` 与 `installed-verification.json`。
 
 ## 尚存的原生细节差异
 
