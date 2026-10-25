@@ -87,7 +87,7 @@ export async function safePath(
   }
   return absolute;
 }
-export async function safeExternal(file: string): Promise<string> {
+export async function safeExternal(file: string, allowMissing = false): Promise<string> {
   if (process.platform === 'darwin') {
     if (file.startsWith('/var/')) file = '/private' + file;
     else if (file.startsWith('/tmp/')) file = '/private' + file;
@@ -98,8 +98,13 @@ export async function safeExternal(file: string): Promise<string> {
   let cursor = parsed.root;
   for (const part of absolute.slice(parsed.root.length).split(path.sep)) {
     cursor = path.join(cursor, part);
-    const stat = await fs.lstat(cursor);
-    if (stat.isSymbolicLink()) throw new Error('不支持导入符号链接：' + file);
+    try {
+      const stat = await fs.lstat(cursor);
+      if (stat.isSymbolicLink()) throw new Error('不支持导入符号链接：' + file);
+    } catch (error) {
+      if (allowMissing && (error as NodeJS.ErrnoException).code === 'ENOENT') break;
+      throw error;
+    }
   }
   return absolute;
 }

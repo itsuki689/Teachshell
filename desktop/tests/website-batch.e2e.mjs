@@ -98,10 +98,7 @@ try {
   await check(
     'Bind a real course through an isolated official-URL Moodle DOM fixture',
     async () => {
-      await page
-        .locator('.sidebar')
-        .getByRole('button', { name: '新建课程', exact: true })
-        .click();
+      await page.locator('.sidebar').getByRole('button', { name: '新建课程', exact: true }).click();
       const editor = page.getByRole('dialog', { name: '新建课程' });
       await editor.getByLabel('课程名称', { exact: true }).fill('批量同步验收课程');
       await editor.getByRole('button', { name: '保存', exact: true }).click();

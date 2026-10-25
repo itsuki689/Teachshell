@@ -87,6 +87,7 @@ export class Repository {
   readonly workspaceID = randomUUID();
   private stateValue: LibraryState = emptyLibrary();
   private release?: () => Promise<void>;
+  private closing?: Promise<void>;
   private queue: Promise<unknown> = Promise.resolve();
   private observations: Record<string, Observation> = {};
   private removed = new Set<string>();
@@ -396,12 +397,17 @@ export class Repository {
       throw e;
     }
   }
-  async close() {
-    await this.queue;
-    if (this.release) {
-      await this.release();
-      this.release = undefined;
-    }
+  close(): Promise<void> {
+    // Stop accepting work immediately, then drain everything already queued.
+    // Concurrent callers share the same release rather than releasing twice.
+    this.closing ??= (async () => {
+      await this.queue;
+      if (this.release) {
+        await this.release();
+        this.release = undefined;
+      }
+    })();
+    return this.closing;
   }
   get state() {
     return structuredClone(this.stateValue);
@@ -417,6 +423,7 @@ export class Repository {
     };
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
+    if (this.closing) return Promise.reject(new Error('资料库正在关闭或已关闭'));
     const p = this.queue.then(() => {
       if (!this.release) throw new Error('资料库已关闭或写入锁失效');
       return action();
@@ -1177,7 +1184,12 @@ export async function copyLibrary(
   owned = false,
 ): Promise<void> {
   const from = await fs.realpath(source);
-  const to = path.resolve(destination);
+  let to = await safeExternal(path.resolve(destination), true);
+  // Resolve existing ancestors before checking containment: filesystem casing
+  // must not turn an apparently external destination into part of the source.
+  let ancestor = to;
+  while (!(await exists(ancestor))) ancestor = path.dirname(ancestor);
+  to = path.join(await fs.realpath(ancestor), path.relative(ancestor, to));
   if (to === from || to.startsWith(from + path.sep) || from.startsWith(to + path.sep))
     throw new Error('目标必须在原资料库之外');
   if (await exists(to)) {

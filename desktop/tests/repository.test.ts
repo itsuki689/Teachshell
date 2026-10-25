@@ -266,6 +266,89 @@ test('library lock rejects a second writer and source index edits are not overwr
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'library.json'), 'utf8')), altered);
 });
 
+test('closing drains accepted work, rejects new mutations and releases the writer lock once', async (t) => {
+  const dir = await scratch(t);
+  const root = path.join(dir, 'Library');
+  const repo = await start(t, root);
+  let resume!: () => void;
+  let entered!: () => void;
+  const gate = new Promise<void>((resolve) => (resume = resolve));
+  const ready = new Promise<void>((resolve) => (entered = resolve));
+  const accepted = repo.withWorkspace(async () => {
+    entered();
+    await gate;
+  });
+  await ready;
+  const queued = repo.createCourse({ name: '关闭前已接受' });
+  const closing = repo.close();
+  const repeated = repo.close();
+  const rejected = assert.rejects(repo.createCourse({ name: '关闭后不得写入' }), /关闭/);
+  resume();
+  await Promise.all([accepted, queued, closing, repeated, rejected]);
+  const reopened = await start(t, root);
+  assert.deepEqual(
+    reopened.state.courses.map((c) => c.name),
+    ['关闭前已接受'],
+  );
+});
+
+test('copy import rejects destination aliases before creating anything in the source', async (t) => {
+  const dir = await scratch(t);
+  const { root } = await sourceFixture(dir);
+  const alias = path.join(dir, 'alias');
+  await fs.symlink(root, alias, 'junction');
+  const original = fs.mkdir;
+  const before = await fs.readdir(root);
+  const index = await fs.readFile(path.join(root, 'library.json'));
+  // Stop an unfixed implementation before it can recursively copy its own staging tree.
+  const mkdir = t.mock.method(fs, 'mkdir', async (...args: Parameters<typeof fs.mkdir>) => {
+    if (String(args[0]).includes('.teachshelf-import-'))
+      throw new Error('unsafe staging was reached');
+    return original(...args);
+  });
+  await assert.rejects(copyLibrary(root, path.join(alias, 'copy')), /符号链接|原资料库之外/);
+  assert.equal(mkdir.mock.callCount(), 0);
+  assert.deepEqual(await fs.readdir(root), before);
+  assert.deepEqual(await fs.readFile(path.join(root, 'library.json')), index);
+});
+
+test('copy import rejects an existing destination junction and preserves its contents', async (t) => {
+  const dir = await scratch(t);
+  const { root } = await sourceFixture(dir);
+  const target = path.join(dir, 'target');
+  const alias = path.join(dir, 'alias');
+  await fs.mkdir(target);
+  await fs.symlink(target, alias, 'junction');
+  const copy = t.mock.method(fs, 'copyFile');
+  await assert.rejects(copyLibrary(root, alias), /符号链接/);
+  assert.equal(copy.mock.callCount(), 0);
+  assert.deepEqual(await fs.readdir(target), []);
+  assert.equal((await fs.lstat(alias)).isSymbolicLink(), true);
+});
+
+test('copy import resolves filesystem casing before rejecting a destination inside the source', async (t) => {
+  const dir = await scratch(t);
+  const { root } = await sourceFixture(dir);
+  const alias = path.join(dir, path.basename(root).toLowerCase());
+  if (!(await fs.realpath(alias).catch(() => undefined))) {
+    t.skip('Requires a case-insensitive filesystem');
+    return;
+  }
+  const before = await fs.readdir(root);
+  await assert.rejects(copyLibrary(root, path.join(alias, 'copy')), /原资料库之外/);
+  assert.deepEqual(await fs.readdir(root), before);
+});
+
+test('copy import creates missing destination parents outside the source', async (t) => {
+  const dir = await scratch(t);
+  const { root } = await sourceFixture(dir);
+  const destination = path.join(dir, 'new-parent', 'nested', 'Library');
+  await copyLibrary(root, destination);
+  const copied = await start(t, destination);
+  assert.equal(copied.state.schemaVersion, 9);
+  assert.equal(copied.state.materials.length, 2);
+});
+
 test('copy import rejects native in-flight journal and occupied destination without modifying either', async (t) => {
   const dir = await scratch(t);
   const { root } = await sourceFixture(dir);
