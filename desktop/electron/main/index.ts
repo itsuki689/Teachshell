@@ -44,8 +44,11 @@ import { exportMaterials } from '../services/resource/export.ts';
 import { HomeworkService } from '../services/resource/homework.ts';
 import { canOpenDocument } from '../services/resource/openable.ts';
 import { installTeachingIPC } from './teaching-ipc.ts';
+import { installWebsiteUpdateIPC } from './website-update-ipc.ts';
+import { teachingConnections } from '../services/website/teaching.ts';
 import { swiftNow } from '../../shared/model.ts';
 let clearTeachingPreviews: (() => void) | undefined;
+let clearWebsiteUpdates: (() => void) | undefined;
 const testRoot = process.env.TEACHSHELF_TEST_ROOT;
 // Keep the existing data location across the Teachshell product-name change.
 app.setPath(
@@ -147,6 +150,7 @@ async function switchLibrary(root: string) {
   if (switching) throw new Error('资料库正在切换，请稍候');
   if ((await fs.realpath(root)) === repository.root) return repository.snapshot();
   switching = true;
+  clearWebsiteUpdates?.();
   const previous = repository;
   let next: Repository | undefined;
   let saved = false;
@@ -217,6 +221,12 @@ function installIPC() {
     repository: () => repository,
     browser: () => website,
     proposals,
+  });
+  clearWebsiteUpdates = installWebsiteUpdateIPC({
+    handle,
+    repository: () => repository,
+    browser: () => website,
+    cacheRoot: path.join(app.getPath('userData'), 'WebsiteDownloads'),
   });
   const none = z.tuple([]);
   const oneID = z.tuple([schemas.id]);
@@ -634,6 +644,18 @@ function installIPC() {
         throw new Error('网站导入预览已过期，请重新读取');
       const page = teachingPage.parse(proposal.result.data);
       if (page.kind === 'course') throw new Error('请进入资料页面后选择文件');
+      if (
+        input.courseID &&
+        teachingConnections(repository.state).some(
+          (connection) =>
+            connection.courseID === input.courseID &&
+            connection.accountID === page.accountID &&
+            connection.remoteCourseID === page.courseID,
+        )
+      )
+        throw new Error(
+          '此课程已绑定教学网站，请使用批量更新审核导入或核验资料，以保留来源与历史版本',
+        );
       const check = async () => {
         const current = teachingPage.parse((await website.inspect('teaching')).data);
         if (
@@ -841,6 +863,7 @@ app.on('will-quit', (event) => {
   quitting = true;
   chat?.cancel();
   if (timer) clearTimeout(timer);
+  clearWebsiteUpdates?.();
   website?.close();
   Promise.allSettled([watcher?.close(), server?.stop(), repository?.close()]).finally(() =>
     app.quit(),

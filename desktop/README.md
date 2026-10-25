@@ -1,6 +1,6 @@
-# 课屿 Desktop
+# Teachshell
 
-Electron + Vue 3 + TypeScript 的独立跨平台版本。保留原 Swift 工程，使用独立应用标识 `com.teachshelf.desktop`，默认使用 Electron 用户数据目录下的 `Library`。**当前是可运行的迁移预览版，尚不能替代原版全部功能。**
+Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.2.0。保留原 Swift 工程，使用独立应用标识 `com.teachshelf.desktop`。本次补齐教学资料增量同步、不可覆盖的历史版本和多课程批量更新审核。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
 
 ## 开发
 
@@ -47,7 +47,10 @@ npm start
 - AI 设置支持 OpenAI 兼容 Chat Completions 地址、模型及 API Key，SSE 流式输出、停止、工具调用确认、持久化对话。工具写入必须确认，过期 revision 会拒绝。
 - 教学网站使用独立且按资料库隔离的 Chromium 登录会话；原解析脚本读取当前页面，资源页可选择文件下载导入。
 - 读取课程首页后可绑定本地课程，再打开作业页预览标题、内容和截止日期变化。确认前重读网页并核对账号、课程、内容和库 revision；保留手工修改，截止日期冲突可选择保留本地或采用网站。断开连接保留本地资料和计划。
-- 资源文件当前支持选择性首次导入，同一远端 key 再导入会跳过；文件增量更新、历史版本和全量批量审核尚未实现。已导入的旧连接记录会保留。
+- 绑定课程后进入「批量更新审核」，选择课程并检查。检查不下载附件正文；新增资料默认选中，已有资料标记「待下载核验」，缺失资料需明确勾选恢复。只下载选中项，相同摘要跳过，改变内容创建新版本。成功行移除，失败行保留错误，可重试。
+- 本地正文被修改时先停止该项，只有单独批准后才保存本地历史版本并采用网站正文。手工标题、备注、分类和移动位置保留。截止冲突明确选择保留本地或采用网站。
+- 资料信息中的「版本历史」支持离线浏览、预览和恢复；恢复创建新 UUID，当前及所有历史文件均保留。未归档计划与例外跟随新版本，归档计划保留原引用。旧来源映射继续有效；本地移除或跨课程转移的条目不自动复活。
+- 全局搜索按词同时匹配课程、资料和计划；支持最多 60 步会话导航历史（含文件夹）、完整计划状态筛选和未保存编辑的离开/原生退出保护。
 
 ## 安全边界
 
@@ -65,7 +68,7 @@ npm run build
 npm run test:e2e
 ```
 
-测试必须允许本地回环监听；限制监听的沙箱会让真实 HTTP 测试报 `listen EPERM`，不代表协议测试可以跳过。E2E 用真实 Electron 窗口，所有文件位于临时目录，测试结束退出应用；从不读写真实用户资料库。Linux E2E 需要桌面会话或 `xvfb-run --auto-servernum npm run test:e2e`。
+测试必须允许本地回环监听；限制监听的沙箱会让真实 HTTP 测试报 `listen EPERM`，不代表协议测试可以跳过。E2E 顺序运行主应用、网站批量/历史版本和独立 Chromium 传输测试，所有文件及学校页面均来自临时目录或明确的离线 fixture，不读写真实用户资料库或登录会话。Linux E2E 需要桌面会话或 `xvfb-run --auto-servernum npm run test:e2e`。
 
 Swift 兼容夹具可重新生成：
 
@@ -80,6 +83,8 @@ TEACHSHELF_PLANS_ROUNDTRIP=/tmp/plans.json TEACHSHELF_TIMETABLE_ROUNDTRIP=/tmp/t
 python3 scripts/verify-swift-plans.py /tmp/plans.json
 python3 scripts/verify-swift-timetable.py /tmp/timetable.json
 python3 scripts/verify-swift-teaching.py /tmp/teaching.json
+TEACHSHELF_MATERIAL_ROUNDTRIP=/tmp/materials.json node --experimental-strip-types --test tests/material-sync.test.ts
+python3 scripts/verify-swift-materials.py /tmp/materials.json
 ```
 
 详情见 [兼容契约](../docs/electron/data-compatibility.md)、[功能映射](../docs/electron/feature-map.md)、[验证报告](../docs/electron/validation.md)。
@@ -92,14 +97,16 @@ npm run package -- --publish never
 npm run test:packaged
 ```
 
-输出在 `desktop/release/`，应用名为「课屿 Desktop」。macOS 生成 DMG/ZIP，Windows 生成 NSIS EXE，Linux 生成 AppImage/DEB。`.github/workflows/desktop.yml` 在各平台原生 runner 安装依赖、测试、构建安装包，再用打包后的应用重复窗口验收并上传产物和截图。该工作流已配置不等于三平台已通过验收；实际本地结果见验证报告。
+输出在 `desktop/release/`，应用名为「Teachshell」。macOS 生成 DMG/ZIP，Windows 生成 NSIS EXE，Linux 生成 AppImage/DEB。`.github/workflows/desktop.yml` 在各平台原生 runner 安装依赖、测试、构建安装包，再用打包后的应用重复主界面及批量/版本窗口验收并上传产物和截图。该工作流已配置不等于三平台已通过验收；实际本地结果见验证报告。
 
-开发构建没有开发者证书和公证凭据。正式发布需配置 Apple Developer 签名/公证及 Windows 代码签名；不要把本机 ad-hoc 签名当作正式签名。自动流程不推送、不发布，也不替换 `/Applications/课屿.app`。
+macOS 按本仓库协作规则和本次用户指定目标安装：先提交，然后运行 `npm run release:mac`。该命令从当前 Git 提交创建临时快照、构建 Release、验证签名和内嵌 commit/version；正常退出 `/Applications/Teachshell.app`，保留旧 bundle 于 `/Applications/.Teachshell-backups/`，替换后注册 LaunchServices、打开并核对进程路径及应用摘要。未保存退出被取消时停止替换，不强制结束进程；安装失败恢复旧 bundle。`release/installed-macos.json` 保存安装回执。`npm run install:mac` 可只安装已构建且签名有效的应用。原 `/Applications/课屿.app` 和用户资料库保留。
+
+本地构建为 ad-hoc 签名；没有开发者证书和公证凭据，正式分发仍需 Apple Developer 签名/公证及 Windows 代码签名。自动流程不推送、不对外发布。设置页显示版本、源提交和当前执行路径，可核对是否运行新版。
 
 ## 当前边界
 
-- 日历已有月历、周课表和日程，原版像素级布局、拖动调课、全局键盘导航、顶栏自定义及 Office 原生缩略图仍有差异。
-- 教学网站全量文件版本增量同步、批量更新审核和自动巡检仍需继续迁移；当前已完成逐项作业预览/同步/截止冲突处理。真实账号登录受当前校园网络与学校页面影响。
+- 日历已有月历、周课表和日程；全局搜索、前进后退和计划状态筛选已迁移。像素级布局、拖动调课、自定义顶栏及 Office 原生缩略图仍有差异。
+- 教学资料增量/版本与批量审核已实现；后台定时巡检、Swift 的可选七天登录记忆策略尚未迁移。真实账号登录受校园网络与学校页面影响，离线自动验收不能替代真实账号验收。
 - 安全文件复制暂使用同一资料库卷内的硬链接完成无覆盖提交；不支持硬链接的卷会明确拒绝并回滚。优先使用本地 APFS/NTFS/ext4，网络/移动卷未验收。
 - 同一用户下其他恶意进程可绕过任何应用级锁/权限；不支持两端同时修改同库。
 - Windows/Linux 安装和真实学校账号登录需在对应环境验收。没有凭据时只做离线解析和受限下载测试，不声称真实登录已通过。

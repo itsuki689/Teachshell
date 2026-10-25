@@ -1,5 +1,20 @@
 export type { AssignmentPreview } from '../electron/services/website/assignment-sync';
 import type { AssignmentPreview } from '../electron/services/website/assignment-sync';
+export type {
+  BatchReview,
+  BatchReviewRow,
+  BatchCheckInput,
+  BatchApplyInput,
+  BatchApplyResult,
+} from '../electron/services/website/batch-sync';
+import type {
+  BatchReview,
+  BatchCheckInput,
+  BatchApplyInput,
+  BatchApplyResult,
+} from '../electron/services/website/batch-sync';
+export type { MaterialVersions, MaterialVersion } from '../electron/services/website/material-sync';
+import type { MaterialVersions } from '../electron/services/website/material-sync';
 import type { TeachingConnection } from '../electron/services/website/teaching';
 import type { PlanEditScope, PlanStatus } from './plans';
 import type { SwiftDate } from './model';
@@ -69,6 +84,18 @@ export interface AppInfo {
 }
 export interface DesktopAPI {
   appInfo(): Promise<AppInfo>;
+  checkWebsiteBatch(input?: BatchCheckInput): Promise<BatchReview>;
+  applyWebsiteBatch(input: BatchApplyInput): Promise<BatchApplyResult>;
+  cancelWebsiteBatch(): Promise<void>;
+  listMaterialVersions(
+    materialID: string,
+  ): Promise<MaterialVersions & { revision: string; proposalID: string }>;
+  restoreMaterialVersion(
+    currentID: string,
+    versionID: string,
+    expectedRevision: string,
+    proposalID: string,
+  ): Promise<{ snapshot: Snapshot; materialID: string; message: string }>;
   listHomework(courseID?: string, relative?: string): Promise<HomeworkListing>;
   createHomeworkFolder(
     courseID: string | undefined,

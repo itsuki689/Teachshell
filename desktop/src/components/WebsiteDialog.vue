@@ -14,10 +14,21 @@ import type { StudyTask, SwiftDate } from '../../shared/model';
 import { dateMs } from '../../shared/model';
 import { useLibrary } from '../stores/library';
 import Modal from './Modal.vue';
+import WebsiteBatchReview from './WebsiteBatchReview.vue';
+const showBatch = ref(false);
 const api = window.teachshelf,
   store = useLibrary();
 const props = defineProps<{ initialKind?: 'teaching' | 'timetable' }>(),
   emit = defineEmits<{ close: [] }>();
+watch(
+  () => store.snapshot?.root,
+  (root, previous) => {
+    if (root !== previous) {
+      showBatch.value = false;
+      emit('close');
+    }
+  },
+);
 const kind = ref<'teaching' | 'timetable'>(props.initialKind ?? 'teaching'),
   result = ref<WebsiteResult | null>(null),
   selected = ref<string[]>([]),
@@ -93,6 +104,9 @@ const matchingConnections = computed(() =>
     (c) => c.accountID === page.value.accountID && c.remoteCourseID === page.value.courseID,
   ),
 );
+const importsBoundCourse = computed(() =>
+  matchingConnections.value.some((connection) => connection.courseID === localCourseID.value),
+);
 const managed = computed(() => connections.value.find((c) => c.id === managedID.value));
 const pendingDeadlines = computed(() =>
   Array.isArray(managed.value?.items) ? managed.value!.items.filter((i) => i.pendingDeadline) : [],
@@ -159,6 +173,10 @@ function selectAll() {
     selected.value.length === files.value.length ? [] : files.value.map((f) => f.key);
 }
 async function importSelected() {
+  if (importsBoundCourse.value) {
+    showBatch.value = true;
+    return;
+  }
   if (!result.value?.proposalID || !selected.value.length) return;
   const proposalID = result.value.proposalID;
   const imported = await store.run(
@@ -249,7 +267,7 @@ const options: { key: Option; label: string }[] = [
   { key: 'includeHistory', label: '纳入历史作业' },
   { key: 'includeAssignments', label: '纳入普通作业' },
   { key: 'includeExperiments', label: '纳入实验作业' },
-  { key: 'includeMaterials', label: '保留资料同步选项' },
+  { key: 'includeMaterials', label: '纳入课件与资料' },
 ];
 async function updateOption(key: Option, event: Event) {
   const c = managed.value;
@@ -327,8 +345,13 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
       </div>
       <div class="info-note">
         <Globe :size="17" /><span
-          >教学网页在隔离窗口中运行。资料需选择后导入，作业需预览后应用；更新只针对当前作业，不会执行全课程自动同步。</span
+          >教学网页在隔离窗口中运行。单项操作更新当前资料或作业；批量更新会先生成清单，确认选中项目后才下载和写入。</span
         >
+      </div>
+      <div v-if="kind === 'teaching' && connections.length" class="setting-actions">
+        <button class="primary" :disabled="!!store.busy" @click="showBatch = true">
+          <FileSearch :size="15" />批量检查课程更新</button
+        ><span class="field-note">检查已绑定课程，逐项审核资料与计划。</span>
       </div>
       <details v-if="kind === 'teaching' && connections.length" class="website-connections">
         <summary>已绑定课程与截止冲突 · {{ connections.length }} 个连接</summary>
@@ -365,7 +388,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
               >
             </div>
             <p class="field-note">
-              普通作业、实验与历史选项用于当前作业审核。资料同步选项随连接保存；附件仍需在当前页面选择导入。
+              这些选项决定批量检查包含的资料、作业与历史项目。检查阶段仅读取页面；已有资料正文需勾选后下载核验。
             </p>
             <div v-if="pendingDeadlines.length" class="deadline-conflicts">
               <h4>待处理截止时间</h4>
@@ -551,12 +574,20 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
               ><button
                 class="primary"
                 @click="importSelected"
-                :disabled="!selected.length || !!store.busy"
+                :disabled="(!importsBoundCourse && !selected.length) || !!store.busy"
               >
-                <Download :size="15" />导入选中资料
+                <Download :size="15" />{{
+                  importsBoundCourse ? '进入批量更新审核' : '导入选中资料'
+                }}
               </button>
             </div>
-            <p class="field-note">导入清单在读取后 15 分钟内有效；已有文件由主进程检查并跳过。</p>
+            <p class="field-note">
+              {{
+                importsBoundCourse
+                  ? '已绑定课程通过批量审核导入与更新，旧文件保留为历史版本。请进入审核清单选择需要处理的文件。'
+                  : '导入清单在读取后 15 分钟内有效；已有文件由主进程检查并跳过。'
+              }}
+            </p>
           </div>
           <p v-if="!activities.length && !files.length && page.kind !== 'assign'" class="info-note">
             当前页面没有可下载文件或活动条目，请确认已进入完整课程。
@@ -581,6 +612,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
       </div>
     </div></Modal
   >
+  <WebsiteBatchReview v-if="showBatch" :connections="connections" @close="showBatch = false" />
 </template>
 <style scoped>
 .website-connections {

@@ -32,7 +32,7 @@ for (const relative of candidates) {
 if (!executable)
   throw new Error('Build the installer for this platform before testing the packaged application.');
 const evidence = process.env.TEACHSHELF_SCREENSHOT_DIR;
-const child = spawn(process.execPath, [path.join(root, 'tests/electron.e2e.mjs')], {
+const child = spawn(process.execPath, [path.join(root, 'scripts/test-e2e.mjs')], {
   cwd: root,
   stdio: 'inherit',
   env: {

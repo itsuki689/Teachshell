@@ -1,10 +1,15 @@
 <script setup lang="ts">
 const api = window.teachshelf;
 import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue';
-import { ExternalLink, FolderOpen, Save, Star, X } from 'lucide-vue-next';
+import { ExternalLink, FolderOpen, History, Save, Star, X } from 'lucide-vue-next';
 import { dateMs } from '../../shared/model';
 import type { Material } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import MaterialVersions from './MaterialVersions.vue';
+const showVersions = ref(false);
+async function openVersions() {
+  if (await store.requestLeave()) showVersions.value = true;
+}
 import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 const props = defineProps<{ material: Material }>(),
   emit = defineEmits<{ close: []; preview: [id: string] }>(),
@@ -139,6 +144,13 @@ const size = computed(() =>
           </button>
         </div>
       </form>
+      <button
+        v-if="material.sourcePath.startsWith('teaching://')"
+        :disabled="!!store.busy"
+        @click="openVersions"
+      >
+        <History :size="15" />版本历史
+      </button>
       <dl class="metadata">
         <dt>存储方式</dt>
         <dd>{{ material.isManaged ? '库内副本' : '外部引用' }}</dd>
@@ -151,4 +163,5 @@ const size = computed(() =>
       </dl>
     </div>
   </aside>
+  <MaterialVersions v-if="showVersions" :material-id="material.id" @close="showVersions = false" />
 </template>

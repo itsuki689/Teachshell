@@ -50,7 +50,7 @@ async function verify(bundle) {
   await exec('/usr/bin/codesign', ['--verify', '--deep', '--strict', bundle]);
 }
 async function running(terminate = false) {
-  const script = `ObjC.import('AppKit'); const result=[]; const apps=$.NSWorkspace.sharedWorkspace.runningApplications; for(let i=0;i<apps.count;i++){const app=apps.objectAtIndex(i);let p;try{p=ObjC.unwrap(app.bundleURL.path);}catch{}if(p===${JSON.stringify(target)}){result.push(Number(app.processIdentifier));${terminate ? 'app.terminate();' : ''}}} JSON.stringify(result);`;
+  const script = `ObjC.import('AppKit'); const result=[]; const apps=$.NSWorkspace.sharedWorkspace.runningApplications; for(let i=0;i<apps.count;i++){const app=apps.objectAtIndex(i);let p;try{p=ObjC.unwrap(app.bundleURL.path);}catch{}if(p===${JSON.stringify(target)}){result.push(Number(app.processIdentifier));${terminate ? 'app.terminate;' : ''}}} JSON.stringify(result);`;
   return JSON.parse(
     (await exec('/usr/bin/osascript', ['-l', 'JavaScript', '-e', script])).stdout.trim() || '[]',
   );

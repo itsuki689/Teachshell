@@ -224,7 +224,10 @@ export class Repository {
   }
   listMaterialVersions(materialID: string) {
     return this.withWorkspace((state) =>
-      Promise.resolve(teachingMaterials.materialVersions(state, materialID)),
+      Promise.resolve({
+        ...teachingMaterials.materialVersions(state, materialID),
+        revision: digest(JSON.stringify(state)),
+      }),
     );
   }
   async restoreMaterialVersion(currentID: string, versionID: string, expectedRevision?: string) {

@@ -9,6 +9,12 @@ const subscribe = (channel: string, callback: (value: any) => void) => {
 };
 const api: DesktopAPI = {
   appInfo: () => invoke('appInfo'),
+  checkWebsiteBatch: (input) => invoke('checkWebsiteBatch', input),
+  applyWebsiteBatch: (input) => invoke('applyWebsiteBatch', input),
+  cancelWebsiteBatch: () => invoke('cancelWebsiteBatch'),
+  listMaterialVersions: (id) => invoke('listMaterialVersions', id),
+  restoreMaterialVersion: (current, version, revision, proposalID) =>
+    invoke('restoreMaterialVersion', current, version, revision, proposalID),
   listHomework: (cid, relative) => invoke('listHomework', cid, relative),
   createHomeworkFolder: (cid, relative, name) =>
     invoke('createHomeworkFolder', cid, relative, name),
