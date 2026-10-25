@@ -125,3 +125,23 @@ test('exports a Swift decoder and projection comparison bundle when explicitly r
  if(process.env.TEACHSHELF_TIMETABLE_ROUNDTRIP)await fs.writeFile(process.env.TEACHSHELF_TIMETABLE_ROUNDTRIP,JSON.stringify({state,expected},null,2));
  assert.equal(shanghaiDayKey(dateMs('2026-08-31')/1000-978307200),'2026-08-31');
 });
+
+test('single class reschedule persists the source anchor, preserves following weeks, and restores',async t=>{
+ const {repo}=await fixture(t);const result=await repo.importTimetable(schedule([row()]));await repo.saveTimetableSettings(result.summary.termID,settings);const term=readTimetableTerms(repo.state)[0],meeting=term.meetings[0];
+ const target={date:'2026-09-02T00:00:00+08:00',startSection:3,sectionCount:2,classroom:' 新教室 ',startMinute:630,endMinute:720};
+ await repo.rescheduleTimetableClass(term.id,meeting.id,'2026-08-31T08:00:00+08:00',target);let current=readTimetableTerms(repo.state)[0];const move=current.reschedules[0];
+ assert.equal(move.originalDate,shanghaiDay('2026-08-31'));assert.equal(move.meeting.classroom,'新教室');assert.equal(move.meeting.weekday,3);assert.equal(timetableOccurrences(current,'2026-08-31').length,0);assert.equal(timetableOccurrences(current,'2026-09-02').length,1);assert.equal(timetableOccurrences(current,'2026-09-07').length,1);assert.deepEqual(current.meetings,term.meetings);
+ await repo.rescheduleTimetableClass(term.id,meeting.id,move.originalDate,{...target,date:'2026-09-03'});current=readTimetableTerms(repo.state)[0];assert.equal(current.reschedules[0].id,move.id);assert.equal(current.reschedules[0].originalDate,move.originalDate);assert.equal(timetableOccurrences(current,'2026-09-02').length,0);
+ await repo.cancelTimetableClass(term.id,meeting.id,move.originalDate);current=readTimetableTerms(repo.state)[0];assert.equal(current.reschedules.length,0);assert.equal(timetableOccurrences(current,'2026-09-03').length,0);
+ await repo.restoreTimetableClass(term.id,current.cancellations[0].id);current=readTimetableTerms(repo.state)[0];assert.equal(timetableOccurrences(current,'2026-09-03').length,1);
+ const bytes=JSON.parse(await fs.readFile(path.join(repo.root,'library.json'),'utf8'));assert.equal(bytes.timetableTerms[0].reschedules[0].id,move.id);
+ await repo.restoreTimetableMove(term.id,move.id);current=readTimetableTerms(repo.state)[0];assert.equal(timetableOccurrences(current,'2026-08-31').length,1);assert.equal(timetableOccurrences(current,'2026-09-03').length,0);
+});
+test('invalid reschedules are atomic and returning a moved class to its original slot removes the override',async t=>{
+ const {repo}=await fixture(t);const result=await repo.importTimetable(schedule([row()]));await repo.saveTimetableSettings(result.summary.termID,settings);const term=readTimetableTerms(repo.state)[0],meeting=term.meetings[0],date='2026-08-31',good={date:'2026-09-01',startSection:2,sectionCount:2,classroom:'B'};
+ await repo.sync();const before=repo.state,bytes=await fs.readFile(path.join(repo.root,'library.json'));
+ for(const changes of [{date:'2027-09-01'},{startSection:30,sectionCount:2},{startMinute:700},{startMinute:720,endMinute:700},{sectionCount:0}])await assert.rejects(repo.rescheduleTimetableClass(term.id,meeting.id,date,{...good,...changes}));
+ await assert.rejects(repo.rescheduleTimetableClass(term.id,meeting.id,'2026-09-01',good),/原课次/);assert.deepEqual(repo.state,before);assert.deepEqual(await fs.readFile(path.join(repo.root,'library.json')),bytes);
+ await repo.rescheduleTimetableClass(term.id,meeting.id,date,good);await repo.rescheduleTimetableClass(term.id,meeting.id,date,{date,startSection:meeting.startSection,sectionCount:meeting.sectionCount,classroom:meeting.classroom});assert.equal(readTimetableTerms(repo.state)[0].reschedules.length,0);
+ await repo.cancelTimetableClass(term.id,meeting.id,date);await assert.rejects(repo.rescheduleTimetableClass(term.id,meeting.id,date,good),/停课/);
+});

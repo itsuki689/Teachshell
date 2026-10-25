@@ -1,8 +1,8 @@
 import {randomUUID} from 'node:crypto';
 import {assertID,dateMs,requiredText,textValue} from '../../../shared/model.ts';
 import type {LibraryState,SwiftDate} from '../../../shared/model.ts';
-import {endSection,isScheduled,isActualOccurrence,sameShanghaiDay,shanghaiDay,shanghaiWeekday,timetableWeek} from '../../../shared/timetable.ts';
-import type {TimetableTerm,TimetableMeeting,TimetableReschedule,TimetableCancellation,TimetableImportSummary} from '../../../shared/timetable.ts';
+import {endSection,isScheduled,isActualOccurrence,sameShanghaiDay,shanghaiDay,shanghaiWeekday,timetableWeek,meetingTimeRange,isTimetableCancelled} from '../../../shared/timetable.ts';
+import type {TimetableTerm,TimetableMeeting,TimetableReschedule,TimetableCancellation,TimetableImportSummary,TimetableRescheduleInput} from '../../../shared/timetable.ts';
 
 const newID=()=>randomUUID().toUpperCase();
 const palette=['#39786B','#287D8E','#3B72B8','#5555A5','#8058A1','#AE567C','#B2534D','#AC633C','#967326','#6C7E3D','#826452','#596574'];
@@ -138,4 +138,35 @@ export function restoreTimetableOccurrence(state:LibraryState,termID:string,canc
  const {terms,term}=selectedTerm(state,termID);const cancellation=term.cancellations.find(c=>c.id===canonicalID(cancellationID));if(!cancellation)return false;
  if(cancellation.savedReschedule)term.reschedules.push(cancellation.savedReschedule);term.cancellations=term.cancellations.filter(c=>c.id!==cancellation.id);
  state.timetableTerms=terms;validateTimetables(state);return true;
+}
+
+/** Matches LibraryRepository.rescheduleTimetableClass, including its source anchor. */
+export function rescheduleTimetableOccurrence(state:LibraryState,termID:string,meetingID:string,originalDate:SwiftDate,input:TimetableRescheduleInput):boolean {
+ const origin=shanghaiDay(date(originalDate)),target=shanghaiDay(date(input.date)),id=canonicalID(meetingID);
+ const {terms,term}=selectedTerm(state,termID);
+ const existing=term.reschedules.find(r=>r.meetingID===id&&sameShanghaiDay(r.originalDate,origin));
+ const master=term.meetings.find(m=>m.id===id),source=existing?.meeting??master;
+ if(!source)throw new Error('上课时段不存在');
+ if(isTimetableCancelled(term,id,origin)||(!existing&&!isActualOccurrence(source,term,origin)))throw new Error('原课次不存在或已停课，请先恢复停课后再调整');
+ const week=timetableWeek(term,target);if(week===undefined)throw new Error('调课目标日期应在所选学期内');
+ const start=integer(input.startSection,1,30,'调课节次需在第1–30节内'),count=integer(input.sectionCount,1,30,'调课节次需在第1–30节内');
+ if(start+count>31)throw new Error('调课节次需在第1–30节内');
+ const room=textValue(input.classroom,10000).trim();
+ if(input.startMinute!==undefined||input.endMinute!==undefined){integer(input.startMinute,0,1439,'课程开始时间无效');integer(input.endMinute,1,1440,'课程结束时间无效');if(input.endMinute!<=input.startMinute!)throw new Error('课程结束时间必须晚于开始时间');}
+ const masterTime=master?meetingTimeRange(master,term.sectionTimes):undefined;
+ if(master&&isActualOccurrence(master,term,origin)&&origin===target&&master.startSection===start&&master.sectionCount===count&&master.classroom===room&&((input.startMinute===undefined&&input.endMinute===undefined)||(masterTime?.start===input.startMinute&&masterTime?.end===input.endMinute))){
+  if(!existing)return false;term.reschedules=term.reschedules.filter(r=>r.id!==existing.id);
+ }else{
+  const meeting:TimetableMeeting={...source,id,weekday:shanghaiWeekday(target),weeks:[week],startSection:start,sectionCount:count,classroom:room};
+  if(input.startMinute===undefined){delete meeting.startMinuteOverride;delete meeting.endMinuteOverride;}else{meeting.startMinuteOverride=input.startMinute;meeting.endMinuteOverride=input.endMinute;}
+  const move:TimetableReschedule={id:existing?.id??newID(),meetingID:id,originalDate:origin,date:target,meeting};
+  if(existing&&JSON.stringify(existing)===JSON.stringify(move))return false;
+  if(existing)term.reschedules[term.reschedules.indexOf(existing)]=move;else term.reschedules.push(move);
+ }
+ state.timetableTerms=terms;validateTimetables(state);return true;
+}
+export function restoreTimetableReschedule(state:LibraryState,termID:string,rescheduleID:string):boolean {
+ const {terms,term}=selectedTerm(state,termID),id=canonicalID(rescheduleID);
+ if(!term.reschedules.some(r=>r.id===id))return false;
+ term.reschedules=term.reschedules.filter(r=>r.id!==id);state.timetableTerms=terms;validateTimetables(state);return true;
 }

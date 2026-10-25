@@ -9,8 +9,11 @@ import type {Snapshot,ImportResult} from '../../../shared/api.ts';
 import {component,courseDirectory,materialRoot,folderDirectory,materialDirectory,materialPath,safePath,safeExternal,exists,fileName,identity} from '../filesystem/paths.ts';
 import {atomicWrite,commitTransaction,recoverTransaction,digest} from './atomic.ts';
 import type {FileOp} from './atomic.ts';
-import {importUndergraduateTimetable,updateTimetableSettings,cancelTimetableOccurrence,restoreTimetableOccurrence} from '../course/timetable.ts';
-import type {TimetableImportSummary,TimetableSettingsInput} from '../../../shared/timetable.ts';
+import {importUndergraduateTimetable,updateTimetableSettings,cancelTimetableOccurrence,restoreTimetableOccurrence,rescheduleTimetableOccurrence,restoreTimetableReschedule} from '../course/timetable.ts';
+import type {TimetableImportSummary,TimetableSettingsInput,TimetableRescheduleInput} from '../../../shared/timetable.ts';
+import {saveAdvancedPlan,changePlanStatus,removeAdvancedPlan,validatePlans} from '../course/plans.ts';
+import type {PlanEditScope,PlanStatus} from '../../../shared/plans.ts';
+import {validateHomeworkMount} from '../resource/homework.ts';
 const id=()=>randomUUID().toUpperCase();
 interface Observation {path:string;identity:string;size:number}
 interface Entry extends Observation {directory:boolean}
@@ -19,6 +22,20 @@ export class Repository {
  readonly root:string;private stateValue:LibraryState=emptyLibrary();private release?:()=>Promise<void>;private queue:Promise<unknown>=Promise.resolve();private observations:Record<string,Observation>={};private removed=new Set<string>();warnings:string[]=[];
  private mutationGuard=new AsyncLocalStorage<(state:LibraryState)=>void>();
  withMutationGuard<T>(guard:(state:LibraryState)=>void,action:()=>Promise<T>):Promise<T>{return this.mutationGuard.run(guard,action);}
+ withWorkspace<T>(action:(state:LibraryState)=>Promise<T>):Promise<T>{
+  return this.serial(async()=>{await this.synchronize();return action(this.state);});
+ }
+ restorePlanChanges(before:StudyTask[],after:StudyTask[]){return this.mutate(state=>{
+  const fingerprint=(value:unknown):string|undefined=>JSON.stringify(value,(key,v)=>key==='overriddenFields'&&Array.isArray(v)?[...v].sort():v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a<b?-1:a>b?1:0)):v);
+  for(const items of [before,after]){const seen=new Set<string>();for(const plan of items){assertID(plan.id);if(seen.has(plan.id.toUpperCase()))throw new Error('撤销记录包含重复计划');seen.add(plan.id.toUpperCase());}}
+  const ids=new Set([...before,...after].map(p=>p.id.toUpperCase()));
+  for(const id of ids){const current=state.tasks.find(p=>p.id.toUpperCase()===id),expected=after.find(p=>p.id.toUpperCase()===id);if(fingerprint(current)!==fingerprint(expected))throw new Error('这些计划后来已被修改，无法撤销');}
+  state.tasks=state.tasks.filter(p=>!ids.has(p.id.toUpperCase()));state.tasks.push(...structuredClone(before));validatePlans(state);
+ });}
+ setHomeworkFolder(courseID:string,candidate?:string){return this.mutate(async state=>{
+  assertID(courseID);const c=state.courses.find(c=>c.id.toUpperCase()===courseID.toUpperCase());if(!c)throw new Error('课程不存在');
+  if(candidate===undefined)delete c.homeworkFolder;else c.homeworkFolder=await validateHomeworkMount(this.root,state,c.id,candidate);
+ });}
  onChanged?:(s:Snapshot)=>void;
  private constructor(root:string){this.root=root;}
  static async open(input:string,{create=false}={}):Promise<Repository>{
@@ -61,6 +78,7 @@ export class Repository {
  async createCourse(input:Partial<Course>){return this.mutate(async(s,ops)=>{const c:Course={id:input.id??id(),name:requiredText(input.name),semester:textValue(input.semester??''),teacher:textValue(input.teacher??''),colorHex:input.colorHex??'#39786B',isArchived:input.isArchived??false};assertID(c.id);if(typeof c.isArchived!=='boolean')throw new Error('无效归档状态');s.courses.push(c);await this.directories([materialRoot(s,c.id),courseDirectory(c)+'/作业'],ops);});}
  async updateCourse(courseID:string,patch:Partial<Course>){assertID(courseID);return this.mutate(async(s,ops)=>{const c=s.courses.find(c=>c.id===courseID);if(!c)throw new Error('课程不存在');const old=courseDirectory(c);
   if(patch.name!==undefined)c.name=requiredText(patch.name);for(const k of ['semester','teacher','colorHex'] as const)if(patch[k]!==undefined)c[k]=textValue(patch[k]);if(patch.isArchived!==undefined){if(typeof patch.isArchived!=='boolean')throw new Error('无效归档状态');c.isArchived=patch.isArchived;}
+  if(patch.materialSort!==undefined){if(!['name','time','custom'].includes(patch.materialSort))throw new Error('无效排序方式');c.materialSort=patch.materialSort;}
   if(patch.name!==undefined){const target=path.posix.dirname(old)+'/'+component(c.name)+` [${c.id}]`;if(target!==old){if(c.isMissing)throw new Error('课程目录缺失，请先恢复文件');c.storageDirectory=target;if(await exists(await safePath(this.root,old)))ops.push({kind:'move',from:old,to:target});this.remap(s,old,target);}}
   for(const task of s.tasks)if(!task.archivedAt){if(task.courseID===c.id)task.courseNameSnapshot=c.name;for(const e of task.exceptions??[]){const d=e.details as Record<string,unknown>|undefined;if(d?.courseID===c.id)d.courseNameSnapshot=c.name;}}
  });}
@@ -110,6 +128,11 @@ export class Repository {
  });}
  async cancelTimetableClass(termID:string,meetingID:string,date:SwiftDate,reason=''){return this.changeTimetable(s=>cancelTimetableOccurrence(s,termID,meetingID,date,reason));}
  async restoreTimetableClass(termID:string,cancellationID:string){return this.changeTimetable(s=>restoreTimetableOccurrence(s,termID,cancellationID));}
+ async rescheduleTimetableClass(termID:string,meetingID:string,date:SwiftDate,input:TimetableRescheduleInput){return this.changeTimetable(s=>rescheduleTimetableOccurrence(s,termID,meetingID,date,input));}
+ async restoreTimetableMove(termID:string,rescheduleID:string){return this.changeTimetable(s=>restoreTimetableReschedule(s,termID,rescheduleID));}
+ async savePlan(input:Partial<StudyTask>,scope:PlanEditScope='all',originalDate?:SwiftDate){return this.mutate(s=>saveAdvancedPlan(s,input,scope,originalDate));}
+ async setPlanStatus(planID:string,status:PlanStatus,scope:PlanEditScope='all',originalDate?:SwiftDate){return this.mutate(s=>changePlanStatus(s,planID,status,scope,originalDate));}
+ async deletePlan(planID:string,scope:PlanEditScope='all',originalDate?:SwiftDate){return this.mutate(s=>removeAdvancedPlan(s,planID,scope,originalDate));}
  async saveTask(input:Partial<StudyTask>&{title:string}){return this.mutate(s=>{const existing=s.tasks.find(t=>t.id===input.id);const now=swiftNow();const t:StudyTask=existing?{...existing,...input}:{id:input.id??id(),content:'',kind:'任务',materialIDs:[],startsAt:now,isAllDay:true,showOnCalendar:true,origin:'activity',hasExecutionTime:true,location:'',showInMonth:false,completionRequired:true,deadlineIsAllDay:true,exceptions:[],...input};t.id=input.id??existing?.id??id();t.title=requiredText(t.title);this.course(s,t.courseID);if(t.materialIDs.some(mid=>!s.materials.some(m=>m.id===mid)))throw new Error('计划关联资料不存在');if(t.endsAt!==undefined&&dateMs(t.endsAt)<dateMs(t.startsAt))throw new Error('结束时间早于开始');if(existing?.origin==='fixed'||existing?.repeatRule){const changed=Object.keys(input).filter(k=>!['id','title','completedAt','archivedAt'].includes(k)&&JSON.stringify(input[k])!==JSON.stringify(existing[k]));if(changed.length)throw new Error('固定课表与重复规则暂仅支持保留和状态修改');}if(existing)s.tasks[s.tasks.findIndex(v=>v.id===t.id)]=t;else s.tasks.push(t);});}
  async deleteTasks(ids:string[]){return this.mutate(s=>{s.tasks=s.tasks.filter(t=>!ids.includes(t.id));});}
  async resolveMaterial(materialID:string){const m=this.stateValue.materials.find(m=>m.id===materialID);if(!m)throw new Error('资料不存在');if(m.isMissing)throw new Error('资料文件缺失');const p=m.isManaged?await safePath(this.root,m.storedPath):await safeExternal(m.storedPath);if(!(await fs.stat(p)).isFile())throw new Error('不是普通文件');return p;}

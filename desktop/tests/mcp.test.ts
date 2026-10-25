@@ -76,8 +76,8 @@ async function fixture(){const root=await fs.realpath(await fs.mkdtemp(path.join
 async function context(provider:ReturnType<typeof createRepositoryTools>){return await provider.execute('teachshelf_context',{})as any;}
 async function write(provider:ReturnType<typeof createRepositoryTools>,name:string,args:Record<string,unknown>){const c=await context(provider);return await provider.execute('teachshelf_'+name,{library_id:c.library_id,expected_library_revision:c.library_revision,...args})as any;}
 
-test('repository catalog narrows unsupported occurrence behavior and exposes actual supported tools',async()=>{
- const f=await fixture();try{assert.equal(f.provider.definitions.length,24);assert.ok(!f.provider.definitions.some(t=>t.name==='teachshelf_list_occurrences'));assert.deepEqual(f.provider.definitions.find(t=>t.name==='teachshelf_update_plan')!.inputSchema.properties!.scope.enum,['all']);assert.equal(f.provider.definitions.find(t=>t.name==='teachshelf_get_plan')!.inputSchema.properties!.original_date,undefined);}finally{await f.cleanup();}
+test('repository catalog exposes all 25 original Swift tool schemas including occurrence scopes',async()=>{
+ const f=await fixture();try{assert.equal(f.provider.definitions.length,25);assert.ok(f.provider.definitions.some(t=>t.name==='teachshelf_list_occurrences'));assert.deepEqual(f.provider.definitions.find(t=>t.name==='teachshelf_update_plan')!.inputSchema.properties!.scope.enum,['all','thisOccurrence','thisAndFuture']);for(const definition of f.provider.definitions)assert.deepEqual(definition.inputSchema,selectTools([definition.name])[0].inputSchema);}finally{await f.cleanup();}
 });
 test('course/material/folder tools roundtrip metadata and physical operations without path disclosure',async()=>{
  const f=await fixture();try{
@@ -113,15 +113,81 @@ test('ordinary plans support RFC3339 edits, statuses, conflict-safe undo and res
   const completed:any=await f.provider.execute('teachshelf_set_plan_status',{library_id:lib,id,expected_revision:planRevision(f.repo.state.tasks[0]),action:'complete'});assert.ok(f.repo.state.tasks[0].completedAt);await f.provider.execute('teachshelf_undo_change',{library_id:lib,change_id:completed.change_id});assert.equal(f.repo.state.tasks[0].completedAt,undefined);
   const removed:any=await f.provider.execute('teachshelf_delete_plan',{library_id:lib,id,expected_revision:planRevision(f.repo.state.tasks[0])});assert.equal(f.repo.state.tasks.length,0);await f.provider.execute('teachshelf_undo_change',{library_id:lib,change_id:removed.change_id});assert.equal(f.repo.state.tasks[0].title,'复习');
   await assert.rejects(f.provider.execute('teachshelf_create_plan',{library_id:lib,request_id:identifier(),fields:{title:'坏日期',starts_at:'2026-02-31T10:00:00+08:00'}}),/无效日期/);
-  await assert.rejects(f.provider.execute('teachshelf_create_plan',{library_id:lib,request_id:identifier(),fields:{title:'重复',repeat_rule:{frequency:'daily'}}}),/不符合/);
+  await assert.rejects(f.provider.execute('teachshelf_create_plan',{library_id:lib,request_id:identifier(),fields:{title:'重复',repeat_rule:{frequency:'daily'}}}),/需要执行或截止时间/);
   assert.equal(f.repo.state.tasks.length,1);
   const persisted=f.repo.state.tasks[0];await f.repo.close();const reopened=await Repository.open(f.repo.root);
   try{assert.deepEqual(reopened.state.tasks[0],JSON.parse(JSON.stringify(persisted)));const freshProvider=createRepositoryTools(()=>reopened),detail:any=await freshProvider.execute('teachshelf_get_plan',{id});assert.equal(detail.plan.title,'复习');assert.equal(detail.plan.revision,planRevision(persisted));await assert.rejects(freshProvider.execute('teachshelf_undo_change',{library_id:lib,change_id:removed.change_id}),/过期/);}finally{await reopened.close();}
  }finally{await f.cleanup();}
 });
-test('undo refuses later UI edits and fixed/repeating plans reject writes',async()=>{
+test('undo refuses later UI edits while fixed plans support guarded delete and restore',async()=>{
  const f=await fixture();try{
   const lib=(await context(f.provider)).library_id,id=identifier();const created:any=await f.provider.execute('teachshelf_create_plan',{library_id:lib,request_id:id,fields:{title:'原计划'}});await f.repo.saveTask({id,title:'界面改过'});await assert.rejects(f.provider.execute('teachshelf_undo_change',{library_id:lib,change_id:created.change_id}),/不能撤销/);
-  const fixedID=identifier();await f.repo.saveTask({id:fixedID,title:'固定计划',origin:'fixed'});await assert.rejects(f.provider.execute('teachshelf_delete_plan',{library_id:lib,id:fixedID,expected_revision:planRevision(f.repo.state.tasks.find(p=>p.id===fixedID)!)}),/普通非重复/);
+  const fixedID=identifier();await f.repo.savePlan({id:fixedID,title:'固定计划',origin:'fixed'});const removed:any=await f.provider.execute('teachshelf_delete_plan',{library_id:lib,id:fixedID,expected_revision:planRevision(f.repo.state.tasks.find(p=>p.id===fixedID)!)});assert.deepEqual(removed.deleted_ids,[fixedID]);await f.provider.execute('teachshelf_undo_change',{library_id:lib,change_id:removed.change_id});assert.equal(f.repo.state.tasks.find(p=>p.id===fixedID)!.origin,'fixed');
+ }finally{await f.cleanup();}
+});
+
+async function weekly(f:Awaited<ReturnType<typeof fixture>>,fields:Record<string,unknown>={}){
+ const library_id=(await context(f.provider)).library_id,id=identifier();await f.provider.execute('teachshelf_create_plan',{library_id,request_id:id,fields:{title:'每周实验',starts_at:'2026-10-12T19:00:00+08:00',ends_at:'2026-10-12T20:00:00+08:00',deadline:'2026-10-16T23:59:00+08:00',repeat_rule:{frequency:'weekly',until:'2026-11-30'},...fields}});return{id,library_id};
+}
+async function planWrite(f:Awaited<ReturnType<typeof fixture>>,name:string,id:string,args:Record<string,unknown>){const c=await context(f.provider);return await f.provider.execute('teachshelf_'+name,{library_id:c.library_id,id,expected_revision:planRevision(f.repo.state.tasks.find(p=>p.id===id)!),...args})as any;}
+
+test('occurrence queries return execution and deadline DTOs with inclusive Shanghai days and parent revisions',async()=>{
+ const f=await fixture();try{
+  const {id}=await weekly(f);const result:any=await f.provider.execute('teachshelf_list_occurrences',{from:'2026-10-12',to:'2026-10-23'});assert.equal(result.events.length,4);assert.deepEqual(result.events.map((e:any)=>[e.day,e.event_kind,e.original_date]),[['2026-10-12','execution','2026-10-12'],['2026-10-16','deadline','2026-10-12'],['2026-10-19','execution','2026-10-19'],['2026-10-23','deadline','2026-10-19']]);for(const event of result.events){assert.equal(event.id,id);assert.equal(event.revision,planRevision(f.repo.state.tasks[0]));assert.equal(event.repeat_rule.interval,1);}
+  assert.equal(result.events[0].event_date,'2026-10-12T11:00:00.000Z');assert.equal(result.events[1].deadline,'2026-10-16T15:59:00.000Z');
+  for(const args of [{from:'2026-10-01',to:'2026-11-01'},{from:'2026-10-02',to:'2026-10-01'},{from:'2026-02-30',to:'2026-03-01'}])await assert.rejects(f.provider.execute('teachshelf_list_occurrences',args));
+  await f.provider.execute('teachshelf_list_occurrences',{from:'2026-10-01',to:'2026-10-31'});
+ }finally{await f.cleanup();}
+});
+
+test('single occurrence edits use the original anchor after moving execution and preserve inherited fields',async()=>{
+ const f=await fixture();try{
+  const {id}=await weekly(f);const parentBefore=f.repo.state.tasks[0];await planWrite(f,'update_plan',id,{scope:'thisOccurrence',original_date:'2026-10-19',patch:{title:'临时实验',starts_at:'2026-10-20T20:00:00+08:00',ends_at:'2026-10-20T21:00:00+08:00',deadline:null,color_hex:'#123456'}});
+  const effective:any=await f.provider.execute('teachshelf_get_plan',{id,original_date:'2026-10-19'});assert.equal(effective.plan.title,'临时实验');assert.equal(effective.plan.starts_at,'2026-10-20T12:00:00.000Z');assert.equal(effective.plan.deadline,null);assert.equal(effective.plan.original_date,'2026-10-19');assert.equal(effective.plan.revision,planRevision(f.repo.state.tasks[0]));assert.deepEqual(effective.plan.exception_dates,['2026-10-19']);assert.equal(f.repo.state.tasks[0].title,parentBefore.title);
+  await assert.rejects(f.provider.execute('teachshelf_get_plan',{id,original_date:'2026-10-20'}),/原始发生/);await assert.rejects(planWrite(f,'update_plan',id,{scope:'thisOccurrence',original_date:'2026-10-19',patch:{origin:'fixed'}}),/仅本次/);await assert.rejects(planWrite(f,'delete_plan',id,{scope:'thisOccurrence'}),/original_date/);
+  await planWrite(f,'update_plan',id,{patch:{content:'整组新正文'}});const updated:any=await f.provider.execute('teachshelf_get_plan',{id,original_date:'2026-10-19'});assert.equal(updated.plan.title,'临时实验');assert.equal(updated.plan.content,'整组新正文');
+ }finally{await f.cleanup();}
+});
+
+test('this-and-future edits return both changed series and undo restores only those records with redo support',async()=>{
+ const f=await fixture();try{
+  const {id,library_id}=await weekly(f);await planWrite(f,'update_plan',id,{scope:'thisOccurrence',original_date:'2026-10-26',patch:{title:'第三次例外'}});const original=JSON.parse(JSON.stringify(f.repo.state.tasks[0]));
+  const split=await planWrite(f,'update_plan',id,{scope:'thisAndFuture',original_date:'2026-10-19',patch:{title:'未来系列',location:'新地点'}});assert.equal(split.plans.length,2);assert.deepEqual(split.deleted_ids,[]);const future=split.plans.find((p:any)=>p.id!==id);assert.equal(future.title,'未来系列');assert.equal(split.plans.find((p:any)=>p.id===id).repeat_rule.until,'2026-10-18');
+  const later:any=await f.provider.execute('teachshelf_get_plan',{id:future.id,original_date:'2026-10-26'});assert.equal(later.plan.title,'第三次例外');
+  const independent=identifier();await f.repo.savePlan({id:independent,title:'后来创建的其他计划'});const undo:any=await f.provider.execute('teachshelf_undo_change',{library_id,change_id:split.change_id});assert.deepEqual(undo.deleted_ids,[future.id]);assert.equal(undo.plans.length,1);assert.deepEqual(f.repo.state.tasks.find(p=>p.id===id),original);assert.equal(f.repo.state.tasks.find(p=>p.id===independent)!.title,'后来创建的其他计划');
+  const redo:any=await f.provider.execute('teachshelf_undo_change',{library_id,change_id:undo.change_id});assert.equal(redo.plans.length,2);assert.ok(f.repo.state.tasks.some(p=>p.id===future.id));assert.equal(f.repo.state.tasks.find(p=>p.id===independent)!.title,'后来创建的其他计划');
+ }finally{await f.cleanup();}
+});
+
+test('multi-series undo refuses a modified or removed split record and keeps every later change',async()=>{
+ for(const action of ['modify','delete']){const f=await fixture();try{
+  const {id,library_id}=await weekly(f),split=await planWrite(f,'update_plan',id,{scope:'thisAndFuture',original_date:'2026-10-19',patch:{title:'未来'}}),future=split.plans.find((p:any)=>p.id!==id);
+  if(action==='modify')await f.repo.savePlan({id:future.id,title:'用户后来改过'});else await f.repo.deletePlan(future.id);
+  const before=f.repo.state;await assert.rejects(f.provider.execute('teachshelf_undo_change',{library_id,change_id:split.change_id}),/不能撤销/);assert.deepEqual(f.repo.state,before);
+ }finally{await f.cleanup();}}
+});
+
+test('delete scopes cancel one occurrence, truncate future series or remove the whole group and all are undoable',async()=>{
+ const f=await fixture();try{
+  const {id,library_id}=await weekly(f);let removed=await planWrite(f,'delete_plan',id,{scope:'thisOccurrence',original_date:'2026-10-19'});assert.equal(removed.plans.length,1);assert.deepEqual(removed.deleted_ids,[]);assert.equal((await f.provider.execute('teachshelf_list_occurrences',{from:'2026-10-19',to:'2026-10-23'})as any).events.length,0);await f.provider.execute('teachshelf_undo_change',{library_id,change_id:removed.change_id});
+  removed=await planWrite(f,'delete_plan',id,{scope:'thisAndFuture',original_date:'2026-10-19'});assert.equal(removed.plans[0].repeat_rule.until,'2026-10-18');await f.provider.execute('teachshelf_undo_change',{library_id,change_id:removed.change_id});
+  removed=await planWrite(f,'delete_plan',id,{scope:'all'});assert.deepEqual(removed.deleted_ids,[id]);assert.deepEqual(removed.plans,[]);await f.provider.execute('teachshelf_undo_change',{library_id,change_id:removed.change_id});assert.equal(f.repo.state.tasks.length,1);assert.equal(f.repo.state.tasks[0].repeatRule!.until!==undefined,true);
+ }finally{await f.cleanup();}
+});
+
+test('repeat statuses preserve individual edits and enforce supported scopes before mutation',async()=>{
+ const f=await fixture();try{
+  const {id,library_id}=await weekly(f,{origin:'fixed'});await planWrite(f,'update_plan',id,{scope:'thisOccurrence',original_date:'2026-10-19',patch:{location:'临时教室'}});
+  for(const action of ['complete','cancel','restore'])await planWrite(f,'set_plan_status',id,{action,scope:'thisOccurrence',original_date:'2026-10-19'});const effective:any=await f.provider.execute('teachshelf_get_plan',{id,original_date:'2026-10-19'});assert.equal(effective.plan.location,'临时教室');assert.ok(effective.plan.completed_at);assert.equal(effective.plan.cancelled_at,null);
+  const prior=f.repo.state;await assert.rejects(planWrite(f,'set_plan_status',id,{action:'complete',scope:'thisAndFuture',original_date:'2026-10-19'}),/不支持/);await assert.rejects(planWrite(f,'set_plan_status',id,{action:'archive',scope:'thisOccurrence',original_date:'2026-10-19'}),/只支持整组/);assert.deepEqual(f.repo.state,prior);
+  const cancel=await planWrite(f,'set_plan_status',id,{action:'cancel',scope:'thisAndFuture',original_date:'2026-10-19'});assert.equal(cancel.plans.length,2);assert.ok(cancel.plans.find((p:any)=>p.id!==id).cancelled_at);await f.provider.execute('teachshelf_undo_change',{library_id,change_id:cancel.change_id});assert.equal(f.repo.state.tasks.length,1);
+ }finally{await f.cleanup();}
+});
+
+test('undo baseline is captured inside the transaction and never includes an unrelated queued UI edit',async()=>{
+ const f=await fixture();try{
+  const {id,library_id}=await weekly(f),other=identifier();await f.repo.savePlan({id:other,title:'其他计划'});const originalGuard=f.repo.withMutationGuard.bind(f.repo);let inject=true;
+  f.repo.withMutationGuard=async(guard,action)=>{if(inject){inject=false;await f.repo.savePlan({id:other,title:'并发界面编辑'});}return originalGuard(guard,action);};
+  const changed=await planWrite(f,'update_plan',id,{patch:{title:'MCP编辑'}});assert.deepEqual(changed.plans.map((p:any)=>p.id),[id]);await f.provider.execute('teachshelf_undo_change',{library_id,change_id:changed.change_id});assert.equal(f.repo.state.tasks.find(p=>p.id===other)!.title,'并发界面编辑');assert.equal(f.repo.state.tasks.find(p=>p.id===id)!.title,'每周实验');
  }finally{await f.cleanup();}
 });

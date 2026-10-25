@@ -1,4 +1,6 @@
-import type {TimetableSettingsInput,TimetableImportSummary} from './timetable';
+import type {PlanEditScope,PlanStatus} from './plans';
+import type {SwiftDate} from './model';
+import type {TimetableSettingsInput,TimetableImportSummary,TimetableRescheduleInput} from './timetable';
 import type {Course,LibraryState,Material,MaterialFolder,StudyTask} from './model';
 export interface Snapshot {root:string;state:LibraryState;revision:string;warnings:string[]}
 export interface ImportResult {imported:number;skipped:number;errors:string[]}
@@ -6,7 +8,16 @@ export interface Settings {ai:{baseURL:string;model:string;hasKey:boolean};mcp:{
 export interface ChatMessage {id:string;role:'user'|'assistant'|'tool';content:string;createdAt:number;toolName?:string}
 export interface ChatEvent {type:'delta'|'done'|'error'|'confirmation';text?:string;requestID?:string;toolName?:string;arguments?:unknown}
 export interface WebsiteResult {proposalID?:string;url:string;title:string;data:unknown}
+export interface HomeworkEntry {name:string;relativePath:string;isDirectory:boolean;size:number;modifiedAt:number}
+export interface HomeworkListing {courseID?:string;relative:string;root:string;mounted:boolean;entries:HomeworkEntry[]}
 export interface DesktopAPI {
+ listHomework(courseID?:string,relative?:string):Promise<HomeworkListing>;
+ createHomeworkFolder(courseID:string|undefined,relative:string,name:string):Promise<HomeworkEntry>;
+ renameHomework(courseID:string|undefined,relativePath:string,name:string):Promise<HomeworkEntry>;
+ importHomework(courseID?:string,relative?:string):Promise<ImportResult>;
+ openHomework(courseID:string|undefined,relativePath:string):Promise<void>;
+ revealHomework(courseID:string|undefined,relativePath:string):Promise<void>;
+ mountHomework(courseID:string,reset?:boolean):Promise<Snapshot|null>;
  snapshot():Promise<Snapshot>;
  createCourse(input:{name:string;semester?:string;teacher?:string;colorHex?:string}):Promise<Snapshot>;
  updateCourse(id:string,patch:Partial<Course>):Promise<Snapshot>;
@@ -30,9 +41,14 @@ export interface DesktopAPI {
  saveTimetableSettings(termID:string,input:TimetableSettingsInput):Promise<Snapshot>;
  cancelTimetableClass(termID:string,meetingID:string,date:number|string,reason?:string):Promise<Snapshot>;
  restoreTimetableClass(termID:string,cancellationID:string):Promise<Snapshot>;
+ rescheduleTimetableClass(termID:string,meetingID:string,originalDate:number|string,input:TimetableRescheduleInput):Promise<Snapshot>;
+ restoreTimetableMove(termID:string,rescheduleID:string):Promise<Snapshot>;
+ savePlan(input:{id?:string;title:string;[key:string]:unknown},scope?:PlanEditScope,originalDate?:SwiftDate):Promise<Snapshot>;
+ setPlanStatus(id:string,action:PlanStatus,scope?:PlanEditScope,originalDate?:SwiftDate):Promise<Snapshot>;
+ deletePlan(id:string,scope?:PlanEditScope,originalDate?:SwiftDate):Promise<Snapshot>;
  saveTask(task:Partial<StudyTask>&{title:string}):Promise<Snapshot>;
  deleteTasks(ids:string[]):Promise<Snapshot>;
- copyMCPConfiguration():Promise<void>;
+ copyMCPConfiguration(mode?:'http'|'stdio'):Promise<void>;
  settings():Promise<Settings>;
  saveSettings(input:{baseURL?:string;model?:string;apiKey?:string;mcpEnabled?:boolean;mcpPort?:number;theme?:string}):Promise<Settings>;
  chatHistory():Promise<ChatMessage[]>;

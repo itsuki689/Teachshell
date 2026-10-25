@@ -27,6 +27,9 @@ export interface TimetableSettingsInput {
  name?:string;weekOneMonday?:SwiftDate|null;weekCount?:number;endDate?:SwiftDate|null;sectionTimes?:TimetableSectionTime[];
 }
 export interface TimetableImportSummary {termID:string;coursesCreated:number;meetingsImported:number}
+export interface TimetableRescheduleInput {
+ date:SwiftDate;startSection:number;sectionCount:number;classroom:string;startMinute?:number;endMinute?:number;
+}
 
 const DAY=86_400_000;
 const dateFormatter=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'});

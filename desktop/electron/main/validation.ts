@@ -1,7 +1,7 @@
 import {z} from 'zod';
 const id=z.string().uuid();const name=z.string().trim().min(1).max(500);const text=z.string().max(100000).refine(v=>!v.includes('\0'));const optID=id.nullish().transform(v=>v??undefined);const date=z.union([z.number().finite(),z.string().datetime({offset:true})]);
 export const courseInput=z.object({name,semester:text.optional(),teacher:text.optional(),colorHex:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()}).strict();
-export const coursePatch=courseInput.partial().extend({isArchived:z.boolean().optional()}).strict();
+export const coursePatch=courseInput.partial().extend({isArchived:z.boolean().optional(),materialSort:z.enum(['name','time','custom']).optional()}).strict();
 export const materialPatch=z.object({title:name.optional(),category:name.optional(),tags:text.optional(),notes:text.optional(),isFavorite:z.boolean().optional(),filename:z.string().min(1).max(255).optional()}).strict();
 export const folderInput=z.object({name,courseID:optID,parentID:optID}).strict();
 export const folderPatch=folderInput.partial().extend({colorHex:z.string().regex(/^#[0-9a-fA-F]{6}$/).optional()}).strict();
