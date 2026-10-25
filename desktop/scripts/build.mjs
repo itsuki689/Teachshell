@@ -1,7 +1,48 @@
 import { execFileSync } from 'node:child_process';
 import { build } from 'esbuild';
 import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 await fs.mkdir('dist-electron', { recursive: true });
+// Ship the host architecture's Keychain bridge. Build Mac releases on the matching
+// architecture; end users need no Swift toolchain. Do not bypass runtime link checks.
+if (process.platform === 'darwin') {
+  const nativeBuild = await fs.mkdtemp(path.join(os.tmpdir(), 'teachshell-keychain-build-'));
+  try {
+    execFileSync(
+      'xcrun',
+      [
+        'swiftc',
+        '-swift-version',
+        '5',
+        '-O',
+        '-target',
+        (process.arch === 'arm64' ? 'arm64' : 'x86_64') + '-apple-macos12.0',
+        '-module-cache-path',
+        path.join(nativeBuild, 'cache'),
+        'electron/services/website/native/TeachingSessionKeychain.swift',
+        '-o',
+        'dist-electron/teaching-session-keychain',
+      ],
+      { stdio: 'inherit' },
+    );
+    execFileSync('/usr/bin/codesign', [
+      '--force',
+      '--sign',
+      '-',
+      '--identifier',
+      'com.teachshelf.desktop.teaching-session-keychain',
+      'dist-electron/teaching-session-keychain',
+    ]);
+    execFileSync('/usr/bin/codesign', [
+      '--verify',
+      '--strict',
+      'dist-electron/teaching-session-keychain',
+    ]);
+  } finally {
+    await fs.rm(nativeBuild, { recursive: true, force: true });
+  }
+}
 const commit =
   process.env.TEACHSHELL_BUILD_COMMIT ??
   execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();

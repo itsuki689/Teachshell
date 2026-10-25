@@ -24,6 +24,8 @@ import Modal from './components/Modal.vue';
 import WebsiteDialog from './components/WebsiteDialog.vue';
 import TaskEditor from './components/TaskEditor.vue';
 import WorkspaceSearch from './components/WorkspaceSearch.vue';
+import WorkspaceToolbar from './components/WorkspaceToolbar.vue';
+import type { ToolbarAction } from '../shared/toolbar';
 import type { WorkspaceSearchResult } from './composables/workspace-search';
 import LibraryView from './views/LibraryView.vue';
 import PlansView from './views/PlansView.vue';
@@ -36,6 +38,7 @@ const store = useLibrary(),
   courseEditor = ref<Course | null | undefined>(undefined),
   showImport = ref(false),
   showWebsite = ref(false),
+  websiteBatch = ref(false),
   websiteKind = ref<'teaching' | 'timetable'>('teaching'),
   showTask = ref(false),
   searchedTask = ref<StudyTask | undefined>(),
@@ -47,9 +50,43 @@ watchEffect(() => {
   document.documentElement.dataset.theme = theme.value;
   document.documentElement.style.setProperty('--accent', store.state.accentColor || '#39786B');
 });
-function openWebsite(kind: 'teaching' | 'timetable' = 'teaching') {
+function openWebsite(kind: 'teaching' | 'timetable' = 'teaching', batch = false) {
   websiteKind.value = kind;
+  websiteBatch.value = batch;
   showWebsite.value = true;
+}
+async function toolbarAction(
+  action: ToolbarAction | 'create-course' | 'create-plan' | 'connect-website',
+) {
+  if (store.busy) return;
+  if (
+    ['create-course', 'create-plan', 'connect-website', 'update', 'import'].includes(action) &&
+    !(await store.requestLeave())
+  )
+    return;
+  if (action === 'update') openWebsite('teaching', true);
+  else if (action === 'connect-website') openWebsite();
+  else if (action === 'create-course') editCourse();
+  else if (action === 'create-plan') showTask.value = true;
+  else if (action === 'import') showImport.value = true;
+  else if (action === 'settings') {
+    if (store.route === 'settings') {
+      if (store.canGoBack) await store.goBack();
+      else await store.navigate('all');
+    } else await store.navigate('settings');
+  } else {
+    const route = (
+      {
+        schedule: 'plans',
+        allMaterials: 'all',
+        favorites: 'favorites',
+        recent: 'recent',
+        homework: 'homework',
+        pendingTasks: 'pending',
+      } as Record<string, string>
+    )[action];
+    if (route) await store.navigate(route);
+  }
 }
 function editCourse(course?: Course) {
   courseEditor.value = course ?? null;
@@ -212,31 +249,9 @@ onUnmounted(() => {
           :disabled="!!store.busy || !store.snapshot"
           @click="store.change(() => api.sync(), '资料库已同步')"
         >
-          <RefreshCw :size="17" :class="{ spinning: store.busy }" /></button
-        ><button
-          class="icon-button"
-          aria-label="打开设置"
-          title="设置"
-          @click="store.navigate('settings')"
-        >
-          <Settings :size="17" /></button
-        ><button
-          class="icon-button"
-          aria-label="导入资料"
-          title="导入资料 · ⌘ / Ctrl O"
-          :disabled="!store.snapshot"
-          @click="showImport = true"
-        >
-          <Upload :size="17" /></button
-        ><button
-          class="icon-button"
-          aria-label="新建课程"
-          title="新建课程 · ⌘ / Ctrl N"
-          :disabled="!store.snapshot"
-          @click="editCourse()"
-        >
-          <Plus :size="18" />
+          <RefreshCw :size="17" :class="{ spinning: store.busy }" />
         </button>
+        <WorkspaceToolbar @action="toolbarAction" />
       </div>
     </div>
     <div v-if="store.snapshot" class="app-body">
@@ -306,6 +321,7 @@ onUnmounted(() => {
     /><WebsiteDialog
       v-if="showWebsite"
       :initial-kind="websiteKind"
+      :initial-batch="websiteBatch"
       @close="showWebsite = false"
     /><Modal
       v-if="store.confirmRequest"

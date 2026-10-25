@@ -1,5 +1,7 @@
 export type { AssignmentPreview } from '../electron/services/website/assignment-sync';
 import type { AssignmentPreview } from '../electron/services/website/assignment-sync';
+export type { LoginStatus } from '../electron/services/website/login-session';
+import type { LoginStatus } from '../electron/services/website/login-session';
 export type {
   BatchReview,
   BatchReviewRow,
@@ -29,6 +31,10 @@ export interface Snapshot {
   state: LibraryState;
   revision: string;
   warnings: string[];
+}
+export interface WorkspaceGuard {
+  root: string;
+  revision: string;
 }
 export interface ImportResult {
   imported: number;
@@ -84,6 +90,11 @@ export interface AppInfo {
 }
 export interface DesktopAPI {
   appInfo(): Promise<AppInfo>;
+  websiteLoginStatus(): Promise<LoginStatus>;
+  rememberWebsiteLogin(enabled: boolean): Promise<LoginStatus>;
+  retryWebsiteLogin(): Promise<LoginStatus>;
+  onWebsiteLogin(callback: (status: LoginStatus) => void): () => void;
+  saveToolbarSettings(actions: string[], guard: WorkspaceGuard): Promise<Snapshot>;
   checkWebsiteBatch(input?: BatchCheckInput): Promise<BatchReview>;
   applyWebsiteBatch(input: BatchApplyInput): Promise<BatchApplyResult>;
   cancelWebsiteBatch(): Promise<void>;
@@ -157,6 +168,7 @@ export interface DesktopAPI {
     meetingID: string,
     date: number | string,
     reason?: string,
+    guard?: WorkspaceGuard,
   ): Promise<Snapshot>;
   restoreTimetableClass(termID: string, cancellationID: string): Promise<Snapshot>;
   rescheduleTimetableClass(
@@ -164,8 +176,20 @@ export interface DesktopAPI {
     meetingID: string,
     originalDate: number | string,
     input: TimetableRescheduleInput,
+    guard?: WorkspaceGuard,
   ): Promise<Snapshot>;
-  restoreTimetableMove(termID: string, rescheduleID: string): Promise<Snapshot>;
+  restoreTimetableMove(
+    termID: string,
+    rescheduleID: string,
+    guard?: WorkspaceGuard,
+  ): Promise<Snapshot>;
+  setPlanOccurrenceTime(
+    id: string,
+    originalDate: SwiftDate,
+    day: SwiftDate,
+    range: { start: number; end: number },
+    guard: WorkspaceGuard,
+  ): Promise<Snapshot>;
   setTimetableMeetingMonthVisible(
     termID: string,
     meetingID: string,

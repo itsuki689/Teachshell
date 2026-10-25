@@ -9,6 +9,7 @@ const subscribe = (channel: string, callback: (value: any) => void) => {
 };
 const api: DesktopAPI = {
   appInfo: () => invoke('appInfo'),
+  saveToolbarSettings: (actions, guard) => invoke('saveToolbarSettings', actions, guard),
   checkWebsiteBatch: (input) => invoke('checkWebsiteBatch', input),
   applyWebsiteBatch: (input) => invoke('applyWebsiteBatch', input),
   cancelWebsiteBatch: () => invoke('cancelWebsiteBatch'),
@@ -50,12 +51,14 @@ const api: DesktopAPI = {
   backupLibrary: () => invoke('backupLibrary'),
   importTimetable: (proposalID) => invoke('importTimetable', proposalID),
   saveTimetableSettings: (id, input) => invoke('saveTimetableSettings', id, input),
-  cancelTimetableClass: (id, mid, date, reason) =>
-    invoke('cancelTimetableClass', id, mid, date, reason),
+  cancelTimetableClass: (id, mid, date, reason, guard) =>
+    invoke('cancelTimetableClass', id, mid, date, reason, guard),
   restoreTimetableClass: (id, cid) => invoke('restoreTimetableClass', id, cid),
-  rescheduleTimetableClass: (id, mid, date, input) =>
-    invoke('rescheduleTimetableClass', id, mid, date, input),
-  restoreTimetableMove: (id, rid) => invoke('restoreTimetableMove', id, rid),
+  rescheduleTimetableClass: (id, mid, date, input, guard) =>
+    invoke('rescheduleTimetableClass', id, mid, date, input, guard),
+  restoreTimetableMove: (id, rid, guard) => invoke('restoreTimetableMove', id, rid, guard),
+  setPlanOccurrenceTime: (id, original, day, range, guard) =>
+    invoke('setPlanOccurrenceTime', id, original, day, range, guard),
   setTimetableMeetingMonthVisible: (id, mid, visible) =>
     invoke('setTimetableMeetingMonthVisible', id, mid, visible),
   savePlan: (input, scope, originalDate, expectedRevision) =>
@@ -83,6 +86,10 @@ const api: DesktopAPI = {
   importWebsite: (input) => invoke('importWebsite', input),
   inspectWebsite: (kind) => invoke('inspectWebsite', kind),
   onChanged: (callback) => subscribe('teachshelf:changed', callback),
+  websiteLoginStatus: () => invoke('websiteLoginStatus'),
+  rememberWebsiteLogin: (enabled) => invoke('rememberWebsiteLogin', enabled),
+  retryWebsiteLogin: () => invoke('retryWebsiteLogin'),
+  onWebsiteLogin: (callback) => subscribe('teachshelf:website-login', callback),
   onChat: (callback) => subscribe('teachshelf:chat', callback),
   onMenu: (callback) => subscribe('teachshelf:menu', callback),
 };

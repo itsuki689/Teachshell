@@ -1,6 +1,6 @@
 {
   "name": "teachshelf-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "课屿跨平台课程资料管理",
@@ -54,7 +54,8 @@
     "files": [
       "dist/**/*",
       "dist-electron/**/*",
-      "package.json"
+      "package.json",
+      "!dist-electron/teaching-session-keychain"
     ],
     "asar": true,
     "mac": {
@@ -64,7 +65,13 @@
         "zip"
       ],
       "identity": "-",
-      "icon": "build-assets/icon.icns"
+      "icon": "build-assets/icon.icns",
+      "extraResources": [
+        {
+          "from": "dist-electron/teaching-session-keychain",
+          "to": "teaching-session-keychain"
+        }
+      ]
     },
     "win": {
       "target": [
@@ -99,7 +106,8 @@
         "from": "dist-electron/mcp-stdio.cjs",
         "to": "mcp-stdio.cjs"
       }
-    ]
+    ],
+    "beforePack": "scripts/before-pack.cjs"
   },
   "desktopName": "com.teachshelf.desktop.desktop",
   "homepage": "https://github.com/itsuki689/Teachshelf-mac"

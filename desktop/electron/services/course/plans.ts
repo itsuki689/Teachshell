@@ -415,6 +415,42 @@ export function saveAdvancedPlan(
   state.tasks[index] = next;
   state.tasks.push(future);
 }
+/** Swift setPlanOccurrenceTime: change only the selected execution interval. */
+export function setPlanOccurrenceTime(
+  state: LibraryState,
+  id: string,
+  originalDate: SwiftDate,
+  day: SwiftDate,
+  range: { start: number; end: number },
+): void {
+  const index = planIndex(state, identifier(id));
+  const parent = readPlan(state.tasks[index]);
+  const original = requireOccurrence(parent, originalDate);
+  const current = planSnapshot(parent, original);
+  if (!current.hasExecutionTime || current.isAllDay) throw new Error('请选择有具体时段的计划');
+  if (
+    !Number.isInteger(range.start) ||
+    !Number.isInteger(range.end) ||
+    range.start < 0 ||
+    range.start >= range.end ||
+    range.end > 1440
+  )
+    throw new Error('计划时段无效');
+  const midnight = shanghaiDay(date(day));
+  const startsAt = midnight + range.start * 60,
+    endsAt = midnight + range.end * 60;
+  if (parent.repeatRule)
+    editException(parent, original, (change) => {
+      change.startsAt = startsAt;
+      change.endsAt = endsAt;
+    });
+  else {
+    parent.startsAt = startsAt;
+    parent.endsAt = endsAt;
+  }
+  validatePlan(parent, state);
+  state.tasks[index] = parent;
+}
 export function changePlanStatus(
   state: LibraryState,
   id: string,

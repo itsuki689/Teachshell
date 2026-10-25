@@ -15,11 +15,13 @@ import { dateMs } from '../../shared/model';
 import { useLibrary } from '../stores/library';
 import Modal from './Modal.vue';
 import WebsiteBatchReview from './WebsiteBatchReview.vue';
+import WebsiteLoginSettings from './WebsiteLoginSettings.vue';
 const showBatch = ref(false);
 const api = window.teachshelf,
   store = useLibrary();
-const props = defineProps<{ initialKind?: 'teaching' | 'timetable' }>(),
+const props = defineProps<{ initialKind?: 'teaching' | 'timetable'; initialBatch?: boolean }>(),
   emit = defineEmits<{ close: [] }>();
+showBatch.value = !!props.initialBatch;
 watch(
   () => store.snapshot?.root,
   (root, previous) => {
@@ -328,6 +330,7 @@ const pretty = computed(() => JSON.stringify(result.value?.data, null, 2));
   <Modal title="教学网站" wide @close="emit('close')"
     ><div class="form-stack">
       <p class="muted">在独立窗口完成登录。先读取课程首页，再打开作业或资料条目读取详情。</p>
+      <WebsiteLoginSettings v-if="kind === 'teaching'" />
       <div class="form-row">
         <label
           >网站类型<select aria-label="网站类型" v-model="kind">

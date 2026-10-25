@@ -62,7 +62,7 @@ async function until(predicate) {
 }
 async function createCourse(name) {
   await page
-    .locator('.titlebar-actions')
+    .locator('.sidebar')
     .getByRole('button', { name: '新建课程', exact: true })
     .click();
   const dialog = page.getByRole('dialog', { name: '新建课程' });
@@ -811,7 +811,7 @@ try {
     'Official-URL offline Moodle DOM is parsed in an isolated window and a reviewed assignment is applied',
     async () => {
       const partition =
-        'persist:teachshelf-' +
+        'teachshelf-' +
         createHash('sha256')
           .update((await snapshot()).root)
           .digest('hex')

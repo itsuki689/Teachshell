@@ -42,7 +42,7 @@ try {
       globalThis.workerPreferences.push(win.webContents.getLastWebPreferences()),
     );
     await session
-      .fromPartition('persist:teachshelf-test-batch-teaching')
+      .fromPartition('teachshelf-test-batch-teaching')
       .protocol.handle('https', (request) => {
         const url = new URL(request.url);
         globalThis.requests.push({ url: request.url, method: request.method });

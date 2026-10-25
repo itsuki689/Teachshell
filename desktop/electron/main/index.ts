@@ -67,6 +67,17 @@ let mainWindow: BrowserWindow;
 let repository: Repository;
 let settings: SettingsService;
 let website: WebsiteBrowser;
+const closingWebsites = new WeakMap<WebsiteBrowser, Promise<void>>();
+function closeWebsite() {
+  const current = website;
+  if (!current) return Promise.resolve();
+  let operation = closingWebsites.get(current);
+  if (!operation) {
+    operation = current.flushLogin().finally(() => current.close());
+    closingWebsites.set(current, operation);
+  }
+  return operation;
+}
 let chat: ChatService;
 let server: MCPServer;
 let toolProvider: ToolProvider;
@@ -101,6 +112,19 @@ const post = (name: string, value: unknown) => {
   if (mainWindow && !mainWindow.isDestroyed())
     mainWindow.webContents.send('teachshelf:' + name, value);
 };
+async function setupWebsite() {
+  const instance = new WebsiteBrowser(
+    path.join(__dirname, 'website-scripts'),
+    digest(repository.root).slice(0, 16),
+    {
+      onLoginState: (status) => {
+        if (website === instance && !quitting) post('website-login', status);
+      },
+    },
+  );
+  website = instance;
+  await instance.prepareLogin();
+}
 async function startMCP() {
   await server?.stop();
   const config = settings.view().mcp;
@@ -167,11 +191,8 @@ async function switchLibrary(root: string) {
     previews.clear();
     proposals.clear();
     clearTeachingPreviews?.();
-    website.close();
-    website = new WebsiteBrowser(
-      path.join(__dirname, 'website-scripts'),
-      digest(repository.root).slice(0, 16),
-    );
+    await closeWebsite();
+    await setupWebsite();
     repository.onChanged = (snapshot) => post('changed', snapshot);
     setupChat();
     try {
@@ -229,6 +250,11 @@ function installIPC() {
     cacheRoot: path.join(app.getPath('userData'), 'WebsiteDownloads'),
   });
   const none = z.tuple([]);
+  handle('websiteLoginStatus', none, () => website.loginStatus());
+  handle('rememberWebsiteLogin', z.tuple([z.boolean()]), (enabled) =>
+    website.setRememberLogin(enabled),
+  );
+  handle('retryWebsiteLogin', none, () => website.retryLogin());
   const oneID = z.tuple([schemas.id]);
   const optionalID = schemas.id.nullish().transform((v) => v ?? undefined);
 
@@ -445,10 +471,41 @@ function installIPC() {
     ]),
     (id, input) => repository.saveTimetableSettings(id, input),
   );
+  const workspaceGuard = z
+    .object({ root: z.string().min(1).max(32768), revision: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict();
+  const guarded = <T>(
+    guard: { root: string; revision: string } | undefined,
+    action: (repo: Repository) => Promise<T>,
+  ) => {
+    const active = repository;
+    return active.withMutationGuard(
+      () => {
+        if (
+          active !== repository ||
+          (guard && (active.root !== guard.root || active.snapshot().revision !== guard.revision))
+        )
+          throw new Error('资料库或日程已变化，请重新选择发生项');
+      },
+      () => action(active),
+    );
+  };
+  handle(
+    'saveToolbarSettings',
+    z.tuple([z.array(z.string().max(30)).max(6), workspaceGuard]),
+    (actions, guard) => guarded(guard, (repo) => repo.saveToolbarSettings(actions, guard.revision)),
+  );
   handle(
     'cancelTimetableClass',
-    z.tuple([schemas.id, schemas.id, scheduleDate, z.string().max(2000).optional()]),
-    (id, mid, date, reason) => repository.cancelTimetableClass(id, mid, date, reason),
+    z.tuple([
+      schemas.id,
+      schemas.id,
+      scheduleDate,
+      z.string().max(2000).optional(),
+      workspaceGuard.optional(),
+    ]),
+    (id, mid, date, reason, guard) =>
+      guarded(guard, (repo) => repo.cancelTimetableClass(id, mid, date, reason)),
   );
   handle('restoreTimetableClass', z.tuple([schemas.id, schemas.id]), (id, cid) =>
     repository.restoreTimetableClass(id, cid),
@@ -469,16 +526,38 @@ function installIPC() {
           endMinute: z.number().int().min(1).max(1440).optional(),
         })
         .strict(),
+      workspaceGuard.optional(),
     ]),
-    (id, mid, date, input) => repository.rescheduleTimetableClass(id, mid, date, input),
+    (id, mid, date, input, guard) =>
+      guarded(guard, (repo) => repo.rescheduleTimetableClass(id, mid, date, input)),
   );
   handle(
     'setTimetableMeetingMonthVisible',
     z.tuple([schemas.id, schemas.id, z.boolean()]),
     (id, mid, visible) => repository.setTimetableMeetingMonthVisible(id, mid, visible),
   );
-  handle('restoreTimetableMove', z.tuple([schemas.id, schemas.id]), (id, rid) =>
-    repository.restoreTimetableMove(id, rid),
+  handle(
+    'restoreTimetableMove',
+    z.tuple([schemas.id, schemas.id, workspaceGuard.optional()]),
+    (id, rid, guard) => guarded(guard, (repo) => repo.restoreTimetableMove(id, rid)),
+  );
+  handle(
+    'setPlanOccurrenceTime',
+    z.tuple([
+      schemas.id,
+      scheduleDate,
+      scheduleDate,
+      z
+        .object({
+          start: z.number().int().min(0).max(1439),
+          end: z.number().int().min(1).max(1440),
+        })
+        .strict()
+        .refine((r) => r.start < r.end),
+      workspaceGuard,
+    ]),
+    (id, original, day, range, guard) =>
+      guarded(guard, (repo) => repo.setPlanOccurrenceTime(id, original, day, range)),
   );
 
   const planScope = z.enum(['all', 'thisOccurrence', 'thisAndFuture']);
@@ -759,10 +838,7 @@ async function start() {
   );
   repository.onChanged = (snapshot) => post('changed', snapshot);
   if (settings.warning) repository.warnings.push(settings.warning);
-  website = new WebsiteBrowser(
-    path.join(__dirname, 'website-scripts'),
-    digest(repository.root).slice(0, 16),
-  );
+  await setupWebsite();
   setupChat();
   protocol.handle('shelf-preview', async (request) => {
     try {
@@ -823,7 +899,7 @@ async function start() {
     // Electron allows the unload only when this event is prevented.
     if (response === 1) event.preventDefault();
   });
-  mainWindow.on('closed', () => website?.close());
+  mainWindow.on('closed', () => void closeWebsite().catch(() => {}));
   rendererURL =
     !app.isPackaged && process.env.TEACHSHELF_DEV_URL === 'http://127.0.0.1:5173'
       ? 'http://127.0.0.1:5173/'
@@ -864,8 +940,10 @@ app.on('will-quit', (event) => {
   chat?.cancel();
   if (timer) clearTimeout(timer);
   clearWebsiteUpdates?.();
-  website?.close();
-  Promise.allSettled([watcher?.close(), server?.stop(), repository?.close()]).finally(() =>
-    app.quit(),
-  );
+  Promise.allSettled([
+    closeWebsite(),
+    watcher?.close(),
+    server?.stop(),
+    repository?.close(),
+  ]).finally(() => app.quit());
 });

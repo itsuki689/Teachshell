@@ -63,10 +63,12 @@ import {
   changePlanStatus,
   removeAdvancedPlan,
   validatePlans,
+  setPlanOccurrenceTime,
 } from '../course/plans.ts';
 import type { PlanEditScope, PlanStatus } from '../../../shared/plans.ts';
 import { validateHomeworkMount } from '../resource/homework.ts';
 import * as teaching from '../website/teaching.ts';
+import { readToolbarActions } from '../../../shared/toolbar.ts';
 const id = () => randomUUID().toUpperCase();
 interface Observation {
   path: string;
@@ -164,6 +166,16 @@ export class Repository {
   }
   restoreIgnoredTeachingItems(id: string) {
     return this.mutate((state) => teaching.restoreIgnoredTeachingItems(state, id));
+  }
+  saveToolbarSettings(actions: string[], expected?: string) {
+    return this.mutate((state) => {
+      if (expected !== undefined && digest(JSON.stringify(state)) !== expected)
+        throw new Error('资料库已变化，请重新调整顶栏');
+      state.toolbarSettings = {
+        ...(state.toolbarSettings as Record<string, unknown> | undefined),
+        actions: readToolbarActions({ actions }),
+      };
+    });
   }
   finishTeachingUpdate(id: string, messages: teaching.TeachingSyncMessage[], completed: boolean) {
     return this.mutate((state) => {
@@ -855,6 +867,14 @@ export class Repository {
     originalDate?: SwiftDate,
   ) {
     return this.mutate((s) => saveAdvancedPlan(s, input, scope, originalDate));
+  }
+  async setPlanOccurrenceTime(
+    id: string,
+    originalDate: SwiftDate,
+    day: SwiftDate,
+    range: { start: number; end: number },
+  ) {
+    return this.mutate((state) => setPlanOccurrenceTime(state, id, originalDate, day, range));
   }
   async setPlanStatus(
     planID: string,

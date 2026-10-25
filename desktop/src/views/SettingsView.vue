@@ -17,6 +17,7 @@ import {
 } from 'lucide-vue-next';
 import { useLibrary } from '../stores/library';
 import type { AppInfo } from '../../shared/api';
+import ToolbarSettings from '../components/ToolbarSettings.vue';
 const application = ref<AppInfo>();
 const emit = defineEmits<{ website: [] }>(),
   store = useLibrary();
@@ -106,6 +107,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
     </header>
     <div class="settings-scroll">
       <div class="settings-content">
+        <ToolbarSettings />
         <section v-if="application" class="settings-section">
           <h2><Monitor :size="19" />关于 {{ application.name }}</h2>
           <div class="settings-card">

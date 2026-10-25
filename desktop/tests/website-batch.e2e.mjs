@@ -99,7 +99,7 @@ try {
     'Bind a real course through an isolated official-URL Moodle DOM fixture',
     async () => {
       await page
-        .locator('.titlebar-actions')
+        .locator('.sidebar')
         .getByRole('button', { name: '新建课程', exact: true })
         .click();
       const editor = page.getByRole('dialog', { name: '新建课程' });
@@ -109,7 +109,7 @@ try {
       const s = await until((s) => s.courses.length === 1);
       courseID = s.state.courses[0].id;
       const partition =
-        'persist:teachshelf-' +
+        'teachshelf-' +
         createHash('sha256').update(s.root).digest('hex').slice(0, 16) +
         '-teaching';
       await app.evaluate(async ({ session }, partition) => {

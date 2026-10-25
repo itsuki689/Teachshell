@@ -1,4 +1,5 @@
 /** Wire format deliberately matches Swift Codable. Preserve unknown fields on every edit. */
+import { readToolbarActions } from './toolbar.ts';
 export type SwiftDate = number | string;
 export interface Course {
   id: string;
@@ -146,6 +147,7 @@ export function decodeLibrary(raw: unknown): LibraryState {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw))
     throw new Error('资料库索引必须是对象');
   const data = structuredClone(raw) as LibraryState;
+  readToolbarActions(data.toolbarSettings);
   if (!Number.isInteger(data.schemaVersion) || data.schemaVersion < 1 || data.schemaVersion > 9)
     throw new Error('不支持的资料库版本');
   for (const key of ['courses', 'materials', 'tasks', 'customCategories'] as const)
