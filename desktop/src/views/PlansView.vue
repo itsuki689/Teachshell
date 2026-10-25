@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, ref, toRaw } from 'vue';
+import { computed, ref, toRaw, watch } from 'vue';
 import {
   Archive,
   CalendarDays,
@@ -33,8 +33,10 @@ import { useLibrary } from '../stores/library';
 import TaskEditor from '../components/TaskEditor.vue';
 import PlanMonthCalendar from '../components/PlanMonthCalendar.vue';
 import Modal from '../components/Modal.vue';
+import { matchesPlanStatus, planVariants } from '../composables/plan-filter';
+import type { PlanFilter } from '../composables/plan-filter';
 const store = useLibrary(),
-  filter = ref('active'),
+  filter = ref<PlanFilter>(store.route === 'pending' ? 'pending' : 'active'),
   query = ref(''),
   courseID = ref(''),
   mode = ref<'list' | 'agenda' | 'month'>('list'),
@@ -51,47 +53,62 @@ const operation = ref<{ task: StudyTask; occurrence?: PlanOccurrence; action: Ac
     null,
   ),
   operationScope = ref<PlanEditScope>('all');
-const plans = computed(() =>
-  store.state.tasks.filter(
-    (t) =>
-      filter.value === 'all' ||
-      (filter.value === 'archived' ? t.archivedAt != null : t.archivedAt == null),
-  ),
+const plans = computed(() => store.state.tasks);
+const listOnly = computed(() => ['unscheduled', 'cancelled', 'archived'].includes(filter.value));
+watch(
+  () => store.route,
+  (route) => {
+    filter.value = route === 'pending' ? 'pending' : 'active';
+  },
 );
+watch(listOnly, (value) => {
+  if (value) mode.value = 'list';
+});
 function matches(task: StudyTask) {
   return (
+    matchesPlanStatus(task, filter.value) &&
     (!courseID.value || task.courseID === courseID.value) &&
-    [task.title, task.content, task.kind]
+    [
+      task.title,
+      task.content,
+      task.kind,
+      task.location,
+      store.state.courses.find((c) => c.id === task.courseID)?.name,
+    ]
+      .filter(Boolean)
       .join(' ')
-      .toLowerCase()
-      .includes(query.value.toLowerCase())
+      .toLocaleLowerCase()
+      .includes(query.value.toLocaleLowerCase())
   );
 }
+function hasMatchingException(task: StudyTask) {
+  return !matches(task) && planVariants(toRaw(task)).some(matches);
+}
 const rows = computed<Row[]>(() => {
-  if (mode.value === 'agenda') {
-    if (!day.value) return [];
-    return planEvents(
-      day.value + 'T00:00:00+08:00',
-      plans.value.map((t) => toRaw(t)),
-    )
-      .filter(
-        (e) =>
-          matches(e.task) &&
-          (store.route !== 'pending' || (e.task.completedAt == null && e.task.completionRequired)),
-      )
-      .map((e) => ({ key: e.id, task: e.task, occurrence: e }));
-  }
+  if (mode.value === 'agenda')
+    return day.value
+      ? planEvents(
+          day.value + 'T00:00:00+08:00',
+          plans.value.map((t) => toRaw(t)),
+        )
+          .filter((e) => matches(e.task))
+          .map((e) => ({ key: e.id, task: e.task, occurrence: e }))
+      : [];
+  const due = (task: StudyTask) =>
+    task.deadline != null
+      ? dateMs(task.deadline)
+      : (task.hasExecutionTime ?? task.deadline == null)
+        ? dateMs(task.startsAt)
+        : Number.POSITIVE_INFINITY;
   return plans.value
-    .filter(
-      (t) =>
-        matches(t) &&
-        (store.route !== 'pending' ||
-          (t.completedAt == null &&
-            t.cancelledAt == null &&
-            t.archivedAt == null &&
-            t.completionRequired !== false)),
+    .filter((task) => planVariants(toRaw(task)).some(matches))
+    .sort(
+      (a, b) =>
+        Number(a.cancelledAt != null) - Number(b.cancelledAt != null) ||
+        Number(a.completedAt != null) - Number(b.completedAt != null) ||
+        (due(a) === due(b) ? 0 : due(a) - due(b)) ||
+        a.title.localeCompare(b.title, 'zh-CN', { numeric: true }),
     )
-    .sort((a, b) => dateMs(a.deadline ?? a.startsAt) - dateMs(b.deadline ?? b.startsAt))
     .map((task) => ({ key: task.id, task }));
 });
 const historyPlan = computed(() => {
@@ -242,12 +259,16 @@ defineExpose({
           ><button
             :class="{ active: mode === 'agenda' }"
             aria-label="计划日程视图"
+            :disabled="listOnly"
+            :title="listOnly ? '此状态请在列表中查看' : ''"
             @click="mode = 'agenda'"
           >
             <CalendarDays :size="16" />日程</button
           ><button
             :class="{ active: mode === 'month' }"
             aria-label="计划月历视图"
+            :disabled="listOnly"
+            :title="listOnly ? '此状态请在列表中查看' : ''"
             @click="mode = 'month'"
           >
             <CalendarDays :size="16" />月历
@@ -270,6 +291,10 @@ defineExpose({
         </option></select
       ><select v-model="filter" aria-label="计划状态筛选">
         <option value="active">当前计划</option>
+        <option value="unscheduled">待安排</option>
+        <option value="pending">未完成</option>
+        <option value="completed">已完成</option>
+        <option value="cancelled">已取消</option>
         <option value="archived">已归档</option>
         <option value="all">全部计划</option>
       </select>
@@ -294,8 +319,9 @@ defineExpose({
       :plans="plans"
       :query="query"
       :course-id="courseID"
-      :pending="store.route === 'pending'"
-      :include-courses="filter !== 'archived'"
+      :pending="filter === 'pending'"
+      :status-filter="filter"
+      :include-courses="filter === 'active' || filter === 'all'"
       @edit="(event) => edit({ key: event.id, task: event.task, occurrence: event })"
     />
     <div v-else class="plans-scroll">
@@ -338,6 +364,9 @@ defineExpose({
               ><Repeat2 :size="13" />{{ repeatLabel(row.task) }}</span
             ><span v-if="row.task.archivedAt != null" class="tag">已归档</span
             ><span v-if="row.task.cancelledAt != null" class="tag">已取消</span>
+            <span v-if="!row.occurrence && hasMatchingException(row.task)" class="tag"
+              >匹配单次安排</span
+            >
           </div>
           <p v-if="row.task.content" class="plan-description">{{ row.task.content }}</p>
           <div class="plan-meta">

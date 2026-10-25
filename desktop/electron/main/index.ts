@@ -47,7 +47,13 @@ import { installTeachingIPC } from './teaching-ipc.ts';
 import { swiftNow } from '../../shared/model.ts';
 let clearTeachingPreviews: (() => void) | undefined;
 const testRoot = process.env.TEACHSHELF_TEST_ROOT;
-if (testRoot) app.setPath('userData', path.join(testRoot, 'app-data'));
+// Keep the existing data location across the Teachshell product-name change.
+app.setPath(
+  'userData',
+  testRoot
+    ? path.join(testRoot, 'app-data')
+    : path.join(app.getPath('appData'), 'teachshelf-desktop'),
+);
 protocol.registerSchemesAsPrivileged([
   {
     scheme: 'shelf-preview',
@@ -550,6 +556,20 @@ function installIPC() {
           };
     clipboard.writeText(JSON.stringify({ mcpServers: { teachshelf: config } }, null, 2));
   });
+  handle('appInfo', none, async () => {
+    let release: { commit?: string; builtAt?: string } = {};
+    try {
+      release = JSON.parse(await fs.readFile(path.join(__dirname, 'release-info.json'), 'utf8'));
+    } catch {}
+    return {
+      name: 'Teachshell',
+      version: app.getVersion(),
+      commit: release.commit ?? '',
+      builtAt: release.builtAt ?? '',
+      executable: app.getPath('exe'),
+      packaged: app.isPackaged,
+    };
+  });
   handle('settings', none, () => settings.view());
   handle('saveSettings', z.tuple([settingsInput]), async (input) => {
     const previous = settings.view();
@@ -685,6 +705,10 @@ function menu() {
     {
       label: '视图',
       submenu: [
+        { label: '全局搜索', accelerator: 'CmdOrCtrl+K', click: action('search') },
+        { label: '后退', accelerator: 'CmdOrCtrl+[', click: action('back') },
+        { label: '前进', accelerator: 'CmdOrCtrl+]', click: action('forward') },
+        { type: 'separator' },
         { label: '全部资料', accelerator: 'CmdOrCtrl+1', click: action('all') },
         { label: '计划', accelerator: 'CmdOrCtrl+2', click: action('plans') },
         { label: 'AI 助手', accelerator: 'CmdOrCtrl+3', click: action('ai') },
@@ -743,7 +767,7 @@ async function start() {
     height: 800,
     minWidth: 1020,
     minHeight: 680,
-    title: '课屿 Desktop',
+    title: 'Teachshell · 课屿',
     show: false,
     backgroundColor: '#f5f6f5',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
@@ -763,6 +787,21 @@ async function start() {
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (e) => e.preventDefault());
   mainWindow.webContents.on('will-attach-webview', (e) => e.preventDefault());
+  mainWindow.webContents.on('will-prevent-unload', (event) => {
+    const response = dialog.showMessageBoxSync(mainWindow, {
+      type: 'warning',
+      title: '未保存的修改',
+      message: '当前编辑尚未保存。',
+      detail: '返回编辑可以继续保存；放弃修改将关闭窗口。',
+      buttons: ['返回编辑', '放弃修改并退出'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    // Electron allows the unload only when this event is prevented.
+    if (response === 1) event.preventDefault();
+  });
+  mainWindow.on('closed', () => website?.close());
   rendererURL =
     !app.isPackaged && process.env.TEACHSHELF_DEV_URL === 'http://127.0.0.1:5173'
       ? 'http://127.0.0.1:5173/'
@@ -794,7 +833,9 @@ else {
     });
 }
 app.on('window-all-closed', () => app.quit());
-app.on('before-quit', (event) => {
+// A renderer may cancel beforeunload. Keep the library usable until all
+// windows have actually agreed to close, then flush and release its lock.
+app.on('will-quit', (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;

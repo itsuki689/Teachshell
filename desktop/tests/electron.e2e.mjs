@@ -79,7 +79,7 @@ let first, second, materialID, websiteTaskID, websiteConnectionID;
 try {
   await launch();
   await check('Real Electron window renders empty library with sandboxed renderer', async () => {
-    assert.match(await page.title(), /课屿|Teachshelf/);
+    assert.match(await page.title(), /课屿|Teachshelf|Teachshell/);
     await page.getByText('这里还没有资料', { exact: true }).waitFor();
     assert.deepEqual(
       await page.evaluate(() => ({
@@ -498,6 +498,113 @@ try {
       assert.match(await selected.innerText(), /18:00 截止/);
       await page.screenshot({ path: path.join(evidence, 'teachshelf-electron-month.png') });
       await page.getByRole('button', { name: '计划列表视图', exact: true }).click();
+    },
+  );
+  await check(
+    'Plan status filters include matching occurrence exceptions and cancellation recovery',
+    async () => {
+      await page.getByLabel('计划状态筛选', { exact: true }).selectOption('completed');
+      await page.getByRole('button', { name: '编辑计划 UI兼容计划', exact: true }).waitFor();
+      const recurring = page
+        .locator('.plan-row')
+        .filter({ has: page.getByRole('button', { name: '编辑计划 每周复习UI', exact: true }) });
+      await recurring.waitFor();
+      assert.match(await recurring.innerText(), /匹配单次安排/);
+      assert.equal(
+        await page.getByRole('button', { name: '编辑计划 仅截止进入月历UI', exact: true }).count(),
+        0,
+      );
+      await page.getByRole('button', { name: '取消计划 UI兼容计划', exact: true }).click();
+      await page
+        .getByRole('dialog', { name: '取消计划' })
+        .getByRole('button', { name: '确认取消', exact: true })
+        .click();
+      await until((s) => s.tasks.some((t) => t.title === 'UI兼容计划' && t.cancelledAt != null));
+      await page.getByLabel('计划状态筛选', { exact: true }).selectOption('cancelled');
+      await page.getByRole('button', { name: '恢复已取消计划 UI兼容计划', exact: true }).click();
+      await page
+        .getByRole('dialog', { name: '恢复计划' })
+        .getByRole('button', { name: '恢复计划', exact: true })
+        .click();
+      await until((s) => s.tasks.some((t) => t.title === 'UI兼容计划' && t.cancelledAt == null));
+      await page.getByRole('button', { name: '待完成计划', exact: true }).click();
+      assert.equal(await page.getByLabel('计划状态筛选', { exact: true }).inputValue(), 'pending');
+      await page.getByRole('button', { name: '编辑计划 每周复习UI', exact: true }).waitFor();
+      assert.equal(
+        await page.getByRole('button', { name: '编辑计划 UI兼容计划', exact: true }).count(),
+        0,
+      );
+    },
+  );
+  await check(
+    'Global search and navigation history resolve live records, remember folders and protect unsaved edits',
+    async () => {
+      await page
+        .locator('.course-list')
+        .getByRole('button', { name: /迁移测试：计算机导论/ })
+        .click();
+      await page.getByRole('button', { name: '复习资料', exact: true }).click();
+      await page
+        .locator('.breadcrumb-bar')
+        .getByRole('button', { name: '复习资料', exact: true })
+        .waitFor();
+      await page
+        .locator('.titlebar-actions')
+        .getByRole('button', { name: '打开设置', exact: true })
+        .click();
+      await page.getByRole('button', { name: '后退', exact: true }).click();
+      await page
+        .locator('.breadcrumb-bar')
+        .getByRole('button', { name: '复习资料', exact: true })
+        .waitFor();
+      await page.getByRole('button', { name: '后退', exact: true }).click();
+      assert.equal(
+        await page
+          .locator('.breadcrumb-bar')
+          .getByRole('button', { name: '复习资料', exact: true })
+          .count(),
+        0,
+      );
+      await page.getByRole('button', { name: '前进', exact: true }).click();
+      await page
+        .locator('.breadcrumb-bar')
+        .getByRole('button', { name: '复习资料', exact: true })
+        .waitFor();
+      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
+      let search = page.getByRole('dialog', { name: '全局搜索' });
+      await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('迁移测试 测试教师');
+      await search
+        .getByRole('button', { name: '打开课程 迁移测试：计算机导论', exact: true })
+        .click();
+      await page.getByRole('heading', { name: '迁移测试：计算机导论', exact: true }).waitFor();
+      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
+      search = page.getByRole('dialog', { name: '全局搜索' });
+      await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('资料接收 课堂笔记');
+      await search.getByRole('button', { name: '打开资料 课堂笔记', exact: true }).click();
+      const inspector = page.locator('.inspector');
+      await inspector.waitFor();
+      assert.equal(
+        await inspector.getByLabel('实际文件名', { exact: false }).inputValue(),
+        '外部移动后的笔记.txt',
+      );
+      await inspector.getByLabel('显示标题', { exact: true }).fill('导航前未保存草稿');
+      await page.getByRole('button', { name: '后退', exact: true }).click();
+      await page
+        .getByRole('dialog', { name: '丢弃未保存的资料修改？' })
+        .getByRole('button', { name: '取消', exact: true })
+        .click();
+      assert.equal(
+        await inspector.getByLabel('显示标题', { exact: true }).inputValue(),
+        '导航前未保存草稿',
+      );
+      await inspector.getByRole('button', { name: '还原', exact: true }).click();
+      await page.getByRole('button', { name: '全局搜索', exact: true }).click();
+      search = page.getByRole('dialog', { name: '全局搜索' });
+      await search.getByLabel('搜索课程、资料和计划', { exact: true }).fill('UI兼容计划');
+      await search.getByRole('button', { name: '打开计划 UI兼容计划', exact: true }).click();
+      const editor = page.getByRole('dialog', { name: '编辑计划' });
+      assert.equal(await editor.getByLabel('计划名称', { exact: true }).inputValue(), 'UI兼容计划');
+      await editor.getByRole('button', { name: '取消', exact: true }).click();
     },
   );
   await check('Settings model form saves actual configuration without a test secret', async () => {
@@ -1051,6 +1158,54 @@ try {
         await page.waitForFunction(async () => !(await window.teachshelf.settings()).mcp.enabled);
         await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), previousClipboard);
       }
+    },
+  );
+  await check(
+    'Native quit keeps a dirty editor and live repository when the default decision is return to editing',
+    async () => {
+      await page
+        .locator('.course-list')
+        .getByRole('button', { name: /资料接收课程/ })
+        .click();
+      await page.getByRole('table').getByText('课堂笔记', { exact: true }).click();
+      const inspector = page.locator('.inspector'),
+        notes = '保存后重启仍需保留。\n退出保护保存验收';
+      await inspector.getByLabel('备注', { exact: true }).fill(notes);
+      await app.evaluate(({ app, dialog }) => {
+        globalThis.__teachshelfQuitPromptCount = 0;
+        const chooseDefault = (...args) => {
+          const options = args.find((value) => value && Array.isArray(value.buttons));
+          globalThis.__teachshelfQuitPromptCount++;
+          return options.defaultId ?? options.cancelId ?? 0;
+        };
+        dialog.showMessageBoxSync = chooseDefault;
+        dialog.showMessageBox = async (...args) => ({
+          response: chooseDefault(...args),
+          checkboxChecked: false,
+        });
+        setTimeout(() => app.quit(), 0);
+      });
+      const deadline = Date.now() + 15000;
+      let prompted = false;
+      while (Date.now() < deadline) {
+        if (await app.evaluate(() => globalThis.__teachshelfQuitPromptCount > 0)) {
+          prompted = true;
+          break;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      assert.equal(prompted, true, 'Native beforeunload prompt should be presented');
+      assert.equal(page.isClosed(), false);
+      assert.equal(await inspector.getByLabel('备注', { exact: true }).inputValue(), notes);
+      await inspector.getByRole('button', { name: '保存', exact: true }).click();
+      await until((s) => s.materials.find((m) => m.id === materialID)?.notes === notes);
+      await app.close();
+      app = undefined;
+      await launch();
+      assert.equal(
+        (await snapshot()).state.materials.find((m) => m.id === materialID).notes,
+        notes,
+      );
     },
   );
   await check(

@@ -9,12 +9,15 @@ import { meetingTimeRange, shanghaiDayKey, timetableOccurrences } from '../../sh
 import type { TimetableOccurrence, TimetableTerm } from '../../shared/timetable';
 import { useLibrary } from '../stores/library';
 import Modal from './Modal.vue';
+import { matchesPlanStatus } from '../composables/plan-filter';
+import type { PlanFilter } from '../composables/plan-filter';
 const props = defineProps<{
   day: string;
   plans: StudyTask[];
   query: string;
   courseId: string;
   pending: boolean;
+  statusFilter?: PlanFilter;
   includeCourses: boolean;
 }>();
 const api = window.teachshelf;
@@ -79,6 +82,7 @@ function events(key: string): Entry[] {
     .filter(
       (event) =>
         (event.isDeadline || event.task.showInMonth) &&
+        matchesPlanStatus(event.task, props.statusFilter ?? 'active') &&
         matches(
           event.task.courseID,
           [event.task.title, event.task.content, event.task.kind].join(' '),

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
   Archive,
   BookOpen,
@@ -21,6 +21,19 @@ const store = useLibrary();
 const emit = defineEmits<{ editCourse: [course?: Course] }>();
 const semester = ref(''),
   archive = ref('active');
+watch(
+  () => [store.courseID, store.searchNavigationID] as const,
+  ([id]) => {
+    const course = store.state.courses.find((c) => c.id === id);
+    if (!course) return;
+    if (semester.value && course.semester !== semester.value) semester.value = course.semester;
+    if (
+      (course.isArchived && archive.value === 'active') ||
+      (!course.isArchived && archive.value === 'archived')
+    )
+      archive.value = 'all';
+  },
+);
 const semesters = computed(() => [
   ...new Set(store.state.courses.map((c) => c.semester).filter(Boolean)),
 ]);
@@ -65,7 +78,7 @@ async function drop(e: DragEvent, courseID?: string) {
   <aside class="sidebar">
     <div class="brand">
       <BookOpen :size="25" />
-      <div><strong>Teachshelf</strong><span>每一份知识，都有位置</span></div>
+      <div><strong>Teachshell</strong><span>每一份知识，都有位置</span></div>
     </div>
     <select v-model="semester" aria-label="学期" class="semester">
       <option value="">全部学期</option>

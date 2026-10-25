@@ -3,6 +3,7 @@ const api = window.teachshelf;
 import { reactive } from 'vue';
 import type { Course } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 import Modal from './Modal.vue';
 const props = defineProps<{ course?: Course }>();
 const emit = defineEmits<{ close: [] }>();
@@ -13,6 +14,8 @@ const form = reactive({
   teacher: props.course?.teacher ?? '',
   colorHex: props.course?.colorHex ?? '#39786B',
 });
+const initial = JSON.stringify(form);
+useUnsavedCloseGuard(() => JSON.stringify(form) !== initial);
 async function save() {
   const value = await store.change(
     () =>

@@ -8,6 +8,7 @@ import type { PlanEditScope, PlanOccurrence, PlanRepeatRule } from '../../shared
 import { shanghaiDayKey } from '../../shared/timetable';
 import Modal from './Modal.vue';
 import { useLibrary } from '../stores/library';
+import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 const props = defineProps<{ task?: StudyTask; occurrence?: PlanOccurrence }>(),
   emit = defineEmits<{ close: [] }>(),
   store = useLibrary();
@@ -103,6 +104,7 @@ function values() {
   };
 }
 const initial = ref(values());
+useUnsavedCloseGuard(() => JSON.stringify(values()) !== JSON.stringify(initial.value));
 const expectedRevision = ref(store.snapshot?.revision);
 watch(scope, () => {
   Object.assign(form, makeForm(effective()));

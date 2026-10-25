@@ -1,10 +1,11 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { computed, nextTick, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onUnmounted, reactive, ref, watch } from 'vue';
 import { ExternalLink, FolderOpen, Save, Star, X } from 'lucide-vue-next';
 import { dateMs } from '../../shared/model';
 import type { Material } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 const props = defineProps<{ material: Material }>(),
   emit = defineEmits<{ close: []; preview: [id: string] }>(),
   store = useLibrary();
@@ -22,6 +23,18 @@ function reset() {
 }
 watch(() => props.material.id, reset, { immediate: true });
 const dirty = computed(() => JSON.stringify(form) !== initial.value);
+useUnsavedCloseGuard(() => dirty.value);
+const releaseLeaveGuard = store.registerLeaveGuard(async () => {
+  if (!dirty.value) return true;
+  const approved = await store.confirm(
+    '丢弃未保存的资料修改？',
+    '当前标题、标签或备注尚未保存。选择取消可继续编辑。',
+    '丢弃修改',
+  );
+  if (approved) reset();
+  return approved;
+});
+onUnmounted(releaseLeaveGuard);
 watch(
   () => props.material,
   () => {

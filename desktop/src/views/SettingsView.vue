@@ -16,6 +16,8 @@ import {
   Sparkles,
 } from 'lucide-vue-next';
 import { useLibrary } from '../stores/library';
+import type { AppInfo } from '../../shared/api';
+const application = ref<AppInfo>();
 const emit = defineEmits<{ website: [] }>(),
   store = useLibrary();
 const form = reactive({
@@ -46,6 +48,7 @@ onMounted(async () => {
     store.settings = result;
     fill();
   }
+  application.value = await store.run(() => api.appInfo(), '设置已加载');
 });
 async function saveAI() {
   const result = await store.run(
@@ -103,6 +106,26 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
     </header>
     <div class="settings-scroll">
       <div class="settings-content">
+        <section v-if="application" class="settings-section">
+          <h2><Monitor :size="19" />关于 {{ application.name }}</h2>
+          <div class="settings-card">
+            <div class="setting-row">
+              <div>
+                <strong>{{ application.name }} {{ application.version }}</strong>
+                <p>
+                  构建 {{ application.commit || '开发工作区' }} ·
+                  {{
+                    application.builtAt
+                      ? new Date(application.builtAt).toLocaleString('zh-CN')
+                      : '本地开发'
+                  }}
+                </p>
+                <p class="path-text">{{ application.executable }}</p>
+              </div>
+              <span class="tag">{{ application.packaged ? '发行版' : '开发版' }}</span>
+            </div>
+          </div>
+        </section>
         <section class="settings-section">
           <h2><Database :size="19" />本地资料库</h2>
           <div class="settings-card">

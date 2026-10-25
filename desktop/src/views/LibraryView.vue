@@ -128,7 +128,8 @@ function size(n: number) {
 function date(value: number | string) {
   return new Date(dateMs(value)).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 }
-function select(e: MouseEvent, m: Material) {
+async function select(e: MouseEvent, m: Material) {
+  if (!(await store.requestLeave())) return;
   if (e.shiftKey && store.selected.length) {
     const start = visible.value.findIndex((v) => v.id === store.selected.at(-1)),
       end = visible.value.findIndex((v) => v.id === m.id);
@@ -146,19 +147,20 @@ function select(e: MouseEvent, m: Material) {
   else store.selected = [m.id];
   showInspector.value = true;
 }
-function toggle(id: string) {
+async function toggle(id: string) {
+  if (!(await store.requestLeave())) return;
   store.selected = store.selected.includes(id)
     ? store.selected.filter((v) => v !== id)
     : [...store.selected, id];
 }
-function selectAll() {
+async function selectAll() {
+  if (!(await store.requestLeave())) return;
   store.selected = visible.value.every((m) => store.selected.includes(m.id))
     ? []
     : visible.value.map((m) => m.id);
 }
 function openFolder(f?: MaterialFolder) {
-  store.folderID = f?.id;
-  store.selected = [];
+  void store.navigate(store.route, f?.id);
 }
 function beginMove() {
   moveCourseID.value = store.courseID ?? '';

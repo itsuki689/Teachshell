@@ -59,7 +59,16 @@ export interface HomeworkListing {
   mounted: boolean;
   entries: HomeworkEntry[];
 }
+export interface AppInfo {
+  name: string;
+  version: string;
+  commit: string;
+  builtAt: string;
+  executable: string;
+  packaged: boolean;
+}
 export interface DesktopAPI {
+  appInfo(): Promise<AppInfo>;
   listHomework(courseID?: string, relative?: string): Promise<HomeworkListing>;
   createHomeworkFolder(
     courseID: string | undefined,

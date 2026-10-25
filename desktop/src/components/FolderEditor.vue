@@ -3,6 +3,7 @@ const api = window.teachshelf;
 import { computed, reactive } from 'vue';
 import type { MaterialFolder } from '../../shared/model';
 import { useLibrary } from '../stores/library';
+import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 import Modal from './Modal.vue';
 const props = defineProps<{ folder?: MaterialFolder }>(),
   emit = defineEmits<{ close: [] }>(),
@@ -13,6 +14,8 @@ const form = reactive({
   parentID: props.folder?.parentID ?? (props.folder ? '' : (store.folderID ?? '')),
   colorHex: props.folder?.colorHex ?? '#39786B',
 });
+const initial = JSON.stringify(form);
+useUnsavedCloseGuard(() => JSON.stringify(form) !== initial);
 const parents = computed(() =>
   store.state.materialFolders.filter(
     (f) => f.courseID === (form.courseID || undefined) && f.id !== props.folder?.id && !f.isMissing,

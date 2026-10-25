@@ -8,6 +8,7 @@ const subscribe = (channel: string, callback: (value: any) => void) => {
   return () => ipcRenderer.removeListener(channel, handler);
 };
 const api: DesktopAPI = {
+  appInfo: () => invoke('appInfo'),
   listHomework: (cid, relative) => invoke('listHomework', cid, relative),
   createHomeworkFolder: (cid, relative, name) =>
     invoke('createHomeworkFolder', cid, relative, name),

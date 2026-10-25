@@ -4,6 +4,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect } from 'vu
 import {
   AlertCircle,
   ChevronLeft,
+  ChevronRight,
+  Search,
   Download,
   FolderOpen,
   LoaderCircle,
@@ -13,7 +15,7 @@ import {
   Upload,
   X,
 } from 'lucide-vue-next';
-import type { Course } from '../shared/model';
+import type { Course, StudyTask } from '../shared/model';
 import { useLibrary } from './stores/library';
 import Sidebar from './components/Sidebar.vue';
 import CourseEditor from './components/CourseEditor.vue';
@@ -21,6 +23,8 @@ import ImportDialog from './components/ImportDialog.vue';
 import Modal from './components/Modal.vue';
 import WebsiteDialog from './components/WebsiteDialog.vue';
 import TaskEditor from './components/TaskEditor.vue';
+import WorkspaceSearch from './components/WorkspaceSearch.vue';
+import type { WorkspaceSearchResult } from './composables/workspace-search';
 import LibraryView from './views/LibraryView.vue';
 import PlansView from './views/PlansView.vue';
 import TimetableView from './views/TimetableView.vue';
@@ -34,6 +38,8 @@ const store = useLibrary(),
   showWebsite = ref(false),
   websiteKind = ref<'teaching' | 'timetable'>('teaching'),
   showTask = ref(false),
+  searchedTask = ref<StudyTask | undefined>(),
+  showSearch = ref(false),
   loaded = ref(false);
 const releases: (() => void)[] = [];
 const theme = computed(() => store.settings?.theme ?? store.state.appearance);
@@ -48,8 +54,35 @@ function openWebsite(kind: 'teaching' | 'timetable' = 'teaching') {
 function editCourse(course?: Course) {
   courseEditor.value = course ?? null;
 }
+async function activateSearch(result: WorkspaceSearchResult) {
+  if (store.busy) return;
+  if (result.kind === 'material') {
+    if (!(await store.revealMaterial(result.id))) return;
+  } else if (result.kind === 'course') {
+    if (
+      !store.state.courses.some((c) => c.id === result.id) ||
+      !(await store.navigate('course:' + result.id))
+    )
+      return;
+    store.searchNavigationID++;
+  } else {
+    const task = store.state.tasks.find((t) => t.id === result.id);
+    if (!task || !(await store.requestLeave())) return;
+    searchedTask.value = task;
+  }
+  showSearch.value = false;
+}
 function menu(action: string) {
   switch (action) {
+    case 'search':
+      showSearch.value = true;
+      break;
+    case 'back':
+      void store.goBack();
+      break;
+    case 'forward':
+      void store.goForward();
+      break;
     case 'new-course':
     case 'create-course':
       editCourse();
@@ -86,7 +119,28 @@ function menu(action: string) {
   }
 }
 function key(e: KeyboardEvent) {
+  if (
+    !document.querySelector('[role=dialog]') &&
+    ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '['))
+  ) {
+    e.preventDefault();
+    void store.goBack();
+    return;
+  }
+  if (
+    !document.querySelector('[role=dialog]') &&
+    ((e.altKey && e.key === 'ArrowRight') || ((e.metaKey || e.ctrlKey) && e.key === ']'))
+  ) {
+    e.preventDefault();
+    void store.goForward();
+    return;
+  }
   if (!(e.metaKey || e.ctrlKey)) return;
+  if (e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    if (!document.querySelector('[role=dialog]')) showSearch.value = true;
+    return;
+  }
   if (e.key.toLowerCase() === 'o') {
     e.preventDefault();
     showImport.value = true;
@@ -122,8 +176,35 @@ onUnmounted(() => {
 <template>
   <div class="app-shell">
     <div class="titlebar">
-      <span class="titlebar-brand">课屿</span><span class="titlebar-caption">课程与资料</span>
+      <span class="titlebar-brand">Teachshell</span><span class="titlebar-caption">课程与资料</span>
       <div class="titlebar-actions">
+        <button
+          class="icon-button"
+          aria-label="后退"
+          title="后退 · ⌘ / Ctrl ["
+          :disabled="!store.canGoBack"
+          @click="store.goBack()"
+        >
+          <ChevronLeft :size="17" />
+        </button>
+        <button
+          class="icon-button"
+          aria-label="前进"
+          title="前进 · ⌘ / Ctrl ]"
+          :disabled="!store.canGoForward"
+          @click="store.goForward()"
+        >
+          <ChevronRight :size="17" />
+        </button>
+        <button
+          class="icon-button"
+          aria-label="全局搜索"
+          title="全局搜索 · ⌘ / Ctrl K"
+          :disabled="!store.snapshot"
+          @click="showSearch = true"
+        >
+          <Search :size="17" />
+        </button>
         <button
           class="icon-button"
           aria-label="同步文件"
@@ -167,7 +248,7 @@ onUnmounted(() => {
               store.route,
             )
           "
-          :key="store.route"
+          :key="store.route + ':' + store.searchNavigationID"
           @import="showImport = true"
           @edit-course="editCourse"
           @website="openWebsite()"
@@ -210,6 +291,11 @@ onUnmounted(() => {
         <X :size="17" />
       </button>
     </div>
+    <WorkspaceSearch
+      v-if="showSearch"
+      @close="showSearch = false"
+      @activate="activateSearch"
+    /><TaskEditor v-if="searchedTask" :task="searchedTask" @close="searchedTask = undefined" />
     <CourseEditor
       v-if="courseEditor !== undefined"
       :course="courseEditor ?? undefined"
