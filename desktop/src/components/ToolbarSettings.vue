@@ -110,7 +110,7 @@ function move(index: number, offset: number) {
           <AppSymbol :name="toolbarSymbols[action]" :size="16" />{{ toolbarTitles[action] }}
         </button>
       </div>
-      <p class="field-note">即使移除设置图标，也可通过侧栏或 ⌘ / Ctrl , 打开设置。</p>
+      <p class="field-note">即使移除设置图标，也可通过“视图”菜单或 ⌘ / Ctrl , 打开设置。</p>
     </div>
   </section>
 </template>

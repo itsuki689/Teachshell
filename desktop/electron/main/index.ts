@@ -904,10 +904,10 @@ function menu() {
         { label: 'AI 助手', accelerator: 'CmdOrCtrl+3', click: action('ai') },
         { label: '设置', accelerator: 'CmdOrCtrl+,', click: action('settings') },
         {
+          id: 'sync-files',
           label: '同步文件',
           accelerator: 'CmdOrCtrl+R',
-          click: () =>
-            void repository.sync().catch((e) => dialog.showErrorBox('同步失败', String(e))),
+          click: action('sync'),
         },
         { type: 'separator' },
         { role: 'togglefullscreen' },

@@ -1,20 +1,7 @@
 <script setup lang="ts">
 const api = window.teachshelf;
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import {
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  Search,
-  Download,
-  FolderOpen,
-  LoaderCircle,
-  Plus,
-  RefreshCw,
-  Settings,
-  Upload,
-  X,
-} from 'lucide-vue-next';
+import { AlertCircle, ChevronLeft, ChevronRight, Search, LoaderCircle, X } from 'lucide-vue-next';
 import type { Course, StudyTask } from '../shared/model';
 import type { BackgroundStatus } from '../shared/api';
 import { useLibrary } from './stores/library';
@@ -283,15 +270,6 @@ onUnmounted(() => {
           @click="showSearch = true"
         >
           <Search :size="17" /><span>搜索课程、资料与计划</span>
-        </button>
-        <button
-          class="icon-button"
-          aria-label="同步文件"
-          title="同步文件"
-          :disabled="!!store.busy || !store.snapshot"
-          @click="store.change(() => api.sync(), '资料库已同步')"
-        >
-          <RefreshCw :size="17" :class="{ spinning: store.busy }" />
         </button>
         <AppearanceHost /><WorkspaceToolbar @action="toolbarAction" />
       </div>

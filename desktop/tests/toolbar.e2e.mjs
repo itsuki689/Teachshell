@@ -127,7 +127,46 @@ try {
         'undefined',
       ]);
       await waitActions(defaults);
+      assert.equal(await page.locator('.titlebar [data-symbol="refresh"]').count(), 1);
+      assert.equal(await page.getByRole('button', { name: '同步文件', exact: true }).count(), 0);
+      assert.equal(await page.locator('.titlebar .lucide-refresh-cw').count(), 0);
+      assert.equal(await page.locator('.sidebar-settings').count(), 0);
+      assert.equal(await page.locator('.sidebar [data-symbol="gear"]').count(), 0);
       await page.screenshot({ path: path.join(evidence, 'teachshell-toolbar-default.png') });
+    },
+  );
+  await check(
+    'Native sync menu remains usable and modal protection blocks background sync',
+    async () => {
+      await app.evaluate(({ ipcMain }) => {
+        const key = 'teachshelf:sync',
+          original = ipcMain._invokeHandlers.get(key);
+        globalThis.toolbarSyncCalls = 0;
+        ipcMain.removeHandler(key);
+        ipcMain.handle(key, async (...args) => {
+          globalThis.toolbarSyncCalls++;
+          return original(...args);
+        });
+      });
+      const sync = () =>
+        app.evaluate(({ Menu }) => {
+          const item = Menu.getApplicationMenu().getMenuItemById('sync-files');
+          if (item?.accelerator !== 'CmdOrCtrl+R') throw Error('Missing native sync accelerator');
+          item.click();
+        });
+      await sync();
+      await page.locator('.statusbar').getByText('资料库已同步', { exact: true }).waitFor();
+      assert.equal(await app.evaluate(() => globalThis.toolbarSyncCalls), 1);
+      await button('create').click();
+      await page.getByRole('menuitem', { name: '新建课程…', exact: true }).click();
+      await page.getByRole('dialog', { name: '新建课程', exact: true }).waitFor();
+      await sync();
+      await page.waitForTimeout(150);
+      assert.equal(await app.evaluate(() => globalThis.toolbarSyncCalls), 1);
+      await closeDialog('新建课程');
+      await sync();
+      await page.waitForFunction(() => document.querySelector('.statusbar .status-dot'));
+      assert.equal(await app.evaluate(() => globalThis.toolbarSyncCalls), 2);
     },
   );
   await check(

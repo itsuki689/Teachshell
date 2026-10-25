@@ -146,14 +146,5 @@ async function drop(e: DragEvent, courseID?: string) {
       </button>
       <p v-if="!courses.length" class="sidebar-empty">添加课程，开始整理资料</p>
     </nav>
-    <button
-      class="sidebar-settings"
-      :class="{ active: store.route === 'settings' }"
-      @click="store.navigate('settings')"
-    >
-      <AppSymbol name="gear" :size="17" />设置<span class="spacer" /><span
-        class="offline-dot"
-      />本地
-    </button>
   </aside>
 </template>

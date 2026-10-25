@@ -75,7 +75,9 @@ try {
           ipcMain.handle(key, original);
         };
       });
-      await page.getByRole('button', { name: '同步文件', exact: true }).click();
+      await app.evaluate(({ Menu }) =>
+        Menu.getApplicationMenu().getMenuItemById('sync-files').click(),
+      );
       for (let n = 0; !(await app.evaluate(() => globalThis.__workspaceHeld)); n++) {
         if (n > 100) throw Error('Sync did not reach the response gate');
         await page.waitForTimeout(25);
@@ -86,7 +88,7 @@ try {
         globalThis.__workspaceRelease();
         globalThis.__workspaceRestore();
       });
-      await page.waitForFunction(() => !document.querySelector('[aria-label="同步文件"]').disabled);
+      await page.locator('.statusbar .status-dot').waitFor();
       assert.equal(
         await page.locator('.sidebar').getByText('后续更新课程', { exact: true }).count(),
         1,
@@ -206,7 +208,7 @@ try {
       await page
         .getByLabel('作业所属课程', { exact: true })
         .selectOption(secondState.state.courses[0].id);
-      await page.waitForFunction(() => !document.querySelector('[aria-label="同步文件"]').disabled);
+      await page.locator('.statusbar .status-dot').waitFor();
       await app.evaluate(
         ({ dialog }, previous) => {
           dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [previous] });
@@ -215,7 +217,7 @@ try {
       );
       await page.evaluate(() => window.teachshelf.openLibrary());
       await page.getByRole('heading', { name: '全部资料', exact: true }).waitFor();
-      await page.waitForFunction(() => !document.querySelector('[aria-label="同步文件"]').disabled);
+      await page.locator('.statusbar .status-dot').waitFor();
       assert.equal(await page.locator('.error-toast').count(), 0);
     },
   );
