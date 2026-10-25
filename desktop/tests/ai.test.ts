@@ -48,6 +48,80 @@ async function until(condition: () => boolean) {
   throw new Error('condition timeout');
 }
 
+test('closing chat waits for an accepted tool and its durable receipt before releasing the workspace', async (t) => {
+  const root = await temp();
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  let entered = false,
+    release!: () => void,
+    closed = false;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const args = {
+    library_id: 'library',
+    request_id: '11111111-1111-4111-8111-111111111111',
+    fields: { title: '保留操作回执' },
+  };
+  const service = new ChatService({
+    root,
+    config,
+    tools: {
+      definitions: selectTools(['teachshelf_create_plan']),
+      execute: async () => {
+        entered = true;
+        await gate;
+        return { saved: '操作已完成' };
+      },
+    },
+    onEvent: (e) => {
+      if (e.type === 'confirmation') service.confirm(e.requestID!, true);
+    },
+    fetch: async () =>
+      response(
+        event(
+          {
+            tool_calls: [
+              {
+                index: 0,
+                id: 'close-write',
+                type: 'function',
+                function: { name: 'teachshelf_create_plan', arguments: JSON.stringify(args) },
+              },
+            ],
+          },
+          'tool_calls',
+        ) + 'data: [DONE]\n\n',
+      ),
+  });
+  const sending = service.send('完成后立即退出');
+  try {
+    await until(() => entered);
+    const closing = service.close().then(() => {
+      closed = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(closed, false);
+    await assert.rejects(service.send('关闭后的消息'), /已关闭/);
+    await assert.rejects(service.clear(), /已关闭/);
+    release();
+    await closing;
+    await sending;
+    const persisted = JSON.parse(await fs.readFile(path.join(root, '.desktop-chat.json'), 'utf8'));
+    assert.ok(
+      persisted.messages.some(
+        (m: { role: string; content: string }) =>
+          m.role === 'tool' && m.content.includes('操作已完成'),
+      ),
+    );
+    assert.deepEqual(persisted.wire, []);
+    assert.equal(closed, true);
+    await service.close();
+  } finally {
+    release();
+    await sending;
+  }
+});
+
 test('completion endpoint rejects credentials and normalizes paths', () => {
   assert.equal(
     completionURL(' https://model.example/v1/ '),

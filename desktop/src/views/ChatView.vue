@@ -54,7 +54,7 @@ async function history() {
 }
 async function send() {
   const text = input.value.trim();
-  if (!text || streaming.value || resetting.value) return;
+  if (!text || !configured.value || streaming.value || resetting.value) return;
   const request = ++sendSequence,
     workspace = store.workspaceID;
   historySequence++;

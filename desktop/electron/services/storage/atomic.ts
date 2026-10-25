@@ -142,16 +142,25 @@ export async function recoverTransaction(root: string) {
   )
     throw new Error('无效的恢复日志');
   for (const op of j.ops) {
-    if (!['mkdir', 'copy', 'move'].includes(op.kind)) throw new Error('无效的恢复操作');
+    if (!op || !['mkdir', 'copy', 'move'].includes(op.kind)) throw new Error('无效的恢复操作');
     await target(root, op.to);
     if (op.kind === 'move') await target(root, op.from!);
+    if (op.kind !== 'mkdir' && (typeof op.identity !== 'string' || !op.identity))
+      throw new Error('无效的恢复文件身份');
+    if (op.kind === 'copy' && (typeof op.hash !== 'string' || !/^[a-f0-9]{64}$/.test(op.hash)))
+      throw new Error('无效的恢复文件校验值');
+    // Validate every cleanup path before rollback can move or remove any file.
+    if (op.staging !== undefined) {
+      if (typeof op.staging !== 'string' || !/^\.desktop-copy-[0-9a-f-]+$/.test(op.staging))
+        throw new Error('无效暂存路径');
+      await safePath(root, op.staging, true);
+    }
   }
   const current = digest(await fs.readFile(await safePath(root, 'library.json', true)));
   if (current === j.before) await rollback(root, j);
   else if (current !== j.after) throw new Error('索引与事务日志不匹配，请恢复备份；文件未修改');
   for (const op of j.ops)
     if (op.staging) {
-      if (!/^\.desktop-copy-[0-9a-f-]+$/.test(op.staging)) throw new Error('无效暂存路径');
       const p = await safePath(root, op.staging, true);
       if ((await exists(p)) && identity(await fs.lstat(p)) === op.identity) await fs.unlink(p);
     }

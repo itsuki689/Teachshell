@@ -18,6 +18,10 @@ interface Stored {
   theme: string;
   libraryPath?: string;
 }
+interface SettingsEffect {
+  apply: (next: Settings) => Promise<void>;
+  rollback: (previous: Settings) => Promise<void>;
+}
 export class SettingsService {
   warning = '';
   private root: string;
@@ -58,11 +62,11 @@ export class SettingsService {
     }
     return this;
   }
-  view(): Settings {
+  view(value = this.value, key = this.key): Settings {
     return {
-      ai: { baseURL: this.value.baseURL, model: this.value.model, hasKey: !!this.key },
-      mcp: { enabled: this.value.mcpEnabled, port: this.value.mcpPort, token: this.value.mcpToken },
-      theme: this.value.theme,
+      ai: { baseURL: value.baseURL, model: value.model, hasKey: !!key },
+      mcp: { enabled: value.mcpEnabled, port: value.mcpPort, token: value.mcpToken },
+      theme: value.theme,
     };
   }
   ai() {
@@ -88,24 +92,30 @@ export class SettingsService {
     );
     this.value = value;
   }
-  update(input: {
-    baseURL?: string;
-    model?: string;
-    apiKey?: string;
-    mcpEnabled?: boolean;
-    mcpPort?: number;
-    theme?: string;
-  }) {
-    return this.serial(() => this.updateNow(input));
+  update(
+    input: {
+      baseURL?: string;
+      model?: string;
+      apiKey?: string;
+      mcpEnabled?: boolean;
+      mcpPort?: number;
+      theme?: string;
+    },
+    effect?: SettingsEffect,
+  ) {
+    return this.serial(() => this.updateNow(input, effect));
   }
-  private async updateNow(input: {
-    baseURL?: string;
-    model?: string;
-    apiKey?: string;
-    mcpEnabled?: boolean;
-    mcpPort?: number;
-    theme?: string;
-  }) {
+  private async updateNow(
+    input: {
+      baseURL?: string;
+      model?: string;
+      apiKey?: string;
+      mcpEnabled?: boolean;
+      mcpPort?: number;
+      theme?: string;
+    },
+    effect?: SettingsEffect,
+  ) {
     const endpoint = applyAIEndpoint(this.value, this.key, input.baseURL),
       next = endpoint.value;
     let nextKey = endpoint.apiKey;
@@ -128,7 +138,21 @@ export class SettingsService {
       }
       nextKey = input.apiKey;
     }
-    await this.save(next);
+    try {
+      await effect?.apply(this.view(next, nextKey));
+      await this.save(next);
+    } catch (error) {
+      if (effect) {
+        try {
+          await effect.rollback(this.view());
+        } catch (restoreError) {
+          throw new Error('设置未保存，后台服务恢复失败：' + String(restoreError), {
+            cause: error,
+          });
+        }
+      }
+      throw error;
+    }
     this.key = nextKey;
     return this.view();
   }

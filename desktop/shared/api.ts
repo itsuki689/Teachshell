@@ -55,7 +55,7 @@ export interface ImportResult {
 }
 export interface Settings {
   ai: { baseURL: string; model: string; hasKey: boolean };
-  mcp: { enabled: boolean; port: number; token?: string };
+  mcp: { enabled: boolean; port: number; token?: string; running?: boolean };
   theme: string;
 }
 export interface ChatMessage {

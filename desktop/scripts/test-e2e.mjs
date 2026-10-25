@@ -12,6 +12,7 @@ const tests = [
   'website-review-live.e2e.mjs',
   'workspace-sync.e2e.mjs',
   'e2e-component-sync.mjs',
+  'settings-lifecycle.e2e.mjs',
   'e2e-ui-parity.mjs',
   'page-layout.e2e.mjs',
   'controls-parity.e2e.mjs',

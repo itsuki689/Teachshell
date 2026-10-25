@@ -20,6 +20,38 @@ async function fixture(t: { after: (f: () => Promise<void>) => void }) {
   return root;
 }
 const next = { value: 'after' };
+for (const staging of ['../outside', '.desktop-copy-symlink'])
+  test(`invalid cleanup path ${staging} is rejected before rollback moves a file`, async (t) => {
+    const root = await fixture(t);
+    const before = await fs.readFile(path.join(root, 'library.json'));
+    const from = path.join(root, 'files', 'before.bin');
+    const to = path.join(root, 'files', 'after.bin');
+    const fileIdentity = identity(await fs.stat(from));
+    const bytes = await fs.readFile(from);
+    await fs.rename(from, to);
+    if (staging.endsWith('symlink'))
+      await fs.symlink(path.join(root, 'files'), path.join(root, '.desktop-copy-abcd'), 'junction');
+    const journal = JSON.stringify({
+      version: 1,
+      before: digest(before),
+      after: digest('future'),
+      ops: [
+        {
+          kind: 'move',
+          from: 'files/before.bin',
+          to: 'files/after.bin',
+          identity: fileIdentity,
+          staging: staging.endsWith('symlink') ? '.desktop-copy-abcd' : staging,
+        },
+      ],
+    });
+    await atomicWrite(root, '.desktop-transaction.json', journal);
+    await assert.rejects(recoverTransaction(root), /暂存路径|符号链接/);
+    await assert.rejects(fs.access(from));
+    assert.deepEqual(await fs.readFile(to), bytes);
+    assert.deepEqual(await fs.readFile(path.join(root, 'library.json')), before);
+    assert.equal(await fs.readFile(path.join(root, '.desktop-transaction.json'), 'utf8'), journal);
+  });
 test('atomic JSON replacement keeps exact previous bytes as backup', async (t) => {
   const root = await fixture(t);
   const before = await fs.readFile(path.join(root, 'library.json'));

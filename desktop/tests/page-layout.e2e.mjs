@@ -141,6 +141,10 @@ try {
     'Homework columns display filesystem metadata and search filters real imported files',
     async () => {
       await nav('作业文件夹');
+      await page
+        .getByRole('dialog', { name: '丢弃未保存的设置？', exact: true })
+        .getByRole('button', { name: '丢弃修改', exact: true })
+        .click();
       await page.getByLabel('作业所属课程').selectOption(course.id);
       await button('导入文件').click();
       await page.locator('.homework-entry').filter({ hasText: '课堂笔记.txt' }).waitFor();
@@ -249,5 +253,13 @@ try {
       2,
     ),
   );
-  if (app) await app.close();
+  if (app) {
+    // Only this isolated fixture's drafts are discarded, including failure cleanup.
+    await app
+      .evaluate(({ dialog }) => {
+        dialog.showMessageBoxSync = () => 1;
+      })
+      .catch(() => {});
+    await app.close();
+  }
 }

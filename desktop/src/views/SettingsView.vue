@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const api = window.teachshelf;
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import {
   Archive,
   Palette,
@@ -23,6 +23,7 @@ import {
 import { useLibrary } from '../stores/library';
 import type { AppInfo } from '../../shared/api';
 import { useWorkspaceUI } from '../stores/workspace-ui';
+import { useUnsavedCloseGuard } from '../composables/useUnsavedCloseGuard';
 const ui = useWorkspaceUI();
 const tabs = [
   { id: 'appearance', label: '外观', icon: Palette },
@@ -46,7 +47,27 @@ const form = reactive({
     mcpPort: 53142,
   }),
   showToken = ref(false),
-  loaded = ref(false);
+  loaded = ref(false),
+  saving = ref(false),
+  baseline = ref('');
+let active = true;
+const dirty = computed(() => loaded.value && JSON.stringify(form) !== baseline.value);
+useUnsavedCloseGuard(() => dirty.value || saving.value);
+const releaseLeaveGuard = store.registerLeaveGuard(async () => {
+  if (saving.value) return false;
+  if (!dirty.value) return true;
+  const approved = await store.confirm(
+    '丢弃未保存的设置？',
+    'AI 模型或 MCP 设置尚未保存。选择取消可继续编辑。',
+    '丢弃修改',
+  );
+  if (approved) Object.assign(form, JSON.parse(baseline.value));
+  return approved;
+});
+onUnmounted(() => {
+  active = false;
+  releaseLeaveGuard();
+});
 function fill() {
   const s = store.settings;
   if (s)
@@ -57,31 +78,40 @@ function fill() {
       mcpPort: s.mcp.port,
     });
   loaded.value = true;
+  baseline.value = JSON.stringify(form);
 }
 onMounted(async () => {
   const result = await store.run(() => api.settings(), '设置已加载');
-  if (result) {
+  if (result && active) {
     store.settings = result;
     fill();
   }
-  application.value = await store.run(() => api.appInfo(), '设置已加载');
+  if (active) application.value = await store.run(() => api.appInfo(), '设置已加载');
 });
 async function saveAI() {
+  if (!loaded.value || saving.value) return;
+  const submitted = { ...form };
+  saving.value = true;
   const result = await store.run(
     () =>
       api.saveSettings({
-        baseURL: form.baseURL,
-        model: form.model,
-        ...(form.apiKey ? { apiKey: form.apiKey } : {}),
+        baseURL: submitted.baseURL,
+        model: submitted.model,
+        ...(submitted.apiKey ? { apiKey: submitted.apiKey } : {}),
       }),
     '模型设置已保存',
   );
-  if (result) {
+  saving.value = false;
+  if (result && active) {
     store.settings = result;
-    form.apiKey = '';
+    const committed = { baseURL: result.ai.baseURL, model: result.ai.model, apiKey: '' };
+    for (const key of ['baseURL', 'model', 'apiKey'] as const)
+      if (form[key] === submitted[key]) form[key] = committed[key];
+    baseline.value = JSON.stringify({ ...JSON.parse(baseline.value), ...committed });
   }
 }
 async function clearKey() {
+  if (!loaded.value || saving.value) return;
   if (
     !(await store.confirm(
       '移除已保存的 API 密钥？',
@@ -90,15 +120,22 @@ async function clearKey() {
     ))
   )
     return;
+  if (!active) return;
+  saving.value = true;
   const result = await store.run(() => api.saveSettings({ apiKey: '' }), '密钥已移除');
-  if (result) store.settings = result;
+  saving.value = false;
+  if (result && active) store.settings = result;
 }
 async function saveMCP() {
-  const result = await store.run(
-    () => api.saveSettings({ mcpEnabled: form.mcpEnabled, mcpPort: Number(form.mcpPort) }),
-    'MCP 设置已保存',
-  );
-  if (result) store.settings = result;
+  if (!loaded.value || saving.value) return;
+  const submitted = { mcpEnabled: form.mcpEnabled, mcpPort: Number(form.mcpPort) };
+  saving.value = true;
+  const result = await store.run(() => api.saveSettings(submitted), 'MCP 设置已保存');
+  saving.value = false;
+  if (result && active) {
+    store.settings = result;
+    baseline.value = JSON.stringify({ ...JSON.parse(baseline.value), ...submitted });
+  }
 }
 async function backup() {
   const result = await store.run(() => api.backupLibrary(), '资料库备份完成');
@@ -205,12 +242,14 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
               >API 基础地址<input
                 type="url"
                 v-model="form.baseURL"
+                :disabled="!loaded"
                 placeholder="https://api.example.com/v1"
                 autocomplete="off"
                 required /></label
             ><label
               >模型名称<input
                 v-model="form.model"
+                :disabled="!loaded"
                 placeholder="输入服务提供的模型 ID"
                 autocomplete="off"
                 required /></label
@@ -218,6 +257,7 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
               >API 密钥<input
                 type="password"
                 v-model="form.apiKey"
+                :disabled="!loaded"
                 :placeholder="
                   store.settings?.ai.hasKey ? '已保存；更换地址后需重新填写' : '本地服务可留空'
                 "
@@ -232,7 +272,12 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
                 :disabled="!loaded || !!store.busy || !form.baseURL || !form.model"
               >
                 <Save :size="15" />保存模型设置</button
-              ><button v-if="store.settings?.ai.hasKey" type="button" @click="clearKey">
+              ><button
+                v-if="store.settings?.ai.hasKey"
+                type="button"
+                :disabled="!!store.busy"
+                @click="clearKey"
+              >
                 移除密钥
               </button>
             </div>
@@ -252,18 +297,29 @@ async function copyMCP(mode: 'http' | 'stdio' = 'http') {
               <label class="switch"
                 ><input
                   v-model="form.mcpEnabled"
+                  :disabled="!loaded"
                   type="checkbox"
                   aria-label="启用 MCP Server" /><span
               /></label>
             </div>
             <label
-              >服务端口<input type="number" min="1024" max="65535" v-model="form.mcpPort" required
+              >服务端口<input
+                type="number"
+                min="1024"
+                max="65535"
+                v-model="form.mcpPort"
+                :disabled="!loaded"
+                required
             /></label>
             <div class="setting-actions">
               <button class="primary" :disabled="!loaded || !!store.busy">保存 MCP 设置</button
-              ><span class="service-state" :class="{ enabled: store.settings?.mcp.enabled }"
+              ><span class="service-state" :class="{ enabled: store.settings?.mcp.running }"
                 ><span class="inline-dot" />{{
-                  store.settings?.mcp.enabled ? '服务已启用' : '服务未启用'
+                  store.settings?.mcp.enabled
+                    ? store.settings.mcp.running
+                      ? '服务已启用'
+                      : '服务未启动，请检查端口后重新保存'
+                    : '服务未启用'
                 }}</span
               >
             </div>

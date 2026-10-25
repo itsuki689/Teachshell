@@ -42,7 +42,7 @@ import {
 import { teachingPage, downloadFile } from '../services/website/download.ts';
 import { digest } from '../services/storage/atomic.ts';
 import { component, safePath, exists } from '../services/filesystem/paths.ts';
-import type { WebsiteResult } from '../../shared/api.ts';
+import type { Settings, WebsiteResult } from '../../shared/api.ts';
 import { exportMaterials } from '../services/resource/export.ts';
 import { HomeworkService } from '../services/resource/homework.ts';
 import { canOpenDocument } from '../services/resource/openable.ts';
@@ -102,6 +102,7 @@ let watcher: ReturnType<typeof chokidar.watch> | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let quitting = false;
 let switching = false;
+let settingsChanges: Promise<unknown> = Promise.resolve();
 let rendererURL = '';
 const proposals = new Map<
   string,
@@ -145,13 +146,20 @@ async function setupWebsite() {
   website = instance;
   await instance.prepareLogin();
 }
-async function startMCP() {
+async function startMCP(config: Settings['mcp'] = settings.view().mcp) {
   await server?.stop();
-  const config = settings.view().mcp;
   if (config.enabled) {
     server = new MCPServer({ port: config.port, token: config.token!, tools: toolProvider });
     await server.start();
   }
+}
+function settingsView(): Settings {
+  const value = settings.view();
+  return {
+    ...value,
+    mcp: { ...value.mcp, running: value.mcp.enabled && server?.port === value.mcp.port },
+    theme: repository.snapshot().state.appearance,
+  };
 }
 function setupChat() {
   chat?.cancel();
@@ -195,18 +203,24 @@ async function watch() {
   });
 }
 async function switchLibrary(root: string) {
-  if (switching) throw new Error('资料库正在切换，请稍候');
-  if ((await fs.realpath(root)) === repository.root) return repository.snapshot();
+  const resolved = await fs.realpath(root);
+  // Two directory dialogs may resolve together. Acquire ownership after the
+  // asynchronous path check, before opening or closing either repository.
+  if (switching || quitting) throw new Error('资料库正在切换或关闭，请稍候');
+  if (resolved === repository.root) return repository.snapshot();
   switching = true;
-  await websiteUpdates?.();
   const previous = repository;
   let next: Repository | undefined;
   let saved = false;
+  let paused = false;
   try {
+    await websiteUpdates?.();
+    await settingsChanges;
     next = await Repository.open(root);
     await settings.setLibraryPath(next.root);
     saved = true;
-    chat?.cancel();
+    paused = true;
+    await chat?.close();
     await server?.stop();
     await watcher?.close();
     if (timer) clearTimeout(timer);
@@ -215,8 +229,18 @@ async function switchLibrary(root: string) {
     previews.clear();
     proposals.clear();
     clearTeachingPreviews?.();
-    await closeWebsite();
-    await setupWebsite();
+    // A login-storage failure must not leave the renderer pointing at the old
+    // library after the new repository has already been committed.
+    try {
+      await closeWebsite();
+    } catch (error) {
+      repository.warnings.push('旧网站会话保存失败：' + String(error));
+    }
+    try {
+      await setupWebsite();
+    } catch (error) {
+      repository.warnings.push('教学网站会话暂不可用：' + String(error));
+    }
     repository.onChanged = (snapshot) => {
       nativeTheme.themeSource = snapshot.state.appearance as Appearance;
       post('changed', snapshot);
@@ -235,11 +259,21 @@ async function switchLibrary(root: string) {
     if (repository === previous) {
       await next?.close();
       if (saved) await settings.setLibraryPath(previous.root);
+      if (paused) {
+        setupChat();
+        await watch();
+        await startMCP();
+      }
     }
     throw error;
   } finally {
     switching = false;
-    await websiteUpdates?.start();
+    try {
+      await websiteUpdates?.start();
+    } catch (error) {
+      repository.warnings.push('后台巡检暂不可用：' + String(error));
+      post('changed', repository.snapshot());
+    }
   }
 }
 async function chooseDirectory(title: string) {
@@ -744,23 +778,38 @@ function installIPC() {
       packaged: app.isPackaged,
     };
   });
-  handle('settings', none, () => ({
-    ...settings.view(),
-    theme: repository.snapshot().state.appearance,
-  }));
-  handle('saveSettings', z.tuple([settingsInput]), async (input) => {
-    const previous = settings.view();
-    const result = await settings.update(input);
-    if (input.theme !== undefined)
-      await repository.saveAppearance({ appearance: input.theme as Appearance });
-    try {
-      await startMCP();
-    } catch (e) {
-      await settings.update({ mcpEnabled: previous.mcp.enabled, mcpPort: previous.mcp.port });
-      await startMCP();
-      throw new Error('MCP启动失败，已恢复原设置：' + String(e));
-    }
-    return { ...result, theme: repository.snapshot().state.appearance };
+  handle('settings', none, settingsView);
+  handle('saveSettings', z.tuple([settingsInput]), (input) => {
+    const active = repository;
+    const operation = settingsChanges.then(async () => {
+      const previous = settings.view();
+      const restart =
+        (input.mcpEnabled !== undefined && input.mcpEnabled !== previous.mcp.enabled) ||
+        (input.mcpPort !== undefined && input.mcpPort !== previous.mcp.port) ||
+        ((input.mcpEnabled !== undefined || input.mcpPort !== undefined) &&
+          previous.mcp.enabled &&
+          server?.port !== previous.mcp.port);
+      await settings.update(
+        input,
+        restart
+          ? {
+              apply: async (next) => {
+                try {
+                  await startMCP(next.mcp);
+                } catch (error) {
+                  throw new Error('MCP 启动失败，设置未保存：' + String(error));
+                }
+              },
+              rollback: (old) => startMCP(old.mcp),
+            }
+          : undefined,
+      );
+      if (input.theme !== undefined)
+        await active.saveAppearance({ appearance: input.theme as Appearance });
+      return settingsView();
+    });
+    settingsChanges = operation.catch(() => {});
+    return operation;
   });
   handle('chatHistory', none, () => chat.history());
   handle('sendChat', z.tuple([z.string().min(1).max(20000)]), (text) => chat.send(text));
@@ -1045,15 +1094,15 @@ app.on('will-quit', (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;
-  chat?.cancel();
   if (timer) clearTimeout(timer);
   void (async () => {
-    await websiteUpdates?.();
     await Promise.allSettled([
-      closeWebsite(),
+      websiteUpdates?.(),
+      settingsChanges,
+      chat?.close(),
       watcher?.close(),
-      server?.stop(),
-      repository?.close(),
     ]);
+    await Promise.allSettled([closeWebsite(), server?.stop()]);
+    await repository?.close();
   })().finally(() => app.quit());
 });

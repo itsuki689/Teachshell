@@ -35,6 +35,7 @@ export class ChatService {
   private running?: Promise<void>;
   private controller?: AbortController;
   private pending?: { id: string; resolve: (accepted: boolean) => void };
+  private closing?: Promise<void>;
   constructor(options: ChatOptions) {
     this.options = options;
   }
@@ -100,6 +101,7 @@ export class ChatService {
     return structuredClone(this.messages);
   }
   send(text: string): Promise<void> {
+    if (this.closing) return Promise.reject(new Error('聊天会话已关闭'));
     if (this.running || this.clearing) return Promise.reject(new Error('请先停止当前回答'));
     if (typeof text !== 'string' || !text.trim() || Array.from(text).length > 20000)
       return Promise.reject(new Error('请输入 1–20,000 字的消息'));
@@ -121,6 +123,14 @@ export class ChatService {
     this.pending?.resolve(false);
     this.pending = undefined;
   }
+  /** Keep the workspace lock until cancelled tools and their history writes settle. */
+  close(): Promise<void> {
+    if (!this.closing) {
+      this.cancel();
+      this.closing = Promise.allSettled([this.running, this.clearing, this.loading]).then(() => {});
+    }
+    return this.closing;
+  }
   confirm(requestID: string, approved: boolean): void {
     if (typeof approved !== 'boolean' || !this.pending || this.pending.id !== requestID)
       throw new Error('此确认请求已失效');
@@ -129,6 +139,7 @@ export class ChatService {
     pending.resolve(approved);
   }
   clear(): Promise<void> {
+    if (this.closing) return Promise.reject(new Error('聊天会话已关闭'));
     if (this.clearing) return this.clearing;
     const work = this.clearNow().finally(() => {
       this.clearing = undefined;
