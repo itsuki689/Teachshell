@@ -43,3 +43,19 @@ Browser 插件不可用，使用仓库现有 Playwright Electron 流程。测试
 - 页面身份、非空内容、框架错误遮罩、控制台异常、实际鼠标/键盘交互均通过。截图涵盖正常浅色与最小深色窗口；[截图目录](evidence/0.3.2/screenshots) 只包含合成测试资料。
 
 Release 安装回执由构建流程写入 `desktop/release/installed-macos.json`；安装后的实际应用复验结果另行记录。
+
+## 已安装 Release 与跨平台安装包
+
+功能提交 `7b57dc6` 的 Teachshell 0.3.2 已从独立 Git 快照构建。正常退出旧 Teachshell、保存可恢复副本后安装到 `/Applications/Teachshell.app`，完成 Launch Services 注册并打开。应用 deep/strict 签名及 Keychain helper strict 签名均通过；为 ad-hoc 签名，未公证。
+
+对**实际安装版**完整运行 `npm run test:e2e`：12 组 **111/111** 通过，所有报告无 renderer errors。命令使用 `TEACHSHELF_EXECUTABLE=/Applications/Teachshell.app/Contents/MacOS/Teachshell`，每组独立临时资料库；见 [安装版测试记录](evidence/0.3.2/installed/regression.txt) 和 [安装/运行/签名/保留原生应用证据](evidence/0.3.2/installed-7b57dc6.json)。
+
+原生 `/Applications/课屿.app` 1.16.0 的可执行文件 SHA256、Info.plist SHA256 与应用目录修改时间均与操作前一致。旧 Teachshell 副本保存在 `/Applications/.Teachshell-backups/`，实际路径载于安装回执。后续仅证据提交仍执行 Release 流程；最终安装信息以 `desktop/release/installed-macos.json` 和 `installed-verification.json` 为准，并比较七份运行载荷与已验收版本完全一致。
+
+本轮五个安装包均为 `7b57dc6` / 0.3.2，位于 `desktop/release/`：
+
+- `Teachshell-0.3.2-arm64.dmg`、`Teachshell-0.3.2-arm64-mac.zip`
+- `Teachshell Setup 0.3.2.exe`
+- `Teachshell-0.3.2.AppImage`、`teachshelf-desktop_0.3.2_amd64.deb`
+
+五个包的归档测试、版本/commit、主进程/preload/renderer、外置 MCP bridge 及 macOS helper 一致性全部通过：[清单](evidence/0.3.2/release-manifest.json)、[SHA256](evidence/0.3.2/SHA256SUMS.txt)、[验证日志](evidence/0.3.2/verification.txt)。Windows 未签名，Windows/Linux 只完成构建与包内验证，未执行安装器或实机 UI 验收。没有远程推送或发布。

@@ -1,0 +1,129 @@
+
+> teachshelf-desktop@0.3.2 test:e2e
+> node scripts/test-e2e.mjs
+
+PASS Real Electron window renders empty library with sandboxed renderer
+PASS Create two courses through visible forms
+PASS Native file dialog imports real Unicode files without changing originals
+PASS Create physical folder and rename material through inspector
+PASS Favorite, search and cross-course move update real index
+PASS External file rename is reconciled by the live watcher without losing IDs or notes
+PASS Inspector preserves concurrent edits and rejects stale changes to the same field
+PASS Sandboxed text preview displays actual managed file bytes
+PASS Export selected material copies preserves destination collisions and original library files
+PASS Create plan and mark completed through visible controls
+PASS Plan editor rejects a stale draft after a concurrent commit and saves after reopening
+PASS Recurring single-occurrence edit and completion preserve the next occurrence
+PASS Month calendar changes months, projects recurring exceptions and respects month visibility with deadlines
+PASS Plan status filters include matching occurrence exceptions and cancellation recovery
+PASS Global search and navigation history resolve live records, remember folders and protect unsaved edits
+PASS Settings model form saves actual configuration without a test secret
+PASS Minimum desktop viewport and dark appearance remain usable
+PASS Import original undergraduate JSON, configure term and cancel/restore one class
+PASS Reschedule a real timetable occurrence to another day and restore its original slot
+PASS Timetable month visibility updates actual month projection without changing scheduled times
+PASS Homework workspace creates directories, imports and renames actual files
+PASS Official-URL offline Moodle DOM is parsed in an isolated window and a reviewed assignment is applied
+PASS Website review preserves manual notes, resolves deadline conflicts and refuses changed account application
+PASS Restart restores courses, renamed files, notes, favorites, timetable and completed plan
+PASS Copied stdio MCP configuration launches the shipped bridge against the real repository provider
+PASS Native quit keeps a dirty editor and live repository when the default decision is return to editing
+PASS Actual teaching BrowserWindow has no preload, Node.js or local IPC bridge
+PASS No renderer runtime errors
+PASS 28 Electron UI checks; evidence: /private/tmp/teachshell-layout-installed
+PASS Bind a real course through an isolated official-URL Moodle DOM fixture
+PASS Read-only batch inspection downloads no file body; partial failure retains a retryable row
+PASS Explicit verification creates a new current version and retains prior file content
+PASS Locally modified bytes are rejected until separate approval preserves them as history
+PASS Changing inspection options invalidates the previous review before any update can run
+PASS A stale batch review cannot overwrite metadata committed by another client
+PASS History UI restores the selected old content as a new version without deleting any prior version
+PASS Missing website files remain unselected until explicitly restored through batch review
+PASS Batch assignment review creates a plan without downloading unselected existing files
+PASS Deadline conflicts require an explicit choice and both choices preserve manual plan text
+PASS An expired review automatically disables applying its selected updates
+PASS No renderer runtime errors during batch synchronization and version recovery
+PASS 12 website batch acceptance checks
+PASS Actual Electron imports the Swift timetable sample and renders its minute grid
+PASS Locked fixed courses do not move; unlocked drag preserves original occurrence and exact duration
+PASS A repeated drag preserves identity and overlapping occurrences remain separately selectable
+PASS Escape, out-of-grid drops and concurrent changes cancel the drag without stale writes
+PASS A moved course can be cancelled, restored to the move, then returned to its recurring slot
+PASS Selected-event time keys preserve duration and anchor while inputs and locked courses stay untouched
+PASS Mouse edge resizing changes only the chosen boundary, clamps positive duration and keeps one-off identity
+PASS Recurring plan dragging changes only one execution time while preserving deadline and the following occurrence
+PASS Minimum viewport remains scrollable and no renderer errors or framework overlays appear
+PASS 9 schedule drag acceptance checks
+PASS Shipped page identity, nonblank layout, isolated renderer and original four toolbar actions
+PASS Settings adds two actions, enforces maximum six, then reorders and removes real persisted shortcuts
+PASS Custom toolbar order survives app restart and stale IPC revision cannot overwrite it
+PASS Removing every shortcut hides the capsule; keyboard settings and restore defaults remain usable
+PASS Original update/import/create shortcuts open their real approval or editor dialogs
+PASS Six navigation shortcuts each show the corresponding real view
+PASS Create menu dismisses on Escape and outside click; settings toggles back to previous route
+PASS No framework overlay or renderer runtime errors
+PASS 8 toolbar UI checks; evidence: /private/tmp/teachshell-layout-installed
+PASS Default-off login UI and strict boolean IPC validation
+PASS Library switching clears the old memory session and isolates remembered preferences
+PASS A restart retains the opt-in preference and never saves unverified anonymous cookies
+PASS Disabled preference persists on the next actual application launch
+PASS Authenticated UI opt-in uses the application default helper and normal quit flushes a rotated synthetic session
+PASS Restored cookies remain unverified until the real parser runs; disabling clears default secure storage across restart
+PASS Clicking disable and quitting immediately completes the authorized secure-store deletion
+{"passed":7,"rendererErrors":0,"mode":"packaged","secureStorageAvailable":true}
+PASS Official page observation establishes the login and course binding; background defaults off
+PASS Strict background IPC rejects malformed fields and interval bounds without changing settings
+WAIT real background timer: at least 30 seconds
+PASS A real 30-second background timer creates review rows with zero downloads and byte-identical JSON
+PASS Status-bar handoff reuses the same review; closing and reopening do not recheck or download
+PASS Explicit review selection is the first download and commits one linked assignment
+WAIT second real timer before foreground takeover
+PASS Foreground check takes over a running real timer without concurrent hidden readers or writes
+WAIT 31 seconds with background polling disabled
+PASS Turning off a newly scheduled timer prevents all reads after its real due time
+PASS Restart retains preferences and switching real libraries keeps independent settings
+PASS No renderer error, warning or framework overlay
+PASS 9 background UI checks; evidence: /private/tmp/teachshell-layout-installed
+PASS Empty open review receives a real newly published review without reopening or downloads
+PASS Same-review state broadcasts preserve selection and own apply handles its intermediate events
+PASS Same ID broadcasts preserve deadline choices and explicit local-version approval
+PASS Public discard invalidates the open review immediately without losing its choices
+PASS Replacement is offered explicitly; adopting it resets choices only after user action
+PASS Changing the scope prevents old events from silently restoring the prior review
+PASS An observed official account change invalidates the open review without a library mutation
+PASS 7 live review UI checks
+PASS A delayed real sync reply cannot overwrite a subsequent course change event
+PASS Native new/open menu actions respect the inspector unsaved-change confirmation
+PASS Native menu and shortcuts cannot stack editors or switch libraries under a modal
+PASS A workspace change remounts views and dismisses editors from the previous library
+PASS Changing libraries from a course homework view leaves no old-course request errors
+PASS No stale editor, blank page, framework overlay or renderer exception remains
+PASS 6 workspace UI checks
+PASS Inspector keeps edits typed while a previous save response is pending
+PASS Continued drafts keep conflict protection for submitted and untouched fields
+PASS Inspector close asks before discarding a draft and cancel preserves it
+PASS Homework switch clears old rows before the new course listing returns
+PASS Homework location follows a course rename without manual refresh
+PASS An old history reply cannot resurrect a cleared conversation
+{"passed":6,"rendererErrors":0}
+PASS Shared semester filtering applies to all materials, favorites and unassigned files
+PASS Material search uses case-insensitive AND words across fields and Unicode whitespace
+PASS List keyboard selection follows focus, extends and shrinks a stable Shift range, and protects editors
+PASS Pointer selection asks once before abandoning drafts; normal first-drag selection still moves files
+PASS Cover preference survives course navigation, back navigation and ordinary snapshots
+PASS Month selection and timetable week share a civil date and survive page navigation
+PASS Minimum and normal windows retain readable controls in light and dark modes
+PASS New workspace identities reset dates and semester, while safe display preferences survive switching and restart
+PASS 8 native UI parity checks
+PASS Library inspector overlays the unchanged canvas; grid and collection pages render
+PASS All seven settings tabs expose one category and retain real model edits across tabs
+PASS Teaching website uses a 225px course sidebar and isolated login controls
+PASS Homework columns display filesystem metadata and search filters real imported files
+PASS Plan list retains a permanent detail pane; month and agenda controls occupy the right side
+PASS Week view has a 48px date bar and a separate right inspector; minimum dark pages stay reachable
+PASS Late website open cannot overwrite a newly selected website type
+PASS Single-assignment expiry disables approval and visibly requests a fresh observation
+PASS Observed account change invalidates the prior single-assignment observation
+PASS A fresh observation restores approval and applies exactly one plan without file downloads
+PASS Late initial settings responses cannot replace newer subscription events
+PASS 5 website context UI checks

@@ -1,3 +1,5 @@
+> 最新：**0.3.2 逐页布局同步**，核心 293/293、安装版 UI 111/111；已构建并校验五个安装包。见 [逐页对照与验收](page-layout-parity.md)。下文保留 0.3.1 的历史记录。
+
 # Teachshell 0.3.1 界面同步验收
 
 日期：2026-10-25。功能提交：`f04e096`。本轮重新阅读 Swift 实现、复现真实界面问题并修复；原生 `/Applications/课屿.app` 始终保留，只更新 `/Applications/Teachshell.app`。历史报告见 [0.3.0](validation-0.3.0.md)。

@@ -1,0 +1,343 @@
+{
+  "schemaVersion": 2,
+  "application": "Teachshell",
+  "version": "0.3.2",
+  "sourceCommit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+  "verifiedAt": "2026-10-25T11:03:43.775Z",
+  "build": {
+    "host": "darwin arm64",
+    "electron": "45.0.0",
+    "electronBuilder": "26.18.0",
+    "commands": [
+      "electron-builder --mac --arm64 --publish never",
+      "electron-builder --win --x64 --publish never",
+      "electron-builder --linux --x64 --publish never"
+    ],
+    "bundleBuild": "Used the exact committed and installed Release payload for all platform packaging; macOS packages wrap the verified bundle; source files unchanged."
+  },
+  "expectedBundleHashes": {
+    "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+    "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+    "stdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96",
+    "nativeHelperSHA256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+    "nativeHelperUnsignedSHA256": "33123c24f3dc579d2a3b99a4729e0d343e0597fe09a918569c3bfa89a20509fc"
+  },
+  "rendererFiles": [
+    {
+      "file": "dist/assets/index-BI_lFCy_.css",
+      "sha256": "bd11e5162b61eb097303b9998f42225718ae0ebff659db910a0cf581442a83bf"
+    },
+    {
+      "file": "dist/assets/index-Qa-5UlFw.js",
+      "sha256": "b5a3731caa6498c224bd4fa606c9228b46da5ee842c81f6572603cd734eeade7"
+    },
+    {
+      "file": "dist/index.html",
+      "sha256": "0bbbf898caa2d3cc652b2272d5d5b7993b8d9cb99dff2ac00f37a7c93b194ca8"
+    }
+  ],
+  "artifacts": [
+    {
+      "file": "Teachshell-0.3.2-arm64-mac.zip",
+      "platform": "macOS",
+      "arch": "arm64",
+      "kind": "zip",
+      "bytes": 122917303,
+      "sha256": "3d28a4d5219535ba97498a139fd7cda5cb56a89fe382a3e898486732fd1c2df3",
+      "archiveChecks": [
+        {
+          "archive": "Teachshell-0.3.2-arm64-mac.zip",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        }
+      ],
+      "archiveWarnings": [],
+      "asarPath": "Teachshell.app/Contents/Resources/app.asar",
+      "asarSHA256": "19c50bcdd7115347baf2256ff5547fa608730ac18b0d5052e9f2bed237bd9dcf",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioPath": "Teachshell.app/Contents/Resources/mcp-stdio.cjs",
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96",
+      "nativeHelper": {
+        "path": "Teachshell.app/Contents/Resources/teaching-session-keychain",
+        "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+        "architecture": "arm64",
+        "signatureVerification": "passed",
+        "signatureDetails": "Executable=/private/tmp/teachshell-layout-packages/extract-HYwhMY/0-keychain\nIdentifier=teaching-session-keychain-55554944634a7b7aea2c3f64bfe532ccf6040c89\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20500 size=579 flags=0x10002(adhoc,runtime) hashes=6+7 location=embedded\nVersionPlatform=1\nVersionMin=786432\nVersionSDK=1769472\nHash type=sha256 size=32\nCandidateCDHash sha256=3b2bd9f57534dcefed908aca412e9e347ad037b9\nCandidateCDHashFull sha256=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nHash choices=sha256\nCMSDigest=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=32768\nExecutable Segment flags=0x1\nPage size=16384\nCDHash=3b2bd9f57534dcefed908aca412e9e347ad037b9\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources=none\nInternal requirements count=0 size=12",
+        "rawHashMatchesDist": true,
+        "unsignedSHA256": "33123c24f3dc579d2a3b99a4729e0d343e0597fe09a918569c3bfa89a20509fc",
+        "payloadMatchesDistAfterRemovingSignature": true
+      }
+    },
+    {
+      "file": "Teachshell-0.3.2-arm64.dmg",
+      "platform": "macOS",
+      "arch": "arm64",
+      "kind": "dmg",
+      "bytes": 126908471,
+      "sha256": "6a432aee55466697bdba4cc954cb64caceb1690ec277dc14ac2bd658a90d3831",
+      "archiveChecks": [
+        {
+          "archive": "Teachshell-0.3.2-arm64.dmg",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        },
+        {
+          "archive": "Teachshell-0.3.2-arm64.dmg",
+          "result": "passed",
+          "tool": "hdiutil verify",
+          "detail": "正在检查“Protective Master Boot Record（MBR：0）”的校验和…\nProtective Master Boot Record（MBR：0）：已验证CRC32 $39E643DC\n正在检查“GPT Header（Primary GPT Header：1）”的校验和…\n    GPT Header（Primary GPT Header：1）：已验证CRC32 $6BABD9E6\n正在检查“GPT Partition Data（Primary GPT Table：2）”的校验和…\nGPT Partition Data（Primary GPT Table：已验证CRC32 $577BBE93\n正在检查“（Apple_Free：3）”的校验和…\n                      （Apple_Free：3）：已验证CRC32 $00000000\n正在检查“disk image（Apple_HFS：4）”的校验和…\n             disk image（Apple_HFS：4）：已验证CRC32 $589B2056\n正在检查“（Apple_Free：5）”的校验和…\n                      （Apple_Free：5）：已验证CRC32 $00000000\n正在检查“GPT Partition Data（Backup GPT Table：6）”的校验和…\nGPT Partition Data（Backup GPT Table：：已验证CRC32 $577BBE93\n正在检查“GPT Header（Backup GPT Header：7）”的校验和…\n     GPT Header（Backup GPT Header：7）：已验证CRC32 $D5D21A74\n已验证CRC32 $2B4940E3"
+        }
+      ],
+      "archiveWarnings": [],
+      "asarPath": "Teachshell 0.3.2-arm64/Teachshell.app/Contents/Resources/app.asar",
+      "asarSHA256": "19c50bcdd7115347baf2256ff5547fa608730ac18b0d5052e9f2bed237bd9dcf",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioPath": "Teachshell 0.3.2-arm64/Teachshell.app/Contents/Resources/mcp-stdio.cjs",
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96",
+      "nativeHelper": {
+        "path": "Teachshell 0.3.2-arm64/Teachshell.app/Contents/Resources/teaching-session-keychain",
+        "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+        "architecture": "arm64",
+        "signatureVerification": "passed",
+        "signatureDetails": "Executable=/private/tmp/teachshell-layout-packages/extract-HYwhMY/1-keychain\nIdentifier=teaching-session-keychain-55554944634a7b7aea2c3f64bfe532ccf6040c89\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20500 size=579 flags=0x10002(adhoc,runtime) hashes=6+7 location=embedded\nVersionPlatform=1\nVersionMin=786432\nVersionSDK=1769472\nHash type=sha256 size=32\nCandidateCDHash sha256=3b2bd9f57534dcefed908aca412e9e347ad037b9\nCandidateCDHashFull sha256=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nHash choices=sha256\nCMSDigest=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=32768\nExecutable Segment flags=0x1\nPage size=16384\nCDHash=3b2bd9f57534dcefed908aca412e9e347ad037b9\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources=none\nInternal requirements count=0 size=12",
+        "rawHashMatchesDist": true,
+        "unsignedSHA256": "33123c24f3dc579d2a3b99a4729e0d343e0597fe09a918569c3bfa89a20509fc",
+        "payloadMatchesDistAfterRemovingSignature": true
+      }
+    },
+    {
+      "file": "Teachshell Setup 0.3.2.exe",
+      "platform": "Windows",
+      "arch": "x64",
+      "kind": "nsis",
+      "bytes": 126126633,
+      "sha256": "dcd19a4f602c73592a2a877047fec8eb334718d0b3b2c385c072cb34e4986640",
+      "archiveChecks": [
+        {
+          "archive": "Teachshell Setup 0.3.2.exe",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        },
+        {
+          "archive": "embedded app-64.7z",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        }
+      ],
+      "archiveWarnings": [],
+      "asarPath": "resources/app.asar",
+      "asarSHA256": "1a5cef4736ef332db2a428ffdbca6b4fa3d957160481bfba1c1fae9f3cc1c783",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioPath": "resources/mcp-stdio.cjs",
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    },
+    {
+      "file": "Teachshell-0.3.2.AppImage",
+      "platform": "Linux",
+      "arch": "x64",
+      "kind": "AppImage",
+      "bytes": 123248142,
+      "sha256": "c5111877cca2e07e858b69a937cb12cde66d9c6b023ccfd6219f5d7fcda9ed6d",
+      "archiveChecks": [
+        {
+          "archive": "Teachshell-0.3.2.AppImage",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        }
+      ],
+      "archiveWarnings": [
+        "SquashFS has 128022 trailing bytes: electron-builder embedded block map; full archive test passed."
+      ],
+      "asarPath": "resources/app.asar",
+      "asarSHA256": "1a5cef4736ef332db2a428ffdbca6b4fa3d957160481bfba1c1fae9f3cc1c783",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioPath": "resources/mcp-stdio.cjs",
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    },
+    {
+      "file": "teachshelf-desktop_0.3.2_amd64.deb",
+      "platform": "Linux",
+      "arch": "x64",
+      "kind": "deb",
+      "bytes": 130939118,
+      "sha256": "335fb7ae75f0299ee4a636492492caba580e4ce7af82270de106414df2e1d83a",
+      "archiveChecks": [
+        {
+          "archive": "teachshelf-desktop_0.3.2_amd64.deb",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        },
+        {
+          "archive": "embedded data.tar.gz and data.tar",
+          "result": "passed",
+          "tool": "7-Zip 24.09 arm64"
+        }
+      ],
+      "archiveWarnings": [],
+      "asarPath": "./opt/Teachshell/resources/app.asar",
+      "asarSHA256": "1a5cef4736ef332db2a428ffdbca6b4fa3d957160481bfba1c1fae9f3cc1c783",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioPath": "./opt/Teachshell/resources/mcp-stdio.cjs",
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    }
+  ],
+  "blockmaps": [
+    {
+      "file": "Teachshell Setup 0.3.2.exe.blockmap",
+      "bytes": 133781,
+      "sha256": "510709b134ebe2734e7aed4b3e884458fcbe36c88cd942854ad12897261eaf03"
+    },
+    {
+      "file": "Teachshell-0.3.2-arm64-mac.zip.blockmap",
+      "bytes": 130242,
+      "sha256": "14477023a175365df1d96627b48c83d301b47457c3548a17145cb0114ca0435f"
+    },
+    {
+      "file": "Teachshell-0.3.2-arm64.dmg.blockmap",
+      "bytes": 133907,
+      "sha256": "6683be4ada0b8c3eba42a1e6b84fd850f04172537906d34faf652f58a772d9a9"
+    }
+  ],
+  "unpacked": [
+    {
+      "platform": "macOS",
+      "path": "mac-arm64/Teachshell.app/Contents/Resources",
+      "asarSHA256": "19c50bcdd7115347baf2256ff5547fa608730ac18b0d5052e9f2bed237bd9dcf",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96",
+      "nativeHelper": {
+        "sha256": "f7b6992f3a395423af563228963da2b62d1a6d8ce12b7039ce4ff43f020a203c",
+        "architecture": "arm64",
+        "signatureVerification": "passed",
+        "signatureDetails": "Executable=/Users/theself/Codx/Teachshell/desktop/release/mac-arm64/Teachshell.app/Contents/Resources/teaching-session-keychain\nIdentifier=teaching-session-keychain-55554944634a7b7aea2c3f64bfe532ccf6040c89\nFormat=Mach-O thin (arm64)\nCodeDirectory v=20500 size=579 flags=0x10002(adhoc,runtime) hashes=6+7 location=embedded\nVersionPlatform=1\nVersionMin=786432\nVersionSDK=1769472\nHash type=sha256 size=32\nCandidateCDHash sha256=3b2bd9f57534dcefed908aca412e9e347ad037b9\nCandidateCDHashFull sha256=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nHash choices=sha256\nCMSDigest=3b2bd9f57534dcefed908aca412e9e347ad037b909ebc49d8b1d9ff3b5f26427\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=32768\nExecutable Segment flags=0x1\nPage size=16384\nCDHash=3b2bd9f57534dcefed908aca412e9e347ad037b9\nSignature=adhoc\nInfo.plist=not bound\nTeamIdentifier=not set\nRuntime Version=27.0.0\nSealed Resources=none\nInternal requirements count=0 size=12"
+      }
+    },
+    {
+      "platform": "Windows",
+      "path": "win-unpacked/resources",
+      "asarSHA256": "1a5cef4736ef332db2a428ffdbca6b4fa3d957160481bfba1c1fae9f3cc1c783",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    },
+    {
+      "platform": "Linux",
+      "path": "linux-unpacked/resources",
+      "asarSHA256": "1a5cef4736ef332db2a428ffdbca6b4fa3d957160481bfba1c1fae9f3cc1c783",
+      "payload": {
+        "releaseInfo": {
+          "version": "0.3.2",
+          "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+          "builtAt": "2026-10-25T10:59:50.435Z"
+        },
+        "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+        "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+        "rendererFilesVerified": 3
+      },
+      "externalStdioSHA256": "be7584910131bcf6aeed596883d6353704534661be3e5674dc3a045ba8a3ec96"
+    }
+  ],
+  "installedComparison": {
+    "release": {
+      "version": "0.3.2",
+      "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+      "builtAt": "2026-10-25T10:59:50.435Z"
+    },
+    "payload": {
+      "releaseInfo": {
+        "version": "0.3.2",
+        "commit": "7b57dc6ed68814f8e49409e635b1049636a3057b",
+        "builtAt": "2026-10-25T10:59:50.435Z"
+      },
+      "mainSHA256": "cf94122c2ea1ea6169ce6fb5d13ead6d6a20a5db0b480d96af2b9187166053b4",
+      "preloadSHA256": "91f9887a2837c5e3c30061f469200c9943487a679e676cf1010f8e916b2f2aa5",
+      "rendererFilesVerified": 3
+    },
+    "functionalPayloadByteIdentical": true,
+    "signature": "ad-hoc; deep strict passed; helper strict passed; not notarized"
+  },
+  "signing": {
+    "macOS": {
+      "type": "ad-hoc",
+      "deepStrictVerification": "passed",
+      "notarized": false,
+      "details": "Executable=/Users/theself/Codx/Teachshell/desktop/release/mac-arm64/Teachshell.app/Contents/MacOS/Teachshell\nIdentifier=com.teachshelf.desktop\nFormat=app bundle with Mach-O thin (arm64)\nCodeDirectory v=20500 size=439 flags=0x10002(adhoc,runtime) hashes=3+7 location=embedded\nVersionPlatform=1\nVersionMin=851968\nVersionSDK=1705216\nHash type=sha256 size=32\nCandidateCDHash sha256=5dd13a45b69c5029d48c4e6f8da996e60cc89087\nCandidateCDHashFull sha256=5dd13a45b69c5029d48c4e6f8da996e60cc890872cf4ed016e2e890584bfdd9f\nHash choices=sha256\nCMSDigest=5dd13a45b69c5029d48c4e6f8da996e60cc890872cf4ed016e2e890584bfdd9f\nCMSDigestType=2\nExecutable Segment base=0\nExecutable Segment limit=16384\nExecutable Segment flags=0x1\nPage size=16384\nCDHash=5dd13a45b69c5029d48c4e6f8da996e60cc89087\nSignature=adhoc\nInfo.plist entries=32\nTeamIdentifier=not set\nRuntime Version=26.5.0\nSealed Resources version=2 rules=13 files=14\nInternal requirements count=0 size=12"
+    },
+    "Windows": {
+      "signed": false
+    }
+  },
+  "runtimeScope": {
+    "macOS": "Installed/runtime validation performed separately by root agent.",
+    "Windows": "Built and archive/payload verified only; no Windows runtime or installer execution.",
+    "Linux": "Built and archive/payload verified only; no Linux runtime or installer execution."
+  },
+  "notes": [
+    "MCP stdio is outside app.asar; all copies are compared against finalized dist.",
+    "Keychain bridge is outside app.asar and macOS only; arm64 and strict signature verified.",
+    "DMG extraction uses -sns- to exclude HFS alternate streams from byte hashes.",
+    "Package verification is read-only; no Windows/Linux installers executed, no remote publication."
+  ]
+}
