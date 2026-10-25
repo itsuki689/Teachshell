@@ -1,0 +1,42 @@
+{
+  "version": "0.1.0",
+  "codeCommit": "5b2b17f76105ac842beabc185d32c171fe59e4a4",
+  "buildHost": "macOS arm64",
+  "artifacts": [
+    {
+      "file": "课屿 Desktop-0.1.0-arm64.dmg",
+      "platform": "macOS",
+      "architecture": "arm64",
+      "bytes": 126782017,
+      "sha256": "6b2861eb6554e3d020d5f6329f60ef07d9299fc5b43168b2e69d52f4b92d1cd8"
+    },
+    {
+      "file": "课屿 Desktop-0.1.0-arm64-mac.zip",
+      "platform": "macOS",
+      "architecture": "arm64",
+      "bytes": 122806896,
+      "sha256": "82a4405aa3c3fddf4cceb3b66f35688e57a70bdd4d9b72049cfc742f1d028fc9"
+    },
+    {
+      "file": "课屿 Desktop Setup 0.1.0.exe",
+      "platform": "Windows",
+      "architecture": "x64",
+      "bytes": 126049308,
+      "sha256": "cb0124e1bb80d8aa3c83109bbf08adda04eb8e5ce541101d0c8dd7ec05835db4"
+    },
+    {
+      "file": "课屿 Desktop-0.1.0.AppImage",
+      "platform": "Linux",
+      "architecture": "x64",
+      "bytes": 123157829,
+      "sha256": "013d6bc9891445b4a0a538fef75476358109f7d77849b3cdd05b033b23019fe0"
+    },
+    {
+      "file": "teachshelf-desktop_0.1.0_amd64.deb",
+      "platform": "Linux",
+      "architecture": "x64",
+      "bytes": 130839866,
+      "sha256": "c822b5d230d6fa3984846ff048775e40cd2d91b85b9fac510cd54583d7932fa4"
+    }
+  ]
+}
