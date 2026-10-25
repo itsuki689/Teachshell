@@ -176,4 +176,14 @@ test('missing descendants retain valid course relations when their existing pare
  await fs.rename(path.join(repo.root,folderDirectory(repo.state,parent)),path.join(repo.root,materialRoot(repo.state,b.id),'parent'));await repo.sync();
  assert.equal(repo.state.materialFolders.find(f=>f.id===child.id)!.courseID,b.id);assert.equal(repo.state.materials.find(m=>m.id===material.id)!.courseID,b.id);assert.equal(repo.state.materials[0].isMissing,true);
 });
+test('backup preserves desktop chat history and future business sidecars',async t=>{
+ const dir=await scratch(t);const repo=await start(t,path.join(dir,'Library'));const history='[{"role":"user","content":"保存会话"}]';
+ await fs.writeFile(path.join(repo.root,'.desktop-chat.json'),history);await fs.writeFile(path.join(repo.root,'.desktop-chat.json.bak'),'[]');await fs.writeFile(path.join(repo.root,'.desktop-future-data.json'),'{"keep":true}');
+ const backup=path.join(dir,'Backup');await repo.backup(backup);
+ assert.equal(await fs.readFile(path.join(backup,'.desktop-chat.json'),'utf8'),history);assert.equal(await fs.readFile(path.join(backup,'.desktop-chat.json.bak'),'utf8'),'[]');assert.equal(await fs.readFile(path.join(backup,'.desktop-future-data.json'),'utf8'),'{"keep":true}');
+ await assert.rejects(fs.access(path.join(backup,'.desktop-writer.lock')));
+});
+test('optional undefined task ID from IPC cannot overwrite a generated identity',async t=>{
+ const dir=await scratch(t);const repo=await start(t,path.join(dir,'Library'));await repo.saveTask({id:undefined,title:'Create through IPC'});assert.match(repo.state.tasks[0].id,/^[A-F0-9-]{36}$/);
+});
 function requireFixture():string{return JSON.stringify({schemaVersion:9,courses:[],materials:[{id:'11111111-2222-4333-8444-000000000001',title:'test',originalName:'test.pdf',sourcePath:'/x',storedPath:'files/x.pdf',isManaged:true,category:'课件',tags:'',notes:'',isFavorite:false,size:0,addedAt:0}],tasks:[],customCategories:[],accentColor:'#39786B',appearance:'system'});}

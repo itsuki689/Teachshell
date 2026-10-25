@@ -4,11 +4,13 @@ import {randomUUID} from 'node:crypto';
 import {AsyncLocalStorage} from 'node:async_hooks';
 import lockfile from 'proper-lockfile';
 import {decodeLibrary,emptyLibrary,swiftNow,assertID,requiredText,textValue,dateMs} from '../../../shared/model.ts';
-import type {Course,Material,MaterialFolder,StudyTask,LibraryState} from '../../../shared/model.ts';
+import type {Course,Material,MaterialFolder,StudyTask,LibraryState,SwiftDate} from '../../../shared/model.ts';
 import type {Snapshot,ImportResult} from '../../../shared/api.ts';
 import {component,courseDirectory,materialRoot,folderDirectory,materialDirectory,materialPath,safePath,safeExternal,exists,fileName,identity} from '../filesystem/paths.ts';
 import {atomicWrite,commitTransaction,recoverTransaction,digest} from './atomic.ts';
 import type {FileOp} from './atomic.ts';
+import {importUndergraduateTimetable,updateTimetableSettings,cancelTimetableOccurrence,restoreTimetableOccurrence} from '../course/timetable.ts';
+import type {TimetableImportSummary,TimetableSettingsInput} from '../../../shared/timetable.ts';
 const id=()=>randomUUID().toUpperCase();
 interface Observation {path:string;identity:string;size:number}
 interface Entry extends Observation {directory:boolean}
@@ -94,7 +96,21 @@ export class Repository {
   if(to!==from){await this.directories([path.posix.dirname(to)],ops);ops.push({kind:'move',from,to});this.remap(s,from,to);}
  });}
  async dissolveFolder(folderID:string){return this.mutate(async(s,ops)=>{const f=s.materialFolders.find(f=>f.id===folderID);if(!f)throw new Error('文件夹不存在');const ids=new Set([folderID]);let n=0;while(n!==ids.size){n=ids.size;for(const child of s.materialFolders)if(child.parentID&&ids.has(child.parentID))ids.add(child.id);}await this.relocate(s,ops,s.materials.filter(m=>m.folderID&&ids.has(m.folderID)).map(m=>m.id),f.courseID,f.parentID);s.materialFolders=s.materialFolders.filter(f=>!ids.has(f.id));});}
- async saveTask(input:Partial<StudyTask>&{title:string}){return this.mutate(s=>{const existing=s.tasks.find(t=>t.id===input.id);const now=swiftNow();const t:StudyTask=existing?{...existing,...input}:{id:input.id??id(),content:'',kind:'任务',materialIDs:[],startsAt:now,isAllDay:true,showOnCalendar:true,origin:'activity',hasExecutionTime:true,location:'',showInMonth:false,completionRequired:true,deadlineIsAllDay:true,exceptions:[],...input};t.title=requiredText(t.title);this.course(s,t.courseID);if(t.materialIDs.some(mid=>!s.materials.some(m=>m.id===mid)))throw new Error('计划关联资料不存在');if(t.endsAt!==undefined&&dateMs(t.endsAt)<dateMs(t.startsAt))throw new Error('结束时间早于开始');if(existing?.origin==='fixed'||existing?.repeatRule){const changed=Object.keys(input).filter(k=>!['id','title','completedAt','archivedAt'].includes(k)&&JSON.stringify(input[k])!==JSON.stringify(existing[k]));if(changed.length)throw new Error('固定课表与重复规则暂仅支持保留和状态修改');}if(existing)s.tasks[s.tasks.findIndex(v=>v.id===t.id)]=t;else s.tasks.push(t);});}
+ async importTimetable(schedule:unknown):Promise<{snapshot:Snapshot;summary:TimetableImportSummary}>{
+  let summary!:TimetableImportSummary;
+  const snapshot=await this.mutate(async(s,ops)=>{
+   const previous=new Set(s.courses.map(c=>c.id));summary=importUndergraduateTimetable(s,schedule);
+   await this.directories(s.courses.filter(c=>!previous.has(c.id)).flatMap(c=>[materialRoot(s,c.id),courseDirectory(c)+'/作业']),ops);
+  });return {snapshot,summary};
+ }
+ async saveTimetableSettings(termID:string,input:TimetableSettingsInput){return this.mutate(s=>updateTimetableSettings(s,termID,input));}
+ private async changeTimetable(change:(state:LibraryState)=>boolean){return this.serial(async()=>{
+  await this.synchronize();this.mutationGuard.getStore()?.(this.state);const next=this.state;
+  if(!change(next))return this.snapshot();return this.write(next);
+ });}
+ async cancelTimetableClass(termID:string,meetingID:string,date:SwiftDate,reason=''){return this.changeTimetable(s=>cancelTimetableOccurrence(s,termID,meetingID,date,reason));}
+ async restoreTimetableClass(termID:string,cancellationID:string){return this.changeTimetable(s=>restoreTimetableOccurrence(s,termID,cancellationID));}
+ async saveTask(input:Partial<StudyTask>&{title:string}){return this.mutate(s=>{const existing=s.tasks.find(t=>t.id===input.id);const now=swiftNow();const t:StudyTask=existing?{...existing,...input}:{id:input.id??id(),content:'',kind:'任务',materialIDs:[],startsAt:now,isAllDay:true,showOnCalendar:true,origin:'activity',hasExecutionTime:true,location:'',showInMonth:false,completionRequired:true,deadlineIsAllDay:true,exceptions:[],...input};t.id=input.id??existing?.id??id();t.title=requiredText(t.title);this.course(s,t.courseID);if(t.materialIDs.some(mid=>!s.materials.some(m=>m.id===mid)))throw new Error('计划关联资料不存在');if(t.endsAt!==undefined&&dateMs(t.endsAt)<dateMs(t.startsAt))throw new Error('结束时间早于开始');if(existing?.origin==='fixed'||existing?.repeatRule){const changed=Object.keys(input).filter(k=>!['id','title','completedAt','archivedAt'].includes(k)&&JSON.stringify(input[k])!==JSON.stringify(existing[k]));if(changed.length)throw new Error('固定课表与重复规则暂仅支持保留和状态修改');}if(existing)s.tasks[s.tasks.findIndex(v=>v.id===t.id)]=t;else s.tasks.push(t);});}
  async deleteTasks(ids:string[]){return this.mutate(s=>{s.tasks=s.tasks.filter(t=>!ids.includes(t.id));});}
  async resolveMaterial(materialID:string){const m=this.stateValue.materials.find(m=>m.id===materialID);if(!m)throw new Error('资料不存在');if(m.isMissing)throw new Error('资料文件缺失');const p=m.isManaged?await safePath(this.root,m.storedPath):await safeExternal(m.storedPath);if(!(await fs.stat(p)).isFile())throw new Error('不是普通文件');return p;}
  private tracked(s=this.stateValue){const result:Record<string,string>={};for(const c of s.courses){result['course:'+c.id]=courseDirectory(c);result['root:'+c.id]=materialRoot(s,c.id);}for(const f of s.materialFolders)result['folder:'+f.id]=folderDirectory(s,f);for(const m of s.materials)if(m.isManaged)result['file:'+m.id]=m.storedPath;return result;}
@@ -129,7 +145,7 @@ export async function copyLibrary(source:string,destination:string,owned=false):
  for(const name of ['.physical-storage.jsonl','.physical-storage.json','.material-relocation.json','.desktop-transaction.json'])if(await exists(await safePath(from,name,true)))throw new Error('原库有未完成事务，请先用原版打开恢复');
  const stage=path.join(path.dirname(to),'.teachshelf-import-'+randomUUID());await fs.mkdir(stage,{mode:0o700});
  try{const copy=async(src:string,dst:string)=>{const st=await fs.lstat(src);if(st.isSymbolicLink())throw new Error('资料库包含符号链接：'+src);if(st.isDirectory()){await fs.mkdir(dst);for(const child of await fs.readdir(src))await copy(path.join(src,child),path.join(dst,child));}else if(st.isFile()){await fs.copyFile(src,dst,fs.constants.COPYFILE_EXCL);const after=await fs.stat(src);if(st.size!==after.size||st.mtimeMs!==after.mtimeMs||digest(await fs.readFile(src))!==digest(await fs.readFile(dst)))throw new Error('复制时原文件发生变化，请关闭原版再试');}else throw new Error('不支持特殊文件：'+src);};
-  for(const name of await fs.readdir(from)){if(name==='.teachshelf.lock'||name==='.desktop-writer.lock'||name==='.desktop-observations.json'||name.startsWith('.index-')||name.startsWith('.backup-')||name.startsWith('.desktop-'))continue;await copy(path.join(from,name),path.join(stage,name));}
+  for(const name of await fs.readdir(from)){if(name==='.teachshelf.lock'||name==='.desktop-writer.lock'||['.desktop-observations.json','.desktop-removed.json','.desktop-transaction.json'].includes(name)||name.startsWith('.index-')||name.startsWith('.backup-')||/^\.desktop-copy-[0-9a-f-]+$/.test(name)||/^\.desktop-[0-9a-f-]+\.tmp$/.test(name))continue;await copy(path.join(from,name),path.join(stage,name));}
   if(await fs.readFile(path.join(from,'library.json'),'utf8')!==before)throw new Error('复制期间原索引已变化，请关闭原版再试');
   for(const m of state.materials)if(m.isManaged&&!m.isMissing&&!await exists(await safePath(stage,m.storedPath)))throw new Error('原索引引用文件缺失：'+m.originalName);
   await atomicWrite(stage,marker,JSON.stringify({version:1,importedAt:new Date().toISOString(),source:from}));
