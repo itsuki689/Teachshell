@@ -4,3 +4,10 @@
 build/
 *.xcuserstate
 xcuserdata/
+
+# Independent Electron build outputs
+desktop/node_modules/
+desktop/dist/
+desktop/dist-electron/
+desktop/release/
+desktop/test-results/

@@ -1,0 +1,7 @@
+{
+ "name":"teachshelf-desktop","version":"0.1.0","private":true,"type":"module","description":"课屿跨平台课程资料管理","author":"Teachshelf contributors","main":"dist-electron/main.cjs",
+ "scripts":{"dev":"node scripts/dev.mjs","build":"vue-tsc --noEmit && vite build && node scripts/build.mjs","test":"node --experimental-strip-types --test tests/*.test.ts","test:e2e":"node tests/electron.e2e.mjs","start":"electron .","package":"npm run build && electron-builder","package:dir":"npm run build && electron-builder --dir"},
+ "dependencies":{"chokidar":"^4.0.3","lucide-vue-next":"^0.468.0","pinia":"^3.0.3","proper-lockfile":"^4.1.2","vue":"^3.5.22","zod":"^4.1.12"},
+ "devDependencies":{"@types/node":"^24.10.0","@types/proper-lockfile":"^4.1.4","@vitejs/plugin-vue":"^6.0.1","electron":"^45.0.0","electron-builder":"^26.0.12","esbuild":"^0.25.12","playwright":"^1.56.1","typescript":"^5.9.3","vite":"^7.2.2","vue-tsc":"^3.1.4"},
+ "build":{"appId":"com.teachshelf.desktop","productName":"课屿 Desktop","directories":{"output":"release"},"files":["dist/**/*","dist-electron/**/*","package.json"],"asar":true,"mac":{"category":"public.app-category.education","target":["dmg","zip"]},"win":{"target":["nsis"]},"linux":{"target":["AppImage","deb"],"category":"Education"},"nsis":{"oneClick":false,"allowToChangeInstallationDirectory":true},"publish":null}
+}
