@@ -1,0 +1,3 @@
+PASS actual Chromium course parser, worker isolation, blocked attachment GET and HEAD-only resource redirect
+PASS explicit main-process download streams the selected response body
+PASS actual session HEAD rejects off-origin redirects before fetching

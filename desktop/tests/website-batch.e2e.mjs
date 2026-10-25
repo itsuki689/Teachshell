@@ -17,7 +17,8 @@ const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'teachshe
 await fs.mkdir(evidence, { recursive: true });
 let app, page, courseID, connectionID, firstA, secondA, thirdA;
 const steps = [],
-  errors = [];
+  errors = [],
+  lifecycle = [];
 async function check(name, fn) {
   const start = Date.now();
   await fn();
@@ -84,6 +85,11 @@ try {
     timeout: 30000,
   });
   page = await app.firstWindow();
+  app
+    .process()
+    .on('exit', (code, signal) => lifecycle.push({ event: 'process-exit', code, signal }));
+  page.on('close', () => lifecycle.push({ event: 'page-close' }));
+  page.on('crash', () => lifecycle.push({ event: 'page-crash' }));
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => {
     if (m.type() === 'error') errors.push(m.text());
@@ -480,9 +486,13 @@ try {
         await batch.getByRole('button', { name: '应用所选更新', exact: true }).isDisabled(),
         false,
       );
-      await page.clock.install({ time: Date.now() });
-      await page.clock.fastForward(16 * 60 * 1000);
-      await batch.getByText('更新清单已过期，请重新检查网站更新。', { exact: true }).waitFor();
+      // The review's interval already exists. Replacing all timer APIs here would mix
+      // native intervals with fake animation frames and make the assertion depend on
+      // renderer scheduling. Change only Date; exercise the shipped interval itself.
+      await page.clock.setFixedTime(Date.now() + 16 * 60 * 1000);
+      await batch
+        .getByText('更新清单已过期，请重新检查网站更新。', { exact: true })
+        .waitFor({ timeout: 5000 });
       assert.equal(
         await batch.getByRole('button', { name: '应用所选更新', exact: true }).isDisabled(),
         true,
@@ -495,7 +505,7 @@ try {
   );
   await fs.writeFile(
     path.join(evidence, 'teachshell-website-batch-e2e.json'),
-    JSON.stringify({ platform: process.platform, steps, errors }, null, 2),
+    JSON.stringify({ platform: process.platform, steps, errors, lifecycle }, null, 2),
   );
   console.log(`PASS ${steps.length} website batch acceptance checks`);
 } catch (error) {
@@ -504,7 +514,11 @@ try {
     .catch(() => {});
   await fs.writeFile(
     path.join(evidence, 'teachshell-website-batch-e2e.json'),
-    JSON.stringify({ platform: process.platform, steps, errors, error: String(error) }, null, 2),
+    JSON.stringify(
+      { platform: process.platform, steps, errors, lifecycle, error: String(error) },
+      null,
+      2,
+    ),
   );
   throw error;
 } finally {

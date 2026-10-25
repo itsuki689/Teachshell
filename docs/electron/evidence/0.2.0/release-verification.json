@@ -1,0 +1,9 @@
+{
+  "version": "0.2.0",
+  "commit": "594305b22b5cb9ef99fa855bc6127f4793d2ddf9",
+  "builtAt": "2026-10-25T03:36:13.618Z",
+  "installed": "/Applications/Teachshell.app",
+  "process": "41337 /Applications/Teachshell.app/Contents/MacOS/Teachshell",
+  "signature": "ad-hoc; deep/strict verification passed",
+  "verifiedAt": "2026-10-25T03:56:06.011Z"
+}

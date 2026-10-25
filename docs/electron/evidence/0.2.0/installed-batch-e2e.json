@@ -1,0 +1,67 @@
+{
+  "platform": "darwin",
+  "steps": [
+    {
+      "name": "Bind a real course through an isolated official-URL Moodle DOM fixture",
+      "status": "passed",
+      "durationMs": 480
+    },
+    {
+      "name": "Read-only batch inspection downloads no file body; partial failure retains a retryable row",
+      "status": "passed",
+      "durationMs": 1361
+    },
+    {
+      "name": "Explicit verification creates a new current version and retains prior file content",
+      "status": "passed",
+      "durationMs": 674
+    },
+    {
+      "name": "Locally modified bytes are rejected until separate approval preserves them as history",
+      "status": "passed",
+      "durationMs": 1084
+    },
+    {
+      "name": "Changing inspection options invalidates the previous review before any update can run",
+      "status": "passed",
+      "durationMs": 929
+    },
+    {
+      "name": "A stale batch review cannot overwrite metadata committed by another client",
+      "status": "passed",
+      "durationMs": 395
+    },
+    {
+      "name": "History UI restores the selected old content as a new version without deleting any prior version",
+      "status": "passed",
+      "durationMs": 396
+    },
+    {
+      "name": "Missing website files remain unselected until explicitly restored through batch review",
+      "status": "passed",
+      "durationMs": 738
+    },
+    {
+      "name": "Batch assignment review creates a plan without downloading unselected existing files",
+      "status": "passed",
+      "durationMs": 601
+    },
+    {
+      "name": "Deadline conflicts require an explicit choice and both choices preserve manual plan text",
+      "status": "passed",
+      "durationMs": 1900
+    },
+    {
+      "name": "An expired review automatically disables applying its selected updates",
+      "status": "passed",
+      "durationMs": 1130
+    },
+    {
+      "name": "No renderer runtime errors during batch synchronization and version recovery",
+      "status": "passed",
+      "durationMs": 0
+    }
+  ],
+  "errors": [],
+  "lifecycle": []
+}

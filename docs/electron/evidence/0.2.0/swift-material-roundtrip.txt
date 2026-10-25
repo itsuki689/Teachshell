@@ -1,0 +1,1 @@
+PASS: production Swift decodes, validates and roundtrips 3 Electron teaching versions, shared source identity, folders, current binding, dates and material metadata.

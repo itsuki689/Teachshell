@@ -1,0 +1,157 @@
+{
+  "platform": "darwin",
+  "steps": [
+    {
+      "name": "Real Electron window renders empty library with sandboxed renderer",
+      "status": "passed",
+      "durationMs": 767
+    },
+    {
+      "name": "Create two courses through visible forms",
+      "status": "passed",
+      "durationMs": 586
+    },
+    {
+      "name": "Native file dialog imports real Unicode files without changing originals",
+      "status": "passed",
+      "durationMs": 216
+    },
+    {
+      "name": "Create physical folder and rename material through inspector",
+      "status": "passed",
+      "durationMs": 254
+    },
+    {
+      "name": "Favorite, search and cross-course move update real index",
+      "status": "passed",
+      "durationMs": 337
+    },
+    {
+      "name": "External file rename is reconciled by the live watcher without losing IDs or notes",
+      "status": "passed",
+      "durationMs": 401
+    },
+    {
+      "name": "Inspector preserves concurrent edits and rejects stale changes to the same field",
+      "status": "passed",
+      "durationMs": 661
+    },
+    {
+      "name": "Sandboxed text preview displays actual managed file bytes",
+      "status": "passed",
+      "durationMs": 96
+    },
+    {
+      "name": "Export selected material copies preserves destination collisions and original library files",
+      "status": "passed",
+      "durationMs": 271
+    },
+    {
+      "name": "Create plan and mark completed through visible controls",
+      "status": "passed",
+      "durationMs": 366
+    },
+    {
+      "name": "Plan editor rejects a stale draft after a concurrent commit and saves after reopening",
+      "status": "passed",
+      "durationMs": 298
+    },
+    {
+      "name": "Recurring single-occurrence edit and completion preserve the next occurrence",
+      "status": "passed",
+      "durationMs": 887
+    },
+    {
+      "name": "Month calendar changes months, projects recurring exceptions and respects month visibility with deadlines",
+      "status": "passed",
+      "durationMs": 458
+    },
+    {
+      "name": "Plan status filters include matching occurrence exceptions and cancellation recovery",
+      "status": "passed",
+      "durationMs": 302
+    },
+    {
+      "name": "Global search and navigation history resolve live records, remember folders and protect unsaved edits",
+      "status": "passed",
+      "durationMs": 355
+    },
+    {
+      "name": "Settings model form saves actual configuration without a test secret",
+      "status": "passed",
+      "durationMs": 52
+    },
+    {
+      "name": "Minimum desktop viewport and dark appearance remain usable",
+      "status": "passed",
+      "durationMs": 343
+    },
+    {
+      "name": "Import original undergraduate JSON, configure term and cancel/restore one class",
+      "status": "passed",
+      "durationMs": 557
+    },
+    {
+      "name": "Reschedule a real timetable occurrence to another day and restore its original slot",
+      "status": "passed",
+      "durationMs": 290
+    },
+    {
+      "name": "Timetable month visibility updates actual month projection without changing scheduled times",
+      "status": "passed",
+      "durationMs": 601
+    },
+    {
+      "name": "Homework workspace creates directories, imports and renames actual files",
+      "status": "passed",
+      "durationMs": 489
+    },
+    {
+      "name": "Official-URL offline Moodle DOM is parsed in an isolated window and a reviewed assignment is applied",
+      "status": "passed",
+      "durationMs": 652
+    },
+    {
+      "name": "Website review preserves manual notes, resolves deadline conflicts and refuses changed account application",
+      "status": "passed",
+      "durationMs": 893
+    },
+    {
+      "name": "Restart restores courses, renamed files, notes, favorites, timetable and completed plan",
+      "status": "passed",
+      "durationMs": 621
+    },
+    {
+      "name": "Copied stdio MCP configuration launches the shipped bridge against the real repository provider",
+      "status": "passed",
+      "durationMs": 173
+    },
+    {
+      "name": "Native quit keeps a dirty editor and live repository when the default decision is return to editing",
+      "status": "passed",
+      "durationMs": 893
+    },
+    {
+      "name": "Actual teaching BrowserWindow has no preload, Node.js or local IPC bridge",
+      "status": "passed",
+      "durationMs": 67
+    },
+    {
+      "name": "No renderer runtime errors",
+      "status": "passed",
+      "durationMs": 0
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    "teachshelf-electron-empty.png",
+    "teachshelf-electron-library.png",
+    "teachshelf-electron-minimum-dark.png",
+    "teachshelf-electron-timetable.png",
+    "teachshelf-electron-plans.png",
+    "teachshelf-electron-homework.png",
+    "teachshelf-electron-month.png",
+    "teachshelf-electron-month-course.png",
+    "teachshelf-electron-website-review.png"
+  ]
+}

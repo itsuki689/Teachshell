@@ -1,0 +1,57 @@
+{
+  "platform": "darwin",
+  "steps": [
+    {
+      "name": "Bind a real course through an isolated official-URL Moodle DOM fixture",
+      "status": "passed",
+      "durationMs": 484
+    },
+    {
+      "name": "Read-only batch inspection downloads no file body; partial failure retains a retryable row",
+      "status": "passed",
+      "durationMs": 1656
+    },
+    {
+      "name": "Explicit verification creates a new current version and retains prior file content",
+      "status": "passed",
+      "durationMs": 775
+    },
+    {
+      "name": "Locally modified bytes are rejected until separate approval preserves them as history",
+      "status": "passed",
+      "durationMs": 1208
+    },
+    {
+      "name": "Changing inspection options invalidates the previous review before any update can run",
+      "status": "passed",
+      "durationMs": 1531
+    },
+    {
+      "name": "A stale batch review cannot overwrite metadata committed by another client",
+      "status": "passed",
+      "durationMs": 388
+    },
+    {
+      "name": "History UI restores the selected old content as a new version without deleting any prior version",
+      "status": "passed",
+      "durationMs": 709
+    },
+    {
+      "name": "Missing website files remain unselected until explicitly restored through batch review",
+      "status": "passed",
+      "durationMs": 953
+    },
+    {
+      "name": "Batch assignment review creates a plan without downloading unselected existing files",
+      "status": "passed",
+      "durationMs": 1103
+    },
+    {
+      "name": "Deadline conflicts require an explicit choice and both choices preserve manual plan text",
+      "status": "passed",
+      "durationMs": 1425
+    }
+  ],
+  "errors": [],
+  "error": "Error: locator.waitFor: Target page, context or browser has been closed\nCall log:\n\u001b[2m  - waiting for getByRole('dialog', { name: '教学网站批量更新审核' }).getByText('更新清单已过期，请重新检查网站更新。', { exact: true }) to be visible\u001b[22m\n"
+}
