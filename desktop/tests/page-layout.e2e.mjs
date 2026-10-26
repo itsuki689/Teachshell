@@ -161,7 +161,7 @@ try {
     'Plan list retains a permanent detail pane; month and agenda controls occupy the right side',
     async () => {
       await nav('计划');
-      if (await button('计划列表').isVisible()) await button('计划列表').click();
+      if (await button('计划列表视图').isVisible()) await button('计划列表视图').click();
       await button('计划列表视图').click();
       const detail = await page.locator('.plan-detail').boundingBox();
       assert.ok(detail.width >= 230 && detail.width <= 290);
@@ -185,7 +185,7 @@ try {
       await planEditor.getByRole('button', { name: '取消', exact: true }).click();
       await button('计划月历视图').click();
       const board = await page.locator('.month-board').boundingBox(),
-        controls = await page.locator('.calendar-workspace > .filter-bar').boundingBox();
+        controls = await page.locator('.schedule-options .schedule-filters').boundingBox();
       assert.ok(controls.x >= board.x + board.width - 2);
       await capture('plans-month');
       await button('计划日程视图').click();
@@ -225,7 +225,7 @@ try {
       );
       await capture('settings-dark-minimum');
       await nav('计划');
-      if (await button('计划列表').isVisible()) await button('计划列表').click();
+      if (await button('计划列表视图').isVisible()) await button('计划列表视图').click();
       await button('计划月历视图').click();
       await capture('month-dark-minimum');
       await button('查看课表').click();

@@ -71,8 +71,6 @@ async function launch() {
 }
 async function goPlans() {
   await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
-  if (await page.getByRole('button', { name: '计划列表', exact: true }).isVisible())
-    await page.getByRole('button', { name: '计划列表', exact: true }).click();
 }
 async function switchLibrary(target) {
   await dialogFiles([target]);

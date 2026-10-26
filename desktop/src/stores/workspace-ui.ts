@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue';
 import { swiftNow } from '../../shared/model';
 import { shanghaiDayKey } from '../../shared/timetable';
 import { readDisplayPreferences } from '../../shared/workspace-ui';
+import { validScheduleDay } from '../../shared/schedule';
+import type { ScheduleFilter, ScheduleMode } from '../../shared/schedule';
 import { useLibrary } from './library';
 
 const preferenceKey = 'teachshell.display-preferences.v1';
@@ -19,6 +21,13 @@ function freshWorkspace() {
     day: shanghaiDayKey(swiftNow()),
     timetableTermID: '',
     timetableWeeks: {} as Record<string, number>,
+    scheduleFilters: {
+      courseID: '',
+      filter: 'active' as ScheduleFilter,
+      showsFixed: true,
+      showsActivities: true,
+      query: '',
+    },
   };
 }
 
@@ -56,7 +65,7 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
   const day = computed({
     get: () => workspace.value.day,
     set: (value: string) => {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) workspace.value.day = value;
+      if (validScheduleDay(value)) workspace.value.day = value;
     },
   });
   const timetableTermID = computed({
@@ -83,11 +92,14 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
       preferences.value.timetableMode = value;
     },
   });
-  async function openSchedule(mode = preferences.value.scheduleMode) {
-    if (!(await library.navigate(mode === 'week' ? 'timetable' : 'plans'))) return false;
+  const scheduleMode = computed(() => preferences.value.scheduleMode);
+  const scheduleFilters = computed(() => workspace.value.scheduleFilters);
+  async function openSchedule(mode: ScheduleMode = preferences.value.scheduleMode) {
+    if (!(await library.navigate('timetable'))) return false;
     preferences.value.scheduleMode = mode;
+    // Keep the previous display preference readable for older app versions.
+    if (mode !== 'week') preferences.value.planMode = mode;
     if (mode === 'week') preferences.value.timetableMode = 'timeline';
-    else preferences.value.planMode = mode;
     return true;
   }
   function weekFor(termID: string) {
@@ -98,6 +110,8 @@ export const useWorkspaceUI = defineStore('workspace-ui', () => {
   }
   return {
     openSchedule,
+    scheduleMode,
+    scheduleFilters,
     identity,
     settingsTab,
     semester,

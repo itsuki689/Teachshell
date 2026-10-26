@@ -33,6 +33,7 @@ const store = useLibrary(),
   websiteKind = ref<'teaching' | 'timetable'>('teaching'),
   showTask = ref(false),
   taskInitialDate = ref<string>(),
+  taskInitialCourseID = ref<string>(),
   searchedTask = ref<StudyTask | undefined>(),
   searchControl = ref<InstanceType<typeof WorkspaceSearch>>(),
   loaded = ref(false);
@@ -88,6 +89,8 @@ async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
   else if (action === 'create-course') editCourse();
   else if (action === 'create-plan') {
     taskInitialDate.value = ['plans', 'timetable'].includes(store.route) ? ui.day : undefined;
+    taskInitialCourseID.value =
+      store.route === 'timetable' ? ui.scheduleFilters.courseID : undefined;
     showTask.value = true;
   } else if (action === 'import') showImport.value = true;
   else if (action === 'settings') {
@@ -344,6 +347,7 @@ onUnmounted(() => {
     /><ImportDialog v-if="showImport" @close="showImport = false" /><TaskEditor
       v-if="showTask"
       :initial-date="taskInitialDate"
+      :initial-course-i-d="taskInitialCourseID"
       @close="showTask = false"
     /><WebsiteDialog
       v-if="showWebsite"

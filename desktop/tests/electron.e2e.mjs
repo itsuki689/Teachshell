@@ -298,8 +298,8 @@ try {
   );
   await check('Create plan and mark completed through visible controls', async () => {
     await page.locator('.paired-nav').getByRole('button', { name: '计划', exact: true }).click();
-    if (await page.getByRole('button', { name: '计划列表', exact: true }).isVisible())
-      await page.getByRole('button', { name: '计划列表', exact: true }).click();
+    if (await page.getByRole('button', { name: '计划列表视图', exact: true }).isVisible())
+      await page.getByRole('button', { name: '计划列表视图', exact: true }).click();
     await page.getByRole('button', { name: '新建计划', exact: true }).first().click();
     const pd = page.getByRole('dialog', { name: '新建计划' });
     await pd.getByLabel('计划名称', { exact: true }).fill('UI兼容计划');
@@ -743,7 +743,7 @@ try {
       );
       const { showInMonth: oldVisibility, ...old } = before;
       assert.deepEqual(unchanged, old);
-      await page.getByRole('button', { name: '计划列表', exact: true }).click();
+      await page.getByRole('button', { name: '计划列表视图', exact: true }).click();
       await page.getByRole('button', { name: '计划月历视图', exact: true }).click();
       await page.getByLabel('月历月份', { exact: true }).fill('2026-09');
       await page.getByRole('button', { name: '选择日期 2026-09-07', exact: true }).click();
@@ -768,7 +768,7 @@ try {
       await until(
         (s) => s.timetableTerms[0].meetings.find((m) => m.id === before.id)?.showInMonth === true,
       );
-      await page.getByRole('button', { name: '计划列表', exact: true }).click();
+      await page.getByRole('button', { name: '计划列表视图', exact: true }).click();
       await page.getByRole('button', { name: '计划月历视图', exact: true }).click();
       await page.getByLabel('月历月份', { exact: true }).fill('2026-09');
       await page.getByRole('button', { name: '选择日期 2026-09-14', exact: true }).click();

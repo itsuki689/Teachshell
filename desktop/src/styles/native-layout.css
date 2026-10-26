@@ -189,84 +189,6 @@
 .timetable-workspace .timeline-header {
   grid-template-columns: 76px repeat(7, minmax(0, 1fr));
 }
-/* Month / agenda controls occupy the same right-hand inspector as the week view. */
-.calendar-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(224px, 26%, 300px);
-  grid-template-rows: 48px auto auto minmax(0, 1fr);
-}
-.calendar-workspace > .workspace-header {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  display: block;
-  padding: 18px 14px 12px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-}
-.calendar-workspace h1 {
-  font-size: 18px;
-}
-.calendar-workspace .heading-block > p {
-  display: none;
-}
-.calendar-workspace .toolbar-controls {
-  flex-wrap: wrap;
-  margin-top: 12px;
-  gap: 8px;
-}
-.calendar-workspace .toolbar-controls > .segmented {
-  width: 100%;
-}
-.calendar-workspace .segmented button {
-  flex: 1;
-}
-.calendar-workspace > .filter-bar {
-  grid-column: 2;
-  grid-row: 3;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 10px 14px 18px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-}
-.calendar-workspace > .filter-bar > select {
-  width: 100%;
-  max-width: none;
-}
-.calendar-workspace .month-controls,
-.calendar-workspace .agenda-controls {
-  grid-column: 1;
-  grid-row: 1;
-  padding: 0 16px;
-  height: 48px;
-  border-bottom: 1px solid var(--border);
-}
-.calendar-workspace .month-controls > .small,
-.calendar-workspace .agenda-controls > .small {
-  display: none;
-}
-.calendar-workspace .month-layout {
-  display: contents;
-}
-.calendar-workspace .month-board {
-  grid-column: 1;
-  grid-row: 2 / 5;
-  min-height: 0;
-  overflow: auto;
-}
-.calendar-workspace .month-agenda {
-  grid-column: 2;
-  grid-row: 4;
-  width: auto;
-  min-width: 0;
-  border-left: 1px solid var(--border);
-  padding: 18px 14px;
-  background: var(--surface);
-}
-.calendar-workspace .plans-list-body {
-  grid-column: 1;
-  grid-row: 2 / 5;
-}
 .plans-list-body {
   display: flex;
   flex: 1;
@@ -639,4 +561,183 @@
 }
 .website-main .setting-actions {
   flex-wrap: wrap;
+}
+
+/* One schedule shell owns date navigation and the inspector for month/week/day. */
+.schedule-workspace > .month-board,
+.schedule-workspace > .schedule-day-view {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  min-height: 0;
+}
+.schedule-options {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.schedule-options-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+.schedule-options .schedule-create {
+  flex: none;
+  position: static;
+}
+.schedule-options .workspace-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 14px;
+}
+.schedule-options .toolbar-controls {
+  margin: 0 0 0 auto;
+  flex-wrap: nowrap;
+}
+.schedule-options .toolbar-controls button {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.schedule-view-switch {
+  display: flex;
+  align-self: stretch;
+}
+.schedule-view-switch button {
+  flex: 1;
+}
+.schedule-options .timetable-mode {
+  padding: 0 14px;
+}
+.schedule-kind-toggles {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.schedule-kind-toggles label {
+  font-size: 12px;
+}
+.schedule-filters input {
+  width: 100%;
+  min-width: 0;
+}
+.schedule-options .timeline-selection {
+  min-height: 0;
+}
+.schedule-options .selected-day-plans {
+  padding: 16px 14px;
+}
+.schedule-notice {
+  margin: 10px 14px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.schedule-datebar input[type='date'],
+.schedule-datebar input[type='month'] {
+  width: 128px;
+  min-width: 0;
+  font-size: 11px;
+  padding: 4px;
+  min-height: 28px;
+}
+.schedule-date-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--text);
+}
+.academic-week-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.academic-week-label .week-input {
+  width: 44px;
+  padding: 3px;
+  font-size: 11px;
+}
+.academic-week-label select {
+  max-width: 88px;
+  min-height: 28px;
+  font-size: 11px;
+}
+.schedule-datebar .icon-button {
+  width: 26px;
+  min-width: 26px;
+  height: 28px;
+  padding: 3px;
+}
+.schedule-day-view {
+  overflow: auto;
+  padding: 22px;
+}
+.schedule-day-view > header h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+.schedule-day-section {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+.schedule-day-section h3 {
+  font-size: 12px;
+  color: var(--muted);
+}
+.schedule-day-empty {
+  padding: 28px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.loose-plan {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  text-align: left;
+}
+.loose-plan small {
+  color: var(--muted);
+}
+.floating-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  width: 100%;
+  overflow: auto;
+  margin-top: 20px;
+}
+.floating-week section {
+  padding: 8px;
+  border: 1px solid var(--border);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.floating-week h3 {
+  font-size: 12px;
+}
+.floating-week p {
+  display: grid;
+  font-size: 12px;
+  margin-top: 12px;
+}
+.floating-week small {
+  font-size: 10px;
+  color: var(--muted);
+}
+@media (max-width: 1150px) {
+  .schedule-datebar {
+    gap: 4px;
+    padding: 0 8px;
+  }
+  .schedule-date-title {
+    font-size: 12px;
+  }
 }

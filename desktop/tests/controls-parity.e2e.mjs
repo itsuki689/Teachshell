@@ -210,7 +210,7 @@ try {
   await check(
     'Live choice updates preserve focus and check state; keyboard prefix search selects an existing label',
     async () => {
-      await b('计划列表').click();
+      await b('计划列表视图').click();
       const control = page.getByLabel('计划课程筛选', { exact: true });
       await control.click();
       await page.keyboard.type('Alpha');

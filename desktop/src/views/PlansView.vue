@@ -5,8 +5,6 @@ import {
   Archive,
   CalendarDays,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Clock3,
   History,
   List,
@@ -17,23 +15,13 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-vue-next';
-import { dateMs, swiftNow } from '../../shared/model';
+import { dateMs } from '../../shared/model';
 import type { StudyTask, SwiftDate } from '../../shared/model';
-import {
-  addPlanDays,
-  planAnchor,
-  planEvents,
-  planSnapshot,
-  readPlan,
-  swiftSeconds,
-} from '../../shared/plans';
+import { planAnchor, planSnapshot, readPlan, swiftSeconds } from '../../shared/plans';
 import type { PlanEditScope, PlanOccurrence, PlanStatus } from '../../shared/plans';
-import { shanghaiDayKey } from '../../shared/timetable';
 import { useLibrary } from '../stores/library';
 import { useWorkspaceUI } from '../stores/workspace-ui';
-import { storeToRefs } from 'pinia';
 import TaskEditor from '../components/TaskEditor.vue';
-import PlanMonthCalendar from '../components/PlanMonthCalendar.vue';
 import Modal from '../components/Modal.vue';
 import { matchesPlanStatus, planVariants } from '../composables/plan-filter';
 import type { PlanFilter } from '../composables/plan-filter';
@@ -42,7 +30,6 @@ const store = useLibrary(),
   query = ref(''),
   courseID = ref('');
 const ui = useWorkspaceUI();
-const { planMode: mode, day } = storeToRefs(ui);
 const editing = ref<{ task?: StudyTask; occurrence?: PlanOccurrence } | null>(null),
   historyID = ref<string | null>(null);
 type Action = PlanStatus | 'delete';
@@ -65,9 +52,6 @@ watch(
     filter.value = route === 'pending' ? 'pending' : 'active';
   },
 );
-watch(listOnly, (value) => {
-  if (value) mode.value = 'list';
-});
 function matches(task: StudyTask) {
   return (
     matchesPlanStatus(task, filter.value) &&
@@ -89,15 +73,6 @@ function hasMatchingException(task: StudyTask) {
   return !matches(task) && planVariants(toRaw(task)).some(matches);
 }
 const rows = computed<Row[]>(() => {
-  if (mode.value === 'agenda')
-    return day.value
-      ? planEvents(
-          day.value + 'T00:00:00+08:00',
-          plans.value.map((t) => toRaw(t)),
-        )
-          .filter((e) => matches(e.task))
-          .map((e) => ({ key: e.id, task: e.task, occurrence: e }))
-      : [];
   const due = (task: StudyTask) =>
     task.deadline != null
       ? dateMs(task.deadline)
@@ -149,9 +124,6 @@ function base(task: StudyTask) {
 }
 function edit(row: Row) {
   editing.value = { task: base(row.task), occurrence: row.occurrence };
-}
-function shiftDay(offset: number) {
-  day.value = shanghaiDayKey(addPlanDays(day.value + 'T00:00:00+08:00', offset));
 }
 function exceptionEvent(task: StudyTask, original: SwiftDate): PlanOccurrence {
   const effective = planSnapshot(toRaw(task), original),
@@ -243,30 +215,22 @@ defineExpose({
 });
 </script>
 <template>
-  <section
-    class="workspace plans-workspace"
-    :class="{ 'calendar-workspace': mode !== 'list', 'plan-list-workspace': mode === 'list' }"
-  >
+  <section class="workspace plans-workspace plan-list-workspace">
     <header class="workspace-header">
       <div class="heading-block">
         <div class="heading-line">
           <h1>
-            {{ store.route === 'pending' ? '待完成计划' : mode === 'list' ? '计划列表' : '计划' }}
+            {{ store.route === 'pending' ? '待完成计划' : '计划列表' }}
           </h1>
-          <span v-if="mode !== 'month'" class="subtle-count">{{ rows.length }} 项</span>
+          <span class="subtle-count">{{ rows.length }} 项</span>
         </div>
         <p>安排学习与作业，按北京时间管理执行与截止时间。</p>
       </div>
       <div class="toolbar-controls">
         <div class="segmented">
-          <button
-            :class="{ active: mode === 'list' }"
-            aria-label="计划列表视图"
-            @click="mode = 'list'"
-          >
+          <button class="active" aria-label="计划列表视图" aria-pressed="true">
             <List :size="16" />列表</button
           ><button
-            :class="{ active: mode === 'agenda' }"
             aria-label="计划日程视图"
             :disabled="listOnly"
             :title="listOnly ? '此状态请在列表中查看' : ''"
@@ -274,7 +238,6 @@ defineExpose({
           >
             <CalendarDays :size="16" />日程</button
           ><button
-            :class="{ active: mode === 'month' }"
             aria-label="计划月历视图"
             :disabled="listOnly"
             :title="listOnly ? '此状态请在列表中查看' : ''"
@@ -308,46 +271,15 @@ defineExpose({
         <option value="all">全部计划</option>
       </select>
     </div>
-    <div v-if="mode === 'agenda'" class="agenda-controls">
-      <button class="icon-button" aria-label="上一天" @click="shiftDay(-1)">
-        <ChevronLeft :size="17" /></button
-      ><input v-model="day" type="date" aria-label="日程日期" required /><button
-        class="icon-button"
-        aria-label="下一天"
-        @click="shiftDay(1)"
-      >
-        <ChevronRight :size="17" /></button
-      ><button @click="day = shanghaiDayKey(swiftNow())">今天</button><span class="spacer" /><span
-        class="small muted"
-        >重复安排按实际发生项展示，执行与截止各自列出。</span
-      >
-    </div>
-    <PlanMonthCalendar
-      v-if="mode === 'month'"
-      v-model:day="day"
-      :plans="plans"
-      :query="query"
-      :course-id="courseID"
-      :pending="filter === 'pending'"
-      :status-filter="filter"
-      :include-courses="filter === 'active' || filter === 'all'"
-      @edit="(event) => edit({ key: event.id, task: event.task, occurrence: event })"
-    />
-    <div v-else class="plans-list-body">
+    <div class="plans-list-body">
       <div class="plans-scroll">
-        <div v-if="mode === 'list'" class="plan-columns" aria-hidden="true">
+        <div class="plan-columns" aria-hidden="true">
           <span>状态</span><span>计划</span><span>执行</span><span>截止</span><span>操作</span>
         </div>
         <div v-if="!rows.length" class="empty-state">
           <CalendarDays :size="43" />
-          <h2>{{ mode === 'agenda' ? '这一天没有符合条件的安排' : '还没有符合条件的计划' }}</h2>
-          <p>
-            {{
-              mode === 'agenda'
-                ? '已取消和已归档的安排不显示。可在列表的临时变更中恢复。'
-                : '创建任务，关联课程、资料和截止时间。'
-            }}
-          </p>
+          <h2>还没有符合条件的计划</h2>
+          <p>创建任务，关联课程、资料和截止时间。</p>
           <button class="primary" @click="editing = {}">新建计划</button>
         </div>
         <div
@@ -418,7 +350,7 @@ defineExpose({
               >
             </div>
           </button>
-          <span v-if="mode === 'list'" class="plan-date" :title="label(row.task.startsAt)">{{
+          <span class="plan-date" :title="label(row.task.startsAt)">{{
             row.task.hasExecutionTime === false
               ? '未安排'
               : new Date(dateMs(row.task.startsAt)).toLocaleDateString('zh-CN', {
@@ -428,7 +360,6 @@ defineExpose({
                 })
           }}</span>
           <span
-            v-if="mode === 'list'"
             class="plan-date"
             :title="row.task.deadline == null ? '' : label(row.task.deadline)"
             >{{
@@ -481,7 +412,7 @@ defineExpose({
           </div>
         </div>
       </div>
-      <aside v-if="mode === 'list'" class="plan-detail" aria-label="计划详情">
+      <aside class="plan-detail" aria-label="计划详情">
         <template v-if="selectedRow">
           <h2>{{ selectedRow.task.title }}</h2>
           <p class="muted">{{ selectedRow.task.kind }}</p>

@@ -131,14 +131,14 @@ try {
     async () => {
       await page
         .getByRole('group', { name: '计划视图', exact: true })
-        .getByRole('button', { name: '月', exact: true })
+        .getByRole('button', { name: '计划月历视图', exact: true })
         .click();
       await page.locator('.month-board').waitFor();
       await nav('全部资料');
       await nav('计划');
       await page.locator('.month-board').waitFor();
       await button('查看课表').click();
-      await button('计划列表').click();
+      await button('计划列表视图').click();
       await page.locator('.plan-list-workspace').waitFor();
       await nav('全部资料');
       await nav('计划');

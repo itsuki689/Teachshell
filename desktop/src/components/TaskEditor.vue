@@ -13,6 +13,7 @@ const props = defineProps<{
     task?: StudyTask;
     occurrence?: PlanOccurrence;
     initialDate?: string;
+    initialCourseID?: string;
   }>(),
   emit = defineEmits<{ close: [] }>(),
   store = useLibrary();
@@ -42,7 +43,7 @@ function makeForm(task?: StudyTask) {
     title: source?.title ?? '',
     content: source?.content ?? '',
     kind: source?.kind ?? '任务',
-    courseID: source?.courseID ?? store.courseID ?? '',
+    courseID: source?.courseID ?? props.initialCourseID ?? store.courseID ?? '',
     materialIDs: [...(source?.materialIDs ?? [])],
     startsAt: local(
       source?.startsAt ?? (props.initialDate ? props.initialDate + 'T09:00:00+08:00' : undefined),
