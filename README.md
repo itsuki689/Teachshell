@@ -1,10 +1,20 @@
-# 课屿 · Teachshelf for macOS
+# Teachshell
+
+独立维护的 Electron + Vue 3 + TypeScript 跨平台课程资料应用，主实现位于 [`desktop/`](desktop/)，开发、启动和测试方式见 [Teachshell 开发说明](desktop/README.md)。
+
+本目录使用自己的 `.git/`，不再作为 Teachshelf 的 worktree，不共享 Git 对象库，也不配置原版仓库的远程。保留已有提交历史用于追溯；原生 Teachshelf 仅作只读参考。本仓库内保留的 Swift 源码、资源和测试用于行为对照与数据兼容性验证。
+
+两版应用及资料库继续独立：Teachshell 使用 `com.teachshelf.desktop` 与 `teachshelf-desktop` 数据目录；原生课屿使用 `com.teachshelf.mac` 与 `Teachshelf` 数据目录。
+
+## 原生 Teachshelf 参考说明
+
+以下保留原生 macOS 实现的历史说明；当前 Teachshell 的功能、命令与限制以 [`desktop/README.md`](desktop/README.md) 为准。
 
 原生 macOS 课程资料管理器。按课程组织文件、作业与计划，文件留在本机，无需 Teachshelf 账户。
 
 使用 **SwiftUI、AppKit、WebKit 和 Swift**，通过 Swift Package Manager 构建。`example/` 是独立的 Windows WPF 参考项目，不参与 macOS 构建；两版资料库格式不同，原始文件可重新导入。
 
-## 主要功能
+### 主要功能
 
 | 功能 | 支持内容 |
 | --- | --- |
@@ -20,7 +30,7 @@
 
 操作细节、快捷键和文件管理规则见 [使用指南](docs/usage.md)。内置助手配置见 [AI 助手指南](docs/AI.md)，外部 LLM 连接方式与工具说明见 [MCP 指南](docs/MCP.md)。
 
-## 本机启动
+### 本机启动
 
 需要 **macOS 14+** 和包含 **Swift 6+** 的 Xcode 或 Command Line Tools。尚未安装开发工具时，运行 `xcode-select --install`。
 
@@ -37,7 +47,7 @@
 
 构建脚本打包图标、网页解析器和课表示例，并进行 ad hoc 签名与签名校验。生成的应用可在本机运行；对外发布需要另行配置 Developer ID 签名和公证。
 
-## 开发与验证
+### 开发与验证
 
 ```sh
 ./scripts/test-macos.sh     # Swift 回归；检测到 Node.js 时同时运行课表解析测试
@@ -63,7 +73,7 @@ open -n "$PWD/build/Teachshelf.app" --args --data-dir "$PWD/build/QA/manual-libr
 
 该参数覆盖本次启动的资料库位置，不改写应用记住的正式资料库位置。独立测试输出位于已忽略的 `build/QA/`。
 
-## 代码导航
+### 代码导航
 
 | 位置 | 职责 |
 | --- | --- |
@@ -101,7 +111,7 @@ open -n "$PWD/build/Teachshelf.app" --args --data-dir "$PWD/build/QA/manual-libr
 
 修改资料库逻辑时，元数据变更通过 `commit` 提交；需要同时操作文件和索引时，在 `withLock` 内完成。共享快照只在核心文件内替换，索引成功保存后才更新内存状态。跨文件辅助方法仅在 Core 模块内可见，领域内部辅助方法保持私有。
 
-## 数据与兼容性
+### 数据与兼容性
 
 默认资料库位于 `~/Library/Application Support/Teachshelf`，保存 `library.json`、上一份索引 `library.json.bak`、库内文件副本及作业目录。课程资料按 `files/<课程名> [<课程UUID>]/资料/<文件夹层级>/` 组织，作业独立存于同一课程下的 `作业/`。空文件夹也会创建真实目录；文件夹改名整体移动目录，资料移动同步更新磁盘与索引，浏览和搜索继续使用索引。恢复前的内容保留到 `History/`。
 
@@ -116,7 +126,7 @@ Finder 中移动、重命名 `files/` 内已入库的资料、课程目录或文
 - 通过设置迁移整个资料库时保留原库；移除资料记录与删除磁盘副本是分开的操作。
 - 可选的网站登录恢复只把 Moodle 会话存入本机钥匙串，不保存密码或统一认证凭据，不进入资料库备份，也不通过 iCloud 同步。
 
-## 当前限制
+### 当前限制
 
 - 教学网站同步采用仅新增策略，不检测教师在原地址替换同名文件的内容；首次连接前手动导入的资料不自动合并。
 - 自动读取限于支持的 Moodle 文件夹、资源和作业类型；论坛通知、第三方外链等不自动推断成计划或 DDL。
@@ -124,7 +134,7 @@ Finder 中移动、重命名 `files/` 内已入库的资料、课程目录或文
 - 学校会话失效时仍需手动登录；ad hoc 构建更新可能触发钥匙串重新授权。
 - 真实拖曳动画等界面验收仍有历史自动化限制，详见验收记录。
 
-## 更多文档
+### 更多文档
 
 - [使用指南](docs/usage.md)：完整功能、快捷键、目录与备份规则。
 - [教学网站实施与验收记录](docs/web-in-progress.md)：按版本记录的实现进度、验收范围与已知限制。
