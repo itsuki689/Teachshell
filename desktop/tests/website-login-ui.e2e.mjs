@@ -96,9 +96,47 @@ async function authenticateFromUI(dialog) {
       .then((s) => s.loginState === 'signedIn' && s.accountID === '99'),
   );
 }
+async function holdFilesystemOperation(method, argument, filename) {
+  // Hold the real operation inside main's foreground action, not its already-completed IPC reply.
+  await app.evaluate(
+    (_electron, { method, argument, filename }) => {
+      const fs = process.getBuiltinModule('node:fs/promises'),
+        original = fs[method];
+      const gate = new Promise((resolve) => {
+        globalThis.releaseLoginFilesystem = () => {
+          fs[method] = original;
+          resolve();
+        };
+      });
+      globalThis.loginFilesystemHeld = false;
+      fs[method] = async function (...args) {
+        if (String(args[argument]) === filename) {
+          globalThis.loginFilesystemHeld = true;
+          await gate;
+        }
+        return original.apply(this, args);
+      };
+    },
+    { method, argument, filename },
+  );
+  return {
+    async wait() {
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline) {
+        if (await app.evaluate(() => globalThis.loginFilesystemHeld)) return;
+        await page.waitForTimeout(20);
+      }
+      assert.fail('The real filesystem operation must reach the test gate');
+    },
+    async release() {
+      await app.evaluate(() => globalThis.releaseLoginFilesystem());
+    },
+  };
+}
 const errors = [],
   steps = [];
 async function check(name, action) {
+  console.log('START', name);
   await action();
   steps.push(name);
   console.log('PASS', name);
@@ -120,12 +158,21 @@ async function launch() {
       original = ipcMain._invokeHandlers.get(channel);
     if (!original) throw new Error('Missing login preference IPC handler');
     globalThis.loginPreferenceWrites = 0;
+    globalThis.loginPreferenceFailures = 0;
+    globalThis.rejectNextLoginPreference = false;
     ipcMain.removeHandler(channel);
     ipcMain.handle(channel, async (...args) => {
       try {
-        return await original(...args);
-      } finally {
+        if (globalThis.rejectNextLoginPreference) {
+          globalThis.rejectNextLoginPreference = false;
+          throw new Error('Synthetic login preference rejection');
+        }
+        const result = await original(...args);
         if (typeof args[1] === 'boolean') globalThis.loginPreferenceWrites++;
+        return result;
+      } catch (error) {
+        if (typeof args[1] === 'boolean') globalThis.loginPreferenceFailures++;
+        throw error;
       }
     });
   });
@@ -189,10 +236,70 @@ try {
       (await page.evaluate(() => window.teachshelf.websiteLoginStatus())).enabled,
       false,
     );
-    await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).check();
-    await waitRememberComplete(true);
-    await page.waitForFunction(() => window.teachshelf.websiteLoginStatus().then((s) => s.enabled));
   });
+  await check(
+    'A rejected login preference request rolls back the checkbox and remains retryable',
+    async () => {
+      await app.evaluate(() => {
+        globalThis.rejectNextLoginPreference = true;
+      });
+      await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).click();
+      await page
+        .getByRole('alert')
+        .filter({ hasText: 'Synthetic login preference rejection' })
+        .waitFor();
+      await page.waitForFunction(() => {
+        const checkbox = document.querySelector('.website-login input');
+        return checkbox && !checkbox.disabled && !checkbox.checked;
+      });
+      assert.deepEqual(
+        await app.evaluate(() => ({
+          writes: globalThis.loginPreferenceWrites,
+          failures: globalThis.loginPreferenceFailures,
+        })),
+        { writes: 0, failures: 1 },
+      );
+      assert.equal(
+        (await page.evaluate(() => window.teachshelf.websiteLoginStatus())).enabled,
+        false,
+      );
+      await assert.rejects(
+        fs.access(path.join(root, 'app-data', 'TeachingSessions', scopeA + '.preferences.json')),
+        { code: 'ENOENT' },
+      );
+      await page.getByRole('button', { name: '关闭错误提示', exact: true }).click();
+    },
+  );
+  await check(
+    'Login preference persistence blocks overlapping website actions until the real write finishes',
+    async () => {
+      const filename = path.join(
+        root,
+        'app-data',
+        'TeachingSessions',
+        scopeA + '.preferences.json',
+      );
+      const preference = await holdFilesystemOperation('rename', 1, filename);
+      try {
+        await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).check();
+        await preference.wait();
+        for (const name of ['打开登录窗口', '读取当前页面'])
+          assert.equal(await dialog.getByRole('button', { name, exact: true }).isDisabled(), true);
+        assert.equal(
+          await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).isDisabled(),
+          true,
+        );
+      } finally {
+        await preference.release();
+      }
+      await waitRememberComplete(true);
+      assert.equal(
+        (await page.evaluate(() => window.teachshelf.websiteLoginStatus())).enabled,
+        true,
+      );
+      assert.equal(JSON.parse(await fs.readFile(filename, 'utf8')).enabled, true);
+    },
+  );
   await check(
     'Library switching clears the old memory session and isolates remembered preferences',
     async () => {
@@ -338,7 +445,18 @@ try {
         ])
           await jar.set(c);
       }, scopeA);
-      await authenticateFromUI(dialog);
+      const inspection = await holdFilesystemOperation('readdir', 0, path.join(a, 'files'));
+      try {
+        await authenticateFromUI(dialog);
+        await inspection.wait();
+        assert.equal(
+          await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).isDisabled(),
+          true,
+          'Login memory must wait for the active page inspection, even after identity is recognized',
+        );
+      } finally {
+        await inspection.release();
+      }
       await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).check();
       await waitRememberComplete(true);
       const status = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
@@ -353,7 +471,24 @@ try {
         return;
       }
       assert.equal(status.hasIssue, false, status.status);
+      assert.equal(status.enabled, true);
       assert.match(status.status, /已加密/);
+      const sessionRoot = path.join(root, 'app-data', 'TeachingSessions');
+      assert.equal(
+        JSON.parse(await fs.readFile(path.join(sessionRoot, scopeA + '.preferences.json'), 'utf8'))
+          .enabled,
+        true,
+      );
+      if (process.platform !== 'darwin') {
+        // Keep the real Electron OS encryption backend; assert persisted ciphertext, not only UI text.
+        const ciphertext = Buffer.from(
+          await fs.readFile(path.join(sessionRoot, scopeA + '.encrypted'), 'utf8'),
+          'base64',
+        );
+        assert.ok(ciphertext.length > 0);
+        assert.equal(ciphertext.includes(Buffer.from('synthetic-before-quit')), false);
+        assert.equal(ciphertext.includes(Buffer.from('MoodleSession')), false);
+      }
       // No helper path override or explicit flush: exercise packaged defaults and normal quit hooks.
       await app.evaluate(async ({ session }, scope) => {
         await session.fromPartition('teachshelf-' + scope + '-teaching').cookies.set({
@@ -571,6 +706,39 @@ try {
       secureStorageAvailable,
     }),
   );
+} catch (error) {
+  // Only synthetic fixture state; never collect cookies, tokens or user data in CI diagnostics.
+  await page
+    ?.screenshot({
+      path: path.join(evidence, 'teachshell-login-failure-' + runKind + '.png'),
+      timeout: 5000,
+    })
+    .catch(() => {});
+  const state = await page
+    ?.evaluate(async () => {
+      const checkbox = document.querySelector('.website-login input');
+      return {
+        checked: checkbox?.checked,
+        disabled: checkbox?.disabled,
+        login: await window.teachshelf.websiteLoginStatus(),
+        alert: document.querySelector('.error-toast')?.textContent,
+      };
+    })
+    .catch(() => undefined);
+  const report = {
+    passed: steps.length,
+    steps,
+    rendererErrors: errors,
+    mode: runKind,
+    error: String(error),
+    state,
+  };
+  await fs.writeFile(
+    path.join(evidence, 'teachshell-login-failure-' + runKind + '.json'),
+    JSON.stringify(report, null, 2) + '\n',
+  );
+  console.error(JSON.stringify(report));
+  throw error;
 } finally {
   if (app) {
     await page?.evaluate(() => window.teachshelf.rememberWebsiteLogin(false)).catch(() => {});

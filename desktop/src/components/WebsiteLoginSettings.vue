@@ -29,19 +29,23 @@ onUnmounted(() => {
   unsubscribe?.();
 });
 async function change(enabled?: boolean) {
-  if (busy.value || !current()) return;
+  if (busy.value || store.busy || !current()) return;
   busy.value = true;
   try {
-    const value =
-      enabled === undefined
-        ? await api.retryWebsiteLogin()
-        : await api.rememberWebsiteLogin(enabled);
-    if (current()) status.value = value;
-  } catch (error) {
-    if (current()) store.error = String(error);
+    const value = await store.run(
+      () => (enabled === undefined ? api.retryWebsiteLogin() : api.rememberWebsiteLogin(enabled)),
+      '登录记忆状态已更新',
+    );
+    if (value && current()) status.value = value;
   } finally {
     busy.value = false;
   }
+}
+async function toggle(event: Event) {
+  const checkbox = event.target as HTMLInputElement;
+  await change(checkbox.checked);
+  // A rejected IPC leaves the reactive value unchanged, but the browser has already toggled it.
+  if (current()) checkbox.checked = status.value?.enabled ?? false;
 }
 </script>
 <template>
@@ -50,8 +54,8 @@ async function change(enabled?: boolean) {
       <input
         type="checkbox"
         :checked="status?.enabled ?? false"
-        :disabled="!status || busy"
-        @change="change(($event.target as HTMLInputElement).checked)"
+        :disabled="!status || busy || !!store.busy"
+        @change="toggle"
       />
       记住此资料库的教学网站登录
     </label>
@@ -63,7 +67,9 @@ async function change(enabled?: boolean) {
       <span :class="{ 'login-issue': status?.hasIssue }">{{
         status?.status ?? '正在读取登录状态…'
       }}</span>
-      <button v-if="status?.hasIssue" :disabled="busy" @click="change()">重试安全存储</button>
+      <button v-if="status?.hasIssue" :disabled="busy || !!store.busy" @click="change()">
+        重试安全存储
+      </button>
     </div>
   </section>
 </template>
