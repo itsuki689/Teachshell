@@ -36,7 +36,7 @@ function animate(
 function help(action: ToolbarAction) {
   if (action === 'update') return pendingUpdate.value ? '正在刷新当前页面…' : '刷新当前页面';
   if (action === 'settings') return store.route === 'settings' ? '关闭设置，返回上一页面' : '设置';
-  if (action === 'create') return menu.value ? '关闭新建菜单' : '新建课程或计划';
+  if (action === 'create') return menu.value ? '关闭新建菜单' : '新建课程、计划或连接教学网站';
   if (action === 'import') return '导入文件或文件夹 · ⌘ / Ctrl O';
   return toolbarTitles[action];
 }
@@ -81,7 +81,7 @@ async function activate(action: ToolbarAction) {
     );
   }
 }
-async function create(action: 'create-course' | 'create-plan') {
+async function create(action: 'create-course' | 'create-plan' | 'connect-website') {
   menu.value = false;
   await props.activate(action);
 }
@@ -198,6 +198,9 @@ onUnmounted(() => {
         <AppSymbol name="books" :size="16" />新建课程…</button
       ><button role="menuitem" @click="create('create-plan')">
         <AppSymbol name="calendar-plus" :size="16" />新建计划…
+      </button>
+      <button role="menuitem" @click="create('connect-website')">
+        <AppSymbol name="globe" :size="16" />连接教学网站…
       </button>
     </div>
   </div>

@@ -236,11 +236,23 @@ try {
     const menu = page.getByRole('menu', { name: '快捷新建菜单' });
     assert.deepEqual(
       await menu.locator('[data-symbol]').evaluateAll((ns) => ns.map((n) => n.dataset.symbol)),
-      ['books', 'calendar-plus'],
+      ['books', 'calendar-plus', 'globe'],
     );
     assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), '新建课程…');
     await page.keyboard.press('ArrowDown');
     assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), '新建计划…');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(
+      await page.evaluate(() => document.activeElement.textContent.trim()),
+      '连接教学网站…',
+    );
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), '新建课程…');
+    await page.keyboard.press('End');
+    assert.equal(
+      await page.evaluate(() => document.activeElement.textContent.trim()),
+      '连接教学网站…',
+    );
     await capture('quick-create');
     await page.keyboard.press('Escape');
     assert.equal(await menu.count(), 0);

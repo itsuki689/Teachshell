@@ -227,7 +227,7 @@ try {
     },
   );
   await check(
-    'Refresh reloads the current page; import and the two create shortcuts open their editors',
+    'Refresh reloads the current page; import and all three create shortcuts open their dialogs',
     async () => {
       await button('update').click();
       await page.locator('.statusbar').getByText('当前页面已刷新', { exact: true }).waitFor();
@@ -238,6 +238,7 @@ try {
       for (const [name, title] of [
         ['新建课程…', '新建课程'],
         ['新建计划…', '新建计划'],
+        ['连接教学网站…', '教学网站'],
       ]) {
         await button('create').click();
         await page

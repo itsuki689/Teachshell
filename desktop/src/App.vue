@@ -101,7 +101,7 @@ async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
   if (!store.snapshot || store.busy || document.querySelector('[role=dialog]')) return false;
   const workspace = store.workspaceID;
   if (
-    ['create-course', 'create-plan', 'update', 'import'].includes(action) &&
+    ['create-course', 'create-plan', 'connect-website', 'update', 'import'].includes(action) &&
     !(await store.requestLeave())
   )
     return false;
@@ -119,7 +119,8 @@ async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
     taskInitialCourseID.value =
       store.route === 'timetable' ? ui.scheduleFilters.courseID : undefined;
     showTask.value = true;
-  } else if (action === 'import') showImport.value = true;
+  } else if (action === 'connect-website') openWebsite();
+  else if (action === 'import') showImport.value = true;
   else if (action === 'settings') {
     const previous = store.route;
     if (store.route === 'settings') {

@@ -214,7 +214,7 @@ try {
           .getByRole('menuitem')
           .allTextContents()
           .then((items) => items.map((s) => s.trim())),
-        ['新建课程…', '新建计划…'],
+        ['新建课程…', '新建计划…', '连接教学网站…'],
       );
       assert.equal(await button('create').getAttribute('aria-label'), '关闭新建菜单');
       assert.equal(await button('create').getAttribute('aria-expanded'), 'true');
@@ -237,6 +237,49 @@ try {
       await editor.getByRole('button', { name: '保存', exact: true }).click();
       await editor.waitFor({ state: 'hidden' });
       assert.ok((await snapshot()).state.courses.some((c) => c.name === '由右上角新建的课程'));
+    },
+  );
+  await check(
+    'Website shortcut opens the existing teaching tools and respects unsaved settings before entry',
+    async () => {
+      const openWebsite = async () => {
+        await button('create').click();
+        await page.getByRole('menuitem', { name: '连接教学网站…', exact: true }).click();
+      };
+      const website = page.getByRole('dialog', { name: '教学网站', exact: true });
+      await openWebsite();
+      await website.getByRole('button', { name: '打开登录窗口', exact: true }).waitFor();
+      assert.equal(await website.getByLabel('网站类型', { exact: true }).inputValue(), 'teaching');
+      await website
+        .getByRole('navigation', { name: '已连接网站课程' })
+        .getByRole('button', { name: /按钮交互验收课程/ })
+        .waitFor();
+      assert.equal(await page.getByRole('dialog').count(), 1);
+      assert.equal(
+        await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
+        1,
+      );
+      assert.equal(await page.getByRole('menu', { name: '快捷新建菜单' }).count(), 0);
+      await page.screenshot({ path: path.join(evidence, 'toolbar-website-entry.png') });
+      await closeDialog('教学网站');
+
+      await button('settings').click();
+      await page.getByRole('tab', { name: 'AI 助手', exact: true }).click();
+      const model = page.getByLabel('模型名称', { exact: true });
+      const savedModel = await model.inputValue();
+      await model.fill('网站入口保留设置草稿');
+      await openWebsite();
+      const confirm = page.getByRole('dialog', { name: '丢弃未保存的设置？', exact: true });
+      await confirm.getByRole('button', { name: '取消', exact: true }).click();
+      assert.equal(await website.count(), 0);
+      assert.equal(await model.inputValue(), '网站入口保留设置草稿');
+      await openWebsite();
+      await confirm.getByRole('button', { name: '丢弃修改', exact: true }).click();
+      await website.waitFor();
+      assert.equal(await model.inputValue(), savedModel);
+      await closeDialog('教学网站');
+      await button('settings').click();
+      await page.getByRole('heading', { name: '设置', exact: true }).waitFor({ state: 'hidden' });
     },
   );
   await check(
