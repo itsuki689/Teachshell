@@ -47,11 +47,15 @@ async function history() {
   try {
     const value = await api.chatHistory();
     if (current(workspace) && request === historySequence) messages.value = value;
+    return current(workspace) && request === historySequence;
   } catch (error) {
     if (current(workspace) && request === historySequence)
       store.error = error instanceof Error ? error.message : String(error);
+    return false;
   }
 }
+// Reload persisted messages without replacing the composer or interrupting a live response.
+defineExpose({ refresh: history });
 async function send() {
   const text = input.value.trim();
   if (!text || !configured.value || streaming.value || resetting.value) return;

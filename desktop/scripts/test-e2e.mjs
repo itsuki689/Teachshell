@@ -10,6 +10,7 @@ const tests = [
   'schedule-interactions.e2e.mjs',
   'toolbar.e2e.mjs',
   'toolbar-feedback.e2e.mjs',
+  'page-refresh.e2e.mjs',
   'inline-search.e2e.mjs',
   'website-login-ui.e2e.mjs',
   'website-background.e2e.mjs',

@@ -24,6 +24,19 @@ await initial.close();
 const alternate = await Repository.open(path.join(root, 'alternate'), { create: true });
 await alternate.close();
 let app, page;
+async function refreshed() {
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-toolbar-action=update]')?.getAttribute('aria-busy') === 'false',
+  );
+}
+async function heldSync() {
+  for (let n = 0; n < 200; n++) {
+    if (await app.evaluate(() => !!globalThis.feedbackRelease)) return;
+    await page.waitForTimeout(20);
+  }
+  throw Error('Refresh did not invoke the real filesystem sync');
+}
 const steps = [],
   errors = [];
 const button = (action) => page.locator(`[data-toolbar-action="${action}"]`);
@@ -103,6 +116,28 @@ try {
       return animation;
     };
   });
+  await app.evaluate(({ ipcMain }) => {
+    const channel = 'teachshelf:sync',
+      original = ipcMain._invokeHandlers.get(channel);
+    globalThis.feedbackSyncCalls = 0;
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, async (...args) => {
+      globalThis.feedbackSyncCalls++;
+      if (globalThis.feedbackFail) {
+        globalThis.feedbackFail = false;
+        throw Error('Refresh failure fixture');
+      }
+      const result = await original(...args);
+      if (globalThis.feedbackHold) {
+        globalThis.feedbackHold = false;
+        await new Promise((resolve) => {
+          globalThis.feedbackRelease = resolve;
+        });
+        globalThis.feedbackRelease = undefined;
+      }
+      return result;
+    });
+  });
   await check(
     'Application brand artwork and every toolbar hit area render without clipping or drag interception',
     async () => {
@@ -174,6 +209,13 @@ try {
     async () => {
       await edgeClick('create');
       await settledCreate();
+      assert.deepEqual(
+        await page
+          .getByRole('menuitem')
+          .allTextContents()
+          .then((items) => items.map((s) => s.trim())),
+        ['新建课程…', '新建计划…'],
+      );
       assert.equal(await button('create').getAttribute('aria-label'), '关闭新建菜单');
       assert.equal(await button('create').getAttribute('aria-expanded'), 'true');
       const matrix = await art('create').evaluate((el) => {
@@ -222,31 +264,48 @@ try {
     },
   );
   await check(
-    'Refresh gives one full-turn response before opening one update sheet despite repeated clicks',
+    'Refresh immediately invokes local sync once and stays busy through slow IO without any website sheet',
     async () => {
       const count = (await records('update')).length;
+      const calls = await app.evaluate(() => globalThis.feedbackSyncCalls);
+      await app.evaluate(() => {
+        globalThis.feedbackHold = true;
+      });
       await edgeClick('update');
+      await heldSync();
       assert.equal(await button('update').getAttribute('aria-busy'), 'true');
-      assert.equal(await page.getByRole('dialog', { name: '教学网站', exact: true }).count(), 0);
-      await button('update').click();
+      assert.equal(await button('update').isDisabled(), true);
+      await page.waitForTimeout(500);
+      await edgeClick('update');
+      await page.locator('.brand').click();
+      assert.equal(await button('update').getAttribute('aria-busy'), 'true');
+      assert.equal(await app.evaluate(() => globalThis.feedbackSyncCalls), calls + 1);
       assert.equal((await records('update')).length, count + 1);
       assert.equal((await records('update')).at(-1).duration, 400);
-      await page.getByRole('dialog', { name: '教学网站', exact: true }).waitFor();
-      assert.equal(await page.getByRole('dialog', { name: '教学网站', exact: true }).count(), 1);
-      await closeDialog('教学网站批量更新审核');
-      await closeDialog('教学网站');
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      await app.evaluate(() => globalThis.feedbackRelease());
+      await refreshed();
+      await page.locator('.statusbar').getByText('当前页面已刷新', { exact: true }).waitFor();
+      await page.getByRole('heading', { name: '由右上角新建的课程', exact: true }).waitFor();
     },
   );
   await check(
-    'Switching actions cancels a delayed refresh rather than opening a stale sheet',
+    'A refresh error is visible, releases the button and can be retried without losing the page',
     async () => {
-      await edgeClick('update');
-      await edgeClick('settings');
-      await page.waitForTimeout(500);
-      assert.equal(await page.getByRole('dialog', { name: '教学网站', exact: true }).count(), 0);
-      await page.getByRole('heading', { name: '设置', exact: true }).waitFor();
-      assert.equal(await button('update').getAttribute('aria-busy'), 'false');
-      await button('settings').click();
+      await app.evaluate(() => {
+        globalThis.feedbackFail = true;
+      });
+      await button('update').click();
+      await page
+        .getByRole('alert')
+        .getByText(/Refresh failure fixture/)
+        .waitFor();
+      await refreshed();
+      assert.equal(await button('update').isEnabled(), true);
+      await page.getByRole('button', { name: '关闭错误提示', exact: true }).click();
+      await button('update').click();
+      await refreshed();
+      await page.locator('.statusbar').getByText('当前页面已刷新', { exact: true }).waitFor();
     },
   );
   await check(
@@ -255,10 +314,9 @@ try {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       const count = (await records('update')).length;
       await edgeClick('update');
-      await page.getByRole('dialog', { name: '教学网站', exact: true }).waitFor();
+      await refreshed();
+      assert.equal(await page.getByRole('dialog').count(), 0);
       assert.equal((await records('update')).length, count);
-      await closeDialog('教学网站批量更新审核');
-      await closeDialog('教学网站');
       await edgeClick('create');
       await settledCreate();
       assert.equal(
@@ -291,17 +349,21 @@ try {
     },
   );
   await check(
-    'A library switch cancels refresh; an unconnected library has an explicit disabled reason',
+    'An unconnected library can refresh offline without opening Moodle or changing navigation',
     async () => {
-      await edgeClick('update');
       await openLibrary(path.join(root, 'alternate'));
-      await page.waitForTimeout(500);
-      assert.equal(await page.getByRole('dialog', { name: '教学网站', exact: true }).count(), 0);
-      assert.equal(await button('update').isDisabled(), true);
-      assert.match(await button('update').getAttribute('title'), /先连接教学网站/);
-      const box = await button('update').boundingBox();
-      await page.mouse.click(box.x + 18, box.y + 18);
-      assert.equal(await page.locator('[role=dialog]').count(), 0);
+      await page.getByRole('heading', { name: '全部资料', exact: true }).waitFor();
+      await page.context().setOffline(true);
+      assert.equal((await snapshot()).state.teachingConnections.length, 0);
+      assert.equal(await button('update').isEnabled(), true);
+      assert.equal(await button('update').getAttribute('title'), '刷新当前页面');
+      const calls = await app.evaluate(() => globalThis.feedbackSyncCalls);
+      await button('update').click();
+      await refreshed();
+      assert.equal(await app.evaluate(() => globalThis.feedbackSyncCalls), calls + 1);
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      await page.locator('.statusbar').getByText('当前页面已刷新', { exact: true }).waitFor();
+      await page.context().setOffline(false);
     },
   );
   await check(

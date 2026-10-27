@@ -80,13 +80,25 @@ function fill() {
   loaded.value = true;
   baseline.value = JSON.stringify(form);
 }
-onMounted(async () => {
+async function refresh() {
+  // Editing can resume while the filesystem scan is pending.
+  if (dirty.value && !(await store.requestLeave())) return false;
+  if (!active) return false;
+  const previouslyLoaded = loaded.value;
+  loaded.value = false;
   const result = await store.run(() => api.settings(), '设置已加载');
   if (result && active) {
     store.settings = result;
     fill();
   }
-  if (active) application.value = await store.run(() => api.appInfo(), '设置已加载');
+  if (active && result) application.value = await store.run(() => api.appInfo(), '设置已加载');
+  // A failed read keeps the old form editable and leaves the error visible.
+  if (active && !result) loaded.value = previouslyLoaded;
+  return !!result && !!application.value && active;
+}
+defineExpose({ refresh });
+onMounted(async () => {
+  await refresh();
 });
 async function saveAI() {
   if (!loaded.value || saving.value) return;

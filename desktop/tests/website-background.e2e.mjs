@@ -300,7 +300,8 @@ try {
       await until(counters, (value) => value.held === 1, 65000);
       assert.equal((await status()).phase, 'checking');
       const before = await fs.readFile(path.join(libraryRoot, 'library.json'));
-      await page.locator('[data-toolbar-action="update"]').click();
+      await openWebsite();
+      await website.getByRole('button', { name: '批量检查课程更新', exact: true }).click();
       website = page.getByRole('dialog', { name: '教学网站', exact: true });
       batch = page.getByRole('dialog', { name: '教学网站批量更新审核', exact: true });
       await batch.getByRole('button', { name: '检查网站更新', exact: true }).click();

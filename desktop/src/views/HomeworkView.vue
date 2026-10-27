@@ -85,10 +85,12 @@ async function load() {
       '作业目录已读取',
     );
     if (result && request === sequence && sameLocation(target)) listing.value = result;
+    return !!result && request === sequence && sameLocation(target);
   } finally {
     if (active && request === sequence) loading.value = false;
   }
 }
+defineExpose({ refresh: load });
 watch(
   course,
   () => {

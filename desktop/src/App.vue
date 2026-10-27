@@ -35,6 +35,9 @@ const store = useLibrary(),
   taskInitialDate = ref<string>(),
   taskInitialCourseID = ref<string>(),
   searchedTask = ref<StudyTask | undefined>(),
+  settingsView = ref<InstanceType<typeof SettingsView>>(),
+  homeworkView = ref<InstanceType<typeof HomeworkView>>(),
+  chatView = ref<InstanceType<typeof ChatView>>(),
   searchControl = ref<InstanceType<typeof WorkspaceSearch>>(),
   loaded = ref(false);
 const releases: (() => void)[] = [];
@@ -68,11 +71,37 @@ function openWebsite(kind: 'teaching' | 'timetable' = 'teaching', batch = false)
   websiteBatch.value = batch;
   showWebsite.value = true;
 }
+async function refreshCurrentPage(): Promise<boolean> {
+  const workspace = store.workspaceID,
+    route = store.route;
+  // Read local files through the main process, keeping navigation, filters and drafts intact.
+  const result = await store.change(() => api.sync(), '本地资料已同步');
+  if (!result || workspace !== store.workspaceID || route !== store.route) return false;
+  const view =
+    route === 'settings'
+      ? settingsView.value
+      : route === 'homework'
+        ? homeworkView.value
+        : route === 'assistant'
+          ? chatView.value
+          : undefined;
+  if (view && !(await view.refresh())) return false;
+  if (workspace !== store.workspaceID || route !== store.route) return false;
+  store.status = '当前页面已刷新';
+  return true;
+}
+async function reviewWebsiteUpdates() {
+  const workspace = store.workspaceID;
+  if (store.busy || document.querySelector('[role=dialog]') || !(await store.requestLeave()))
+    return;
+  if (workspace === store.workspaceID && !store.busy && !document.querySelector('[role=dialog]'))
+    openWebsite('teaching', true);
+}
 async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
   if (!store.snapshot || store.busy || document.querySelector('[role=dialog]')) return false;
   const workspace = store.workspaceID;
   if (
-    ['create-course', 'create-plan', 'connect-website', 'update', 'import'].includes(action) &&
+    ['create-course', 'create-plan', 'update', 'import'].includes(action) &&
     !(await store.requestLeave())
   )
     return false;
@@ -83,10 +112,8 @@ async function toolbarAction(action: ToolbarRequest): Promise<boolean> {
     return ui.openSchedule();
   }
   if (action === 'update') {
-    if (!store.state.teachingConnections.length || showWebsite.value) return false;
-    openWebsite('teaching', true);
-  } else if (action === 'connect-website') openWebsite();
-  else if (action === 'create-course') editCourse();
+    return refreshCurrentPage();
+  } else if (action === 'create-course') editCourse();
   else if (action === 'create-plan') {
     taskInitialDate.value = ['plans', 'timetable'].includes(store.route) ? ui.day : undefined;
     taskInitialCourseID.value =
@@ -297,10 +324,11 @@ onUnmounted(() => {
         /><TimetableView
           v-else-if="store.route === 'timetable'"
           @website="openWebsite('timetable')"
-        /><HomeworkView v-else-if="store.route === 'homework'" /><SettingsView
+        /><HomeworkView ref="homeworkView" v-else-if="store.route === 'homework'" /><SettingsView
+          ref="settingsView"
           v-else-if="store.route === 'settings'"
           @website="openWebsite()"
-        /><ChatView v-show="store.route === 'assistant'" />
+        /><ChatView ref="chatView" v-show="store.route === 'assistant'" />
         <footer class="statusbar">
           <LoaderCircle v-if="store.busy" :size="12" class="spinning" /><span
             v-else
@@ -311,7 +339,7 @@ onUnmounted(() => {
             class="background-review-link"
             aria-label="审核网站更新"
             :disabled="!!store.busy"
-            @click="toolbarAction('update')"
+            @click="reviewWebsiteUpdates"
           >
             网站更新 {{ websiteBackground.review.rows.length }} 项待审核</button
           ><span class="spacer" /><span

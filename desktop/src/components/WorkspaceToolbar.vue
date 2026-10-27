@@ -14,8 +14,6 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const createRotation = ref(0),
   pendingUpdate = ref(false);
 const animations = new Set<Animation>();
-let updateRequest = 0,
-  updateAnimation: Animation | undefined;
 
 function artwork(action: ToolbarAction) {
   return root.value?.querySelector<HTMLElement>(`[data-toolbar-artwork="${action}"]`);
@@ -35,17 +33,8 @@ function animate(
   );
   return animation;
 }
-function cancelUpdate() {
-  updateRequest++;
-  pendingUpdate.value = false;
-  updateAnimation?.cancel();
-  updateAnimation = undefined;
-}
 function help(action: ToolbarAction) {
-  if (action === 'update')
-    return store.state.teachingConnections.length
-      ? '检查所有已连接课程的网站更新'
-      : '先连接教学网站，再检查更新';
+  if (action === 'update') return pendingUpdate.value ? '正在刷新当前页面…' : '刷新当前页面';
   if (action === 'settings') return store.route === 'settings' ? '关闭设置，返回上一页面' : '设置';
   if (action === 'create') return menu.value ? '关闭新建菜单' : '新建课程或计划';
   if (action === 'import') return '导入文件或文件夹 · ⌘ / Ctrl O';
@@ -55,7 +44,6 @@ function help(action: ToolbarAction) {
 async function activate(action: ToolbarAction) {
   if (!store.snapshot || store.busy) return;
   if (action === 'create') {
-    cancelUpdate();
     menu.value = !menu.value;
     if (menu.value) {
       await nextTick();
@@ -65,27 +53,22 @@ async function activate(action: ToolbarAction) {
   }
   menu.value = false;
   if (action === 'update') {
-    if (pendingUpdate.value || !store.state.teachingConnections.length) return;
-    const request = ++updateRequest;
+    if (pendingUpdate.value) return;
     pendingUpdate.value = true;
-    updateAnimation = animate(
+    const animation = animate(
       artwork(action),
       [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
       400,
       'linear',
     );
     try {
-      await updateAnimation?.finished;
-    } catch {
-      return;
+      // Start the real refresh immediately; animation never schedules or cancels work.
+      await Promise.all([props.activate(action), animation?.finished.catch(() => {})]);
+    } finally {
+      pendingUpdate.value = false;
     }
-    if (request !== updateRequest) return;
-    pendingUpdate.value = false;
-    updateAnimation = undefined;
-    await props.activate(action);
     return;
   }
-  cancelUpdate();
   if (!(await props.activate(action))) return;
   if (action === 'settings') {
     animate(artwork(action), [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], 420);
@@ -98,14 +81,13 @@ async function activate(action: ToolbarAction) {
     );
   }
 }
-async function create(action: 'create-course' | 'create-plan' | 'connect-website') {
+async function create(action: 'create-course' | 'create-plan') {
   menu.value = false;
   await props.activate(action);
 }
 function outside(e: PointerEvent) {
   if (!root.value?.contains(e.target as Node)) {
     menu.value = false;
-    cancelUpdate();
   }
 }
 function key(e: KeyboardEvent) {
@@ -146,21 +128,14 @@ watch(
 );
 watch([() => actions.value.join(','), () => store.route, () => store.workspaceID], () => {
   menu.value = false;
-  cancelUpdate();
 });
-watch(
-  () => store.busy || !store.state.teachingConnections.length,
-  (blocked) => {
-    if (blocked) cancelUpdate();
-  },
-);
 function motionChanged() {
   if (reduced.matches) for (const animation of animations) animation.finish();
 }
 function visibilityChanged() {
   if (document.hidden) {
     menu.value = false;
-    cancelUpdate();
+    for (const animation of animations) animation.finish();
   }
 }
 onMounted(() => {
@@ -170,7 +145,6 @@ onMounted(() => {
   document.addEventListener('visibilitychange', visibilityChanged);
 });
 onUnmounted(() => {
-  cancelUpdate();
   for (const animation of animations) animation.cancel();
   window.removeEventListener('pointerdown', outside);
   window.removeEventListener('keydown', key);
@@ -201,11 +175,7 @@ onUnmounted(() => {
       :aria-expanded="action === 'create' ? menu : undefined"
       :aria-pressed="action === 'settings' ? store.route === 'settings' : undefined"
       :aria-busy="action === 'update' ? pendingUpdate : undefined"
-      :disabled="
-        !store.snapshot ||
-        !!store.busy ||
-        (action === 'update' && !store.state.teachingConnections.length)
-      "
+      :disabled="!store.snapshot || !!store.busy || (action === 'update' && pendingUpdate)"
       @click="activate(action)"
     >
       <span
@@ -227,9 +197,7 @@ onUnmounted(() => {
       <button role="menuitem" @click="create('create-course')">
         <AppSymbol name="books" :size="16" />新建课程…</button
       ><button role="menuitem" @click="create('create-plan')">
-        <AppSymbol name="calendar-plus" :size="16" />新建计划…</button
-      ><button role="menuitem" @click="create('connect-website')">
-        <AppSymbol name="globe" :size="16" />连接教学网站…
+        <AppSymbol name="calendar-plus" :size="16" />新建计划…
       </button>
     </div>
   </div>

@@ -91,7 +91,7 @@ async function replaceActions(actions) {
     await waitActions(current);
   }
   const titles = {
-    update: '全局更新',
+    update: '刷新当前页面',
     settings: '设置',
     import: '导入资料',
     create: '新建',
@@ -182,7 +182,7 @@ try {
       assert.equal(await settings().locator('.toolbar-available button:not(:disabled)').count(), 0);
       await settings().getByRole('button', { name: '上移收藏', exact: true }).click();
       await waitActions([...defaults, 'favorites', 'schedule']);
-      await settings().getByRole('button', { name: '移除全局更新', exact: true }).click();
+      await settings().getByRole('button', { name: '移除刷新当前页面', exact: true }).click();
       await waitActions(['settings', 'import', 'create', 'favorites', 'schedule']);
       await page.screenshot({ path: path.join(evidence, 'teachshell-toolbar-settings.png') });
     },
@@ -227,19 +227,17 @@ try {
     },
   );
   await check(
-    'Original update/import/create shortcuts open their real approval or editor dialogs',
+    'Refresh reloads the current page; import and the two create shortcuts open their editors',
     async () => {
       await button('update').click();
-      await page.getByRole('dialog', { name: '教学网站批量更新审核', exact: true }).waitFor();
-      await closeDialog('教学网站批量更新审核');
-      await closeDialog('教学网站');
+      await page.locator('.statusbar').getByText('当前页面已刷新', { exact: true }).waitFor();
+      assert.equal(await page.getByRole('dialog').count(), 0);
       await button('import').click();
       await page.getByRole('dialog', { name: '导入资料', exact: true }).waitFor();
       await closeDialog('导入资料');
       for (const [name, title] of [
         ['新建课程…', '新建课程'],
         ['新建计划…', '新建计划'],
-        ['连接教学网站…', '教学网站'],
       ]) {
         await button('create').click();
         await page
