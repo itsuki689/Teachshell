@@ -378,6 +378,10 @@ try {
           ({ BrowserWindow }, bounds) => BrowserWindow.getAllWindows()[0].setBounds(bounds),
           { width, height },
         );
+        // Native Windows/Linux frames consume part of the outer window bounds.
+        const [contentWidth, contentHeight] = await app.evaluate(({ BrowserWindow }) =>
+          BrowserWindow.getAllWindows()[0].getContentSize(),
+        );
         await page.keyboard.press(process.platform === 'darwin' ? 'Meta+,' : 'Control+,');
         await page.getByRole('tab', { name: '外观', exact: true }).click();
         await page
@@ -405,7 +409,7 @@ try {
             document.documentElement.scrollWidth,
             document.documentElement.scrollHeight,
           ]),
-          [width, height, width, height],
+          [contentWidth, contentHeight, contentWidth, contentHeight],
         );
         await goPlans();
         await page.getByRole('button', { name: '计划月历视图', exact: true }).click();

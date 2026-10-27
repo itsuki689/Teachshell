@@ -295,7 +295,8 @@ export class HomeworkService {
                 throw error;
               // External homework can be on exFAT/FAT volumes without hard-link support.
               await fs.copyFile(payload, destination, fs.constants.COPYFILE_EXCL);
-              const handle = await fs.open(destination, 'r');
+              // FlushFileBuffers requires write access on Windows.
+              const handle = await fs.open(destination, process.platform === 'win32' ? 'r+' : 'r');
               try {
                 await handle.sync();
               } finally {

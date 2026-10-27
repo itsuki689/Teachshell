@@ -317,3 +317,20 @@ test('rollback file movement cannot overwrite a concurrently recreated original 
   assert.deepEqual(await fs.readFile(destination), Buffer.from([0, 128, 255, 10]));
   assert.ok(await fs.stat(path.join(root, '.desktop-transaction.json')));
 });
+
+test('copy transaction flushes read-only sources without altering their bytes or permissions', async (t) => {
+  const root = await fixture(t);
+  const source = path.join(root, 'readonly.bin');
+  const bytes = Buffer.from([0, 127, 128, 255]);
+  await fs.writeFile(source, bytes);
+  await fs.chmod(source, 0o444);
+  const mode = (await fs.stat(source)).mode;
+  await commitTransaction(root, next, [{ kind: 'copy', from: source, to: 'files/copy.bin' }]);
+  await recoverTransaction(root);
+  assert.deepEqual(await fs.readFile(source), bytes);
+  assert.equal((await fs.stat(source)).mode, mode);
+  assert.deepEqual(await fs.readFile(path.join(root, 'files/copy.bin')), bytes);
+  assert.equal((await fs.stat(path.join(root, 'files/copy.bin'))).mode, mode);
+  assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'library.json'), 'utf8')), next);
+  assert.ok(!(await fs.readdir(root)).some((n) => n.startsWith('.desktop-copy-')));
+});

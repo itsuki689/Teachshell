@@ -221,11 +221,17 @@ export async function commitTransaction(
         await fs.copyFile(source, p, fs.constants.COPYFILE_EXCL);
         op.identity = identity(await fs.lstat(p));
         staged.push(op);
-        const handle = await fs.open(p, 'r');
+        // Windows FlushFileBuffers requires a writable handle. Change only the private
+        // staging copy, restoring a copied read-only attribute after flushing it.
+        const copiedMode = (await fs.stat(p)).mode;
+        const readOnlyCopy = process.platform === 'win32' && !(copiedMode & 0o200);
+        if (readOnlyCopy) await fs.chmod(p, copiedMode | 0o200);
+        const handle = await fs.open(p, process.platform === 'win32' ? 'r+' : 'r');
         try {
           await handle.sync();
         } finally {
           await handle.close();
+          if (readOnlyCopy) await fs.chmod(p, copiedMode);
         }
         op.hash = await digestFile(p);
         if (op.sourceHash !== undefined && op.hash !== op.sourceHash)
