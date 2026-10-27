@@ -236,7 +236,7 @@ try {
     const menu = page.getByRole('menu', { name: '快捷新建菜单' });
     assert.deepEqual(
       await menu.locator('[data-symbol]').evaluateAll((ns) => ns.map((n) => n.dataset.symbol)),
-      ['books', 'calendar-plus', 'globe'],
+      ['books', 'calendar-plus'],
     );
     assert.equal(await page.evaluate(() => document.activeElement.textContent.trim()), '新建课程…');
     await page.keyboard.press('ArrowDown');

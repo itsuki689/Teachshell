@@ -389,6 +389,16 @@ try {
         await page.waitForFunction(() =>
           window.teachshelf.websiteLoginStatus().then((s) => !s.enabled),
         );
+        const disabled = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
+        assert.equal(disabled.hasIssue, false, disabled.status);
+        const preference = JSON.parse(
+          await fs.readFile(
+            path.join(root, 'app-data', 'TeachingSessions', scopeA + '.preferences.json'),
+            'utf8',
+          ),
+        );
+        assert.equal(preference.enabled, false, 'Disabling must persist before reporting success');
+        assert.equal(preference.cleanupPending, undefined, 'Secure-store deletion must complete');
         assert.equal((await cookieView(scopeA)).length, 2);
       }
       await normalQuit();
