@@ -118,6 +118,11 @@ try {
       await event.click();
       await page.keyboard.press('ArrowDown');
       await until(snapshot, (s) => s.revision !== before.revision);
+      // The committed IPC snapshot can arrive before Vue renders its changed event.
+      await until(
+        () => event.getAttribute('data-start'),
+        (value) => value === '550',
+      );
       assert.equal(await event.getAttribute('data-start'), '550');
       await event.dblclick();
       const edit = page.getByRole('dialog', { name: '编辑计划', exact: true });
