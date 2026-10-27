@@ -43,6 +43,7 @@ async function launch() {
 }
 async function check(name, fn) {
   const start = Date.now();
+  console.log('START', name);
   await fn();
   steps.push({ name, status: 'passed', durationMs: Date.now() - start });
   console.log('PASS', name);
@@ -1234,6 +1235,10 @@ try {
       assert.equal(await inspector.getByLabel('备注', { exact: true }).inputValue(), notes);
       await inspector.getByRole('button', { name: '保存', exact: true }).click();
       await until((s) => s.materials.find((m) => m.id === materialID)?.notes === notes);
+      // Repository persistence can precede the renderer's baseline reset and beforeunload cleanup.
+      await inspector
+        .getByRole('button', { name: '保存', exact: true })
+        .waitFor({ state: 'hidden' });
       await app.close();
       app = undefined;
       await launch();
@@ -1322,6 +1327,13 @@ try {
   );
   throw error;
 } finally {
+  // Failed assertions must not leave this isolated fixture waiting on a native discard prompt.
+  await app
+    ?.evaluate(({ dialog }) => {
+      dialog.showMessageBoxSync = () => 1;
+      dialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
+    })
+    .catch(() => {});
   await app?.close().catch(() => {});
   await fs.rm(root, { recursive: true, force: true });
 }

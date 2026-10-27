@@ -29,14 +29,20 @@ const tests = [
 if (!process.env.TEACHSHELF_EXECUTABLE)
   tests.push('website-browser.e2e.mjs', 'website-login.e2e.mjs');
 for (const test of tests) {
+  console.log('SUITE', test);
   const code = await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(root, 'tests', test)], {
       cwd: root,
       stdio: 'inherit',
       env: process.env,
+      timeout: 300_000,
+      killSignal: 'SIGKILL',
     });
     child.on('error', reject);
-    child.on('exit', (code) => resolve(code ?? 1));
+    child.on('exit', (code, signal) => {
+      if (signal) console.error(`${test} terminated (${signal}); suite limit is five minutes`);
+      resolve(code ?? 1);
+    });
   });
   if (code !== 0) {
     process.exitCode = Number(code);

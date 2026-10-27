@@ -22,6 +22,7 @@ const helper = executable
 const profiles = new Set();
 let app,
   page,
+  completedPreferenceWrites = 0,
   secureStorageAvailable = true;
 async function normalQuit() {
   const running = app;
@@ -35,6 +36,20 @@ async function normalQuit() {
   app = undefined;
 }
 async function waitRememberComplete(enabled) {
+  // Chromium can report the checkbox's new value before its change event reaches the main process.
+  // Observe completion of the real IPC write; do not infer persistence from checked/disabled alone.
+  const deadline = Date.now() + 15000;
+  let completed = false;
+  while (Date.now() < deadline) {
+    const count = await app.evaluate(() => globalThis.loginPreferenceWrites);
+    if (count > completedPreferenceWrites) {
+      completedPreferenceWrites = count;
+      completed = true;
+      break;
+    }
+    await page.waitForTimeout(20);
+  }
+  assert.equal(completed, true, 'The checkbox must complete a real login preference IPC write');
   await page.waitForFunction((value) => {
     const checkbox = document.querySelector('.website-login input');
     return checkbox && !checkbox.disabled && checkbox.checked === value;
@@ -99,6 +114,21 @@ async function launch() {
   page = await app.firstWindow();
   page.on('pageerror', (e) => errors.push(e.message));
   await page.waitForSelector('.app-body');
+  completedPreferenceWrites = 0;
+  await app.evaluate(({ ipcMain }) => {
+    const channel = 'teachshelf:rememberWebsiteLogin',
+      original = ipcMain._invokeHandlers.get(channel);
+    if (!original) throw new Error('Missing login preference IPC handler');
+    globalThis.loginPreferenceWrites = 0;
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, async (...args) => {
+      try {
+        return await original(...args);
+      } finally {
+        if (typeof args[1] === 'boolean') globalThis.loginPreferenceWrites++;
+      }
+    });
+  });
 }
 async function website() {
   await page
@@ -160,6 +190,7 @@ try {
       false,
     );
     await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).check();
+    await waitRememberComplete(true);
     await page.waitForFunction(() => window.teachshelf.websiteLoginStatus().then((s) => s.enabled));
   });
   await check(
@@ -309,10 +340,7 @@ try {
       }, scopeA);
       await authenticateFromUI(dialog);
       await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).check();
-      await page.waitForFunction(() => {
-        const checkbox = document.querySelector('.website-login input');
-        return checkbox && !checkbox.disabled && checkbox.checked;
-      });
+      await waitRememberComplete(true);
       const status = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
       if (process.platform === 'linux' && status.hasIssue) {
         assert.match(status.status, /basic_text|安全密钥存储/);
