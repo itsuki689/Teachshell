@@ -1074,6 +1074,11 @@ try {
           const value = await window.teachshelf.settings();
           return value.mcp.enabled && value.mcp.port === port;
         }, port);
+        // Wait for both the listening server and the renderer's committed settings baseline.
+        await page
+          .locator('.service-state.enabled')
+          .getByText('服务已启用', { exact: true })
+          .waitFor();
         await page.evaluate(() => window.teachshelf.copyMCPConfiguration('stdio'));
         const copied = await app.evaluate(({ clipboard }) => clipboard.readText());
         const configuration = JSON.parse(copied).mcpServers.teachshelf;
@@ -1192,6 +1197,7 @@ try {
         await page.getByRole('checkbox', { name: '启用 MCP Server', exact: true }).uncheck();
         await page.getByRole('button', { name: '保存 MCP 设置', exact: true }).click();
         await page.waitForFunction(async () => !(await window.teachshelf.settings()).mcp.enabled);
+        await page.locator('.service-state').getByText('服务未启用', { exact: true }).waitFor();
         await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), previousClipboard);
       }
     },
