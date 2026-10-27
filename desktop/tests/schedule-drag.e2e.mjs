@@ -212,6 +212,8 @@ try {
       assert.equal(r.id, prior.id);
       assert.equal(r.originalDate, prior.originalDate);
       const cards = page.locator('.timeline-day[data-day="2026-09-09"] .timeline-event');
+      // The committed IPC snapshot can arrive before Vue renders the two overlapping lanes.
+      await waitCard(occurrenceID, 'lanes', 2);
       assert.equal(await cards.count(), 2);
       assert.deepEqual(
         await cards.evaluateAll((elements) => elements.map((e) => e.dataset.lanes)),
