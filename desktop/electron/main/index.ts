@@ -652,13 +652,54 @@ function installIPC() {
   );
   handle(
     'setTimetableMeetingMonthVisible',
-    z.tuple([schemas.id, schemas.id, z.boolean()]),
-    (id, mid, visible) => repository.setTimetableMeetingMonthVisible(id, mid, visible),
+    z.tuple([schemas.id, schemas.id, z.boolean(), workspaceGuard.optional()]),
+    (id, mid, visible, guard) =>
+      guarded(guard, (repo) => repo.setTimetableMeetingMonthVisible(id, mid, visible)),
   );
   handle(
     'restoreTimetableMove',
     z.tuple([schemas.id, schemas.id, workspaceGuard.optional()]),
     (id, rid, guard) => guarded(guard, (repo) => repo.restoreTimetableMove(id, rid)),
+  );
+  handle(
+    'updateTimetableMeeting',
+    z.tuple([
+      schemas.id,
+      schemas.id,
+      z
+        .object({
+          weekday: z.number().int().min(1).max(7),
+          startSection: z.number().int().min(1).max(30),
+          sectionCount: z.number().int().min(1).max(30),
+          classroom: z.string().max(10000),
+          weeks: z.array(z.number().int().min(1).max(60)).min(1).max(60),
+        })
+        .strict(),
+      workspaceGuard,
+    ]),
+    (id, mid, input, guard) =>
+      guarded(guard, (repo) => repo.updateTimetableMeeting(id, mid, input)),
+  );
+  handle(
+    'setTimetableMeetingColor',
+    z.tuple([
+      schemas.id,
+      schemas.id,
+      z
+        .string()
+        .regex(/^#[0-9a-f]{6}$/i)
+        .nullable(),
+      workspaceGuard,
+    ]),
+    (id, mid, hex, guard) => guarded(guard, (repo) => repo.setTimetableMeetingColor(id, mid, hex)),
+  );
+  handle(
+    'deleteTimetableMeeting',
+    z.tuple([schemas.id, schemas.id, workspaceGuard]),
+    (id, mid, guard) => guarded(guard, (repo) => repo.deleteTimetableMeeting(id, mid)),
+  );
+  handle('undoTimetableChange', z.tuple([workspaceGuard]), (guard) =>
+    guarded(guard, (repo) => repo.undoTimetableChange()),
   );
   handle(
     'setPlanOccurrenceTime',

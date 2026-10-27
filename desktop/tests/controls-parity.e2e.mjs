@@ -179,6 +179,7 @@ try {
       );
       await dialog.getByLabel('计划名称', { exact: true }).fill('下拉真实绑定验证');
       await select('计划类型', '固定计划', dialog);
+      await dialog.getByLabel('安排执行时间', { exact: true }).check();
       await dialog.getByLabel('重复安排', { exact: true }).check();
       await select('重复频率', '每天', dialog);
       await dialog.getByRole('button', { name: '保存', exact: true }).click();

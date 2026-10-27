@@ -14,6 +14,9 @@ const props = defineProps<{
     occurrence?: PlanOccurrence;
     initialDate?: string;
     initialCourseID?: string;
+    initialPreset?: 'unscheduled' | 'linked' | 'empty' | 'allDay';
+    initialStart?: string;
+    initialEnd?: string;
   }>(),
   emit = defineEmits<{ close: [] }>(),
   store = useLibrary();
@@ -40,33 +43,52 @@ function makeForm(task?: StudyTask) {
   const source = task ? readPlan(toRaw(task)) : undefined,
     rule = source?.repeatRule;
   return {
-    title: source?.title ?? '',
+    title: source?.title ?? (props.initialPreset === 'empty' ? '空' : ''),
     content: source?.content ?? '',
-    kind: source?.kind ?? '任务',
+    kind:
+      source?.kind ??
+      (props.initialPreset === 'empty' ? '空' : props.initialPreset === 'linked' ? '作业' : '任务'),
     courseID: source?.courseID ?? props.initialCourseID ?? store.courseID ?? '',
     materialIDs: [...(source?.materialIDs ?? [])],
     startsAt: local(
-      source?.startsAt ?? (props.initialDate ? props.initialDate + 'T09:00:00+08:00' : undefined),
+      source?.startsAt ??
+        props.initialStart ??
+        (props.initialDate
+          ? props.initialDate +
+            (props.initialPreset === 'allDay'
+              ? 'T00:00:00+08:00'
+              : props.initialPreset === 'empty'
+                ? 'T12:00:00+08:00'
+                : 'T09:00:00+08:00')
+          : undefined),
     ),
     endsAt: local(
       source?.endsAt ??
+        props.initialEnd ??
         (source
           ? (dateMs(source.startsAt) - SWIFT_EPOCH_MS) / 1000 + 3600
           : props.initialDate
-            ? props.initialDate + 'T10:00:00+08:00'
+            ? props.initialPreset === 'allDay'
+              ? addPlanDays(props.initialDate + 'T00:00:00+08:00', 1)
+              : props.initialDate +
+                (props.initialPreset === 'empty' ? 'T13:00:00+08:00' : 'T10:00:00+08:00')
             : swiftNow() + 3600),
     ),
-    hasEnd: source?.endsAt != null,
-    hasExecutionTime: source?.hasExecutionTime ?? true,
+    hasEnd: source
+      ? source.endsAt != null
+      : props.initialPreset === 'empty' || props.initialPreset === 'allDay',
+    hasExecutionTime:
+      source?.hasExecutionTime ?? !['unscheduled', 'linked'].includes(props.initialPreset ?? ''),
     hasDeadline: source?.deadline != null,
     deadline: local(source?.deadline),
-    isAllDay: source?.isAllDay ?? false,
+    isAllDay: source?.isAllDay ?? props.initialPreset === 'allDay',
     deadlineIsAllDay: source?.deadlineIsAllDay ?? false,
     showOnCalendar: source?.showOnCalendar ?? true,
     showInMonth: source?.showInMonth ?? true,
     origin: source?.origin ?? 'activity',
     location: source?.location ?? '',
-    completionRequired: source?.completionRequired ?? true,
+    completionRequired:
+      source?.completionRequired ?? (!props.initialPreset || props.initialPreset === 'linked'),
     repeats: !!rule,
     frequency: rule?.frequency ?? 'weekly',
     interval: rule?.interval ?? 1,

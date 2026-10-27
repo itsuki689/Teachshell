@@ -33,6 +33,7 @@ import type {
   TimetableSettingsInput,
   TimetableImportSummary,
   TimetableRescheduleInput,
+  TimetableMeetingInput,
 } from './timetable';
 import type { Course, LibraryState, Material, MaterialFolder, StudyTask } from './model';
 export interface Snapshot {
@@ -43,6 +44,7 @@ export interface Snapshot {
   state: LibraryState;
   revision: string;
   warnings: string[];
+  canUndoTimetable?: boolean;
 }
 export interface WorkspaceGuard {
   root: string;
@@ -211,7 +213,26 @@ export interface DesktopAPI {
     termID: string,
     meetingID: string,
     visible: boolean,
+    guard?: WorkspaceGuard,
   ): Promise<Snapshot>;
+  updateTimetableMeeting(
+    termID: string,
+    meetingID: string,
+    input: TimetableMeetingInput,
+    guard: WorkspaceGuard,
+  ): Promise<Snapshot>;
+  setTimetableMeetingColor(
+    termID: string,
+    meetingID: string,
+    hex: string | null,
+    guard: WorkspaceGuard,
+  ): Promise<Snapshot>;
+  deleteTimetableMeeting(
+    termID: string,
+    meetingID: string,
+    guard: WorkspaceGuard,
+  ): Promise<Snapshot>;
+  undoTimetableChange(guard: WorkspaceGuard): Promise<Snapshot>;
   savePlan(
     input: { id?: string; title: string; [key: string]: unknown },
     scope?: PlanEditScope,

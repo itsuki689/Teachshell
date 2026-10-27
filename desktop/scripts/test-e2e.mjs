@@ -7,6 +7,7 @@ const tests = [
   'website-batch.e2e.mjs',
   'schedule-drag.e2e.mjs',
   'schedule-workspace.e2e.mjs',
+  'schedule-interactions.e2e.mjs',
   'toolbar.e2e.mjs',
   'toolbar-feedback.e2e.mjs',
   'inline-search.e2e.mjs',

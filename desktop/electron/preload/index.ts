@@ -60,8 +60,14 @@ const api: DesktopAPI = {
   restoreTimetableMove: (id, rid, guard) => invoke('restoreTimetableMove', id, rid, guard),
   setPlanOccurrenceTime: (id, original, day, range, guard) =>
     invoke('setPlanOccurrenceTime', id, original, day, range, guard),
-  setTimetableMeetingMonthVisible: (id, mid, visible) =>
-    invoke('setTimetableMeetingMonthVisible', id, mid, visible),
+  setTimetableMeetingMonthVisible: (id, mid, visible, guard) =>
+    invoke('setTimetableMeetingMonthVisible', id, mid, visible, guard),
+  updateTimetableMeeting: (id, mid, input, guard) =>
+    invoke('updateTimetableMeeting', id, mid, input, guard),
+  setTimetableMeetingColor: (id, mid, hex, guard) =>
+    invoke('setTimetableMeetingColor', id, mid, hex, guard),
+  deleteTimetableMeeting: (id, mid, guard) => invoke('deleteTimetableMeeting', id, mid, guard),
+  undoTimetableChange: (guard) => invoke('undoTimetableChange', guard),
   savePlan: (input, scope, originalDate, expectedRevision) =>
     invoke('savePlan', input, scope, originalDate, expectedRevision),
   setPlanStatus: (id, action, scope, date) => invoke('setPlanStatus', id, action, scope, date),

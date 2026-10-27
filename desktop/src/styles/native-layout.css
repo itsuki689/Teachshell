@@ -723,7 +723,11 @@
 .floating-week h3 {
   font-size: 12px;
 }
-.floating-week p {
+.floating-week button {
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  gap: 5px;
   display: grid;
   font-size: 12px;
   margin-top: 12px;

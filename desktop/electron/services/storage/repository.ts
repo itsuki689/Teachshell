@@ -54,11 +54,16 @@ import {
   rescheduleTimetableOccurrence,
   restoreTimetableReschedule,
   setTimetableMonthVisible,
+  updateTimetableMeeting,
+  setTimetableMeetingColor,
+  deleteTimetableMeeting,
+  validateTimetables,
 } from '../course/timetable.ts';
 import type {
   TimetableImportSummary,
   TimetableSettingsInput,
   TimetableRescheduleInput,
+  TimetableMeetingInput,
 } from '../../../shared/timetable.ts';
 import {
   saveAdvancedPlan,
@@ -86,6 +91,13 @@ export class Repository {
   readonly root: string;
   readonly workspaceID = randomUUID();
   private stateValue: LibraryState = emptyLibrary();
+  private timetableUndo?: { before: LibraryState['timetableTerms']; after: string };
+  private canUndoTimetable() {
+    return (
+      !!this.timetableUndo &&
+      this.timetableUndo.after === JSON.stringify(this.stateValue.timetableTerms)
+    );
+  }
   private release?: () => Promise<void>;
   private closing?: Promise<void>;
   private queue: Promise<unknown> = Promise.resolve();
@@ -420,6 +432,7 @@ export class Repository {
       state: this.state,
       revision: digest(JSON.stringify(this.stateValue)),
       warnings: [...this.warnings],
+      canUndoTimetable: this.canUndoTimetable(),
     };
   }
   private serial<T>(action: () => Promise<T>): Promise<T> {
@@ -850,15 +863,24 @@ export class Repository {
     return { snapshot, summary };
   }
   async saveTimetableSettings(termID: string, input: TimetableSettingsInput) {
-    return this.mutate((s) => updateTimetableSettings(s, termID, input));
+    return this.changeTimetable((s) => updateTimetableSettings(s, termID, input));
   }
-  private async changeTimetable(change: (state: LibraryState) => boolean) {
+  private async changeTimetable(change: (state: LibraryState) => boolean | void) {
     return this.serial(async () => {
       await this.synchronize();
       this.mutationGuard.getStore()?.(this.state);
-      const next = this.state;
-      if (!change(next)) return this.snapshot();
-      return this.write(next);
+      const next = this.state,
+        before = structuredClone(next.timetableTerms);
+      if (change(next) === false || JSON.stringify(next.timetableTerms) === JSON.stringify(before))
+        return this.snapshot();
+      const previous = this.timetableUndo;
+      this.timetableUndo = { before, after: JSON.stringify(next.timetableTerms) };
+      try {
+        return await this.write(next);
+      } catch (error) {
+        this.timetableUndo = previous;
+        throw error;
+      }
     });
   }
   async cancelTimetableClass(termID: string, meetingID: string, date: SwiftDate, reason = '') {
@@ -883,7 +905,34 @@ export class Repository {
     return this.changeTimetable((s) => restoreTimetableReschedule(s, termID, rescheduleID));
   }
   async setTimetableMeetingMonthVisible(termID: string, meetingID: string, visible: boolean) {
-    return this.mutate((s) => setTimetableMonthVisible(s, termID, meetingID, visible));
+    return this.changeTimetable((s) => setTimetableMonthVisible(s, termID, meetingID, visible));
+  }
+  async updateTimetableMeeting(termID: string, meetingID: string, input: TimetableMeetingInput) {
+    return this.changeTimetable((s) => updateTimetableMeeting(s, termID, meetingID, input));
+  }
+  async setTimetableMeetingColor(termID: string, meetingID: string, hex: string | null) {
+    return this.changeTimetable((s) => setTimetableMeetingColor(s, termID, meetingID, hex));
+  }
+  async deleteTimetableMeeting(termID: string, meetingID: string) {
+    return this.changeTimetable((s) => deleteTimetableMeeting(s, termID, meetingID));
+  }
+  async undoTimetableChange() {
+    return this.serial(async () => {
+      await this.synchronize();
+      this.mutationGuard.getStore()?.(this.state);
+      if (!this.canUndoTimetable()) throw new Error('课表后来已变化，无法撤销');
+      const record = this.timetableUndo!,
+        next = this.state;
+      next.timetableTerms = structuredClone(record.before);
+      validateTimetables(next);
+      this.timetableUndo = undefined;
+      try {
+        return await this.write(next);
+      } catch (error) {
+        this.timetableUndo = record;
+        throw error;
+      }
+    });
   }
   async savePlan(
     input: Partial<StudyTask>,

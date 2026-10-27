@@ -9,6 +9,7 @@ import {
   shanghaiDay,
   shanghaiWeekday,
   timetableWeek,
+  timetableDate,
   meetingTimeRange,
   isTimetableCancelled,
 } from '../../../shared/timetable.ts';
@@ -19,6 +20,7 @@ import type {
   TimetableCancellation,
   TimetableImportSummary,
   TimetableRescheduleInput,
+  TimetableMeetingInput,
 } from '../../../shared/timetable.ts';
 
 const newID = () => randomUUID().toUpperCase();
@@ -623,4 +625,84 @@ export function setTimetableMonthVisible(
   if (!found) throw new Error('上课时段不存在');
   state.timetableTerms = terms;
   validateTimetables(state);
+}
+
+/** Swift updateTimetableMeeting rebases exception anchors within retained weeks. */
+export function updateTimetableMeeting(
+  state: LibraryState,
+  termID: string,
+  meetingID: string,
+  input: TimetableMeetingInput,
+): void {
+  const allowed = ['weekday', 'startSection', 'sectionCount', 'classroom', 'weeks'];
+  if (
+    Object.keys(object(input, '课程安排无效')).some((key) => !allowed.includes(key)) ||
+    allowed.some((key) => !(key in input))
+  )
+    throw new Error('课程安排字段无效');
+  const { terms, term } = selectedTerm(state, termID),
+    id = canonicalID(meetingID);
+  const index = term.meetings.findIndex((m) => m.id === id);
+  if (index < 0) throw new Error('上课时段不存在');
+  const meeting = { ...term.meetings[index], ...structuredClone(input) };
+  validateMeeting(meeting, term.weekCount, new Set(state.courses.map((c) => c.id)));
+  const rebase = (day: SwiftDate) => {
+    const week = timetableWeek(term, day);
+    return isScheduled(meeting) && week != null && meeting.weeks.includes(week)
+      ? (timetableDate(term, week, meeting.weekday!) ?? day)
+      : day;
+  };
+  for (const move of term.reschedules)
+    if (move.meetingID === id) move.originalDate = rebase(move.originalDate);
+  for (const cancellation of term.cancellations)
+    if (cancellation.meetingID === id) {
+      cancellation.date = rebase(cancellation.date);
+      if (cancellation.savedReschedule)
+        cancellation.savedReschedule.originalDate = cancellation.date;
+    }
+  term.meetings[index] = meeting;
+  validateTimetables({ ...state, timetableTerms: terms });
+  state.timetableTerms = terms;
+}
+export function setTimetableMeetingColor(
+  state: LibraryState,
+  termID: string,
+  meetingID: string,
+  hex: string | null,
+): void {
+  if (hex !== null && (typeof hex !== 'string' || !/^#[0-9a-f]{6}$/i.test(hex)))
+    throw new Error('计划颜色须为六位 HEX 颜色');
+  const { terms, term } = selectedTerm(state, termID),
+    id = canonicalID(meetingID);
+  const meetings = [
+    ...term.meetings.filter((m) => m.id === id),
+    ...term.reschedules.filter((r) => r.meetingID === id).map((r) => r.meeting),
+    ...term.cancellations
+      .filter((c) => c.meetingID === id && c.savedReschedule)
+      .map((c) => c.savedReschedule!.meeting),
+  ];
+  if (!meetings.length) throw new Error('上课时段不存在');
+  for (const meeting of meetings) {
+    if (hex === null) delete meeting.colorHex;
+    else meeting.colorHex = hex.toUpperCase();
+  }
+  validateTimetables({ ...state, timetableTerms: terms });
+  state.timetableTerms = terms;
+}
+export function deleteTimetableMeeting(
+  state: LibraryState,
+  termID: string,
+  meetingID: string,
+): void {
+  const { terms, term } = selectedTerm(state, termID),
+    id = canonicalID(meetingID);
+  if (!term.meetings.some((m) => m.id === id) && !term.reschedules.some((r) => r.meetingID === id))
+    throw new Error('上课时段不存在');
+  term.meetings = term.meetings.filter((m) => m.id !== id);
+  term.reschedules = term.reschedules.filter((r) => r.meetingID !== id);
+  // Swift retains historical cancellations, without a restorable removed slot.
+  for (const cancellation of term.cancellations)
+    if (cancellation.meetingID === id) delete cancellation.savedReschedule;
+  validateTimetables({ ...state, timetableTerms: terms });
+  state.timetableTerms = terms;
 }

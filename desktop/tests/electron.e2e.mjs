@@ -366,6 +366,8 @@ try {
       await page.getByRole('button', { name: '新建计划', exact: true }).first().click();
       const editor = page.getByRole('dialog', { name: '新建计划' });
       await editor.getByLabel('计划名称', { exact: true }).fill('每周复习UI');
+      await editor.getByLabel('安排执行时间', { exact: true }).check();
+      await editor.getByLabel('需要标记完成', { exact: true }).check();
       await editor.getByLabel('开始时间', { exact: false }).fill('2026-10-26T19:00');
       await editor.getByLabel('设置结束时间', { exact: true }).check();
       await editor.getByLabel('结束时间', { exact: true }).fill('2026-10-26T20:00');
@@ -474,6 +476,7 @@ try {
       await page.getByRole('button', { name: '新建计划', exact: true }).click();
       const create = page.getByRole('dialog', { name: '新建计划' });
       await create.getByLabel('计划名称', { exact: true }).fill('仅截止进入月历UI');
+      await create.getByLabel('安排执行时间', { exact: true }).check();
       await create.getByLabel('开始时间', { exact: false }).fill('2026-11-03T14:00');
       await create.getByLabel('执行安排显示在月历', { exact: true }).uncheck();
       await create.getByLabel('设置截止时间', { exact: true }).check();

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, toRaw, watch } from 'vue';
 import {
-  ArrowLeft,
+  List,
+  ChevronDown,
+  Undo2,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
@@ -25,8 +27,10 @@ import { storeToRefs } from 'pinia';
 import TaskEditor from '../components/TaskEditor.vue';
 import PlanMonthCalendar from '../components/PlanMonthCalendar.vue';
 import ScheduleEventRows from '../components/ScheduleEventRows.vue';
+import ScheduleMeetingDetails from '../components/ScheduleMeetingDetails.vue';
 import {
   scheduleEvents,
+  scheduleFreeMeetings,
   scheduleCourses,
   scheduleLoosePlans,
   scheduleWeekDays,
@@ -34,7 +38,14 @@ import {
   shiftScheduleDay,
 } from '../../shared/schedule';
 import type { ScheduleEvent } from '../../shared/schedule';
-const creatingPlan = ref(false),
+const creatingPlan = ref<{
+    preset: 'unscheduled' | 'linked' | 'empty' | 'allDay';
+    day: string;
+    courseID?: string;
+    start?: string;
+    end?: string;
+  }>(),
+  createMenu = ref(false),
   editingOccurrence = ref<PlanOccurrence>();
 import Modal from '../components/Modal.vue';
 import { addPlanDays } from '../../shared/plans';
@@ -166,7 +177,35 @@ const monthEvents = computed(() =>
 );
 const loosePlans = computed(() => scheduleLoosePlans(rawState.value, selection.value));
 const editingTask = ref<import('../../shared/model').StudyTask>();
-const meetingDetails = ref<ScheduleEvent>();
+const meetingDetails = ref<{
+  termID: string;
+  meetingID: string;
+  occurrence?: TimetableOccurrence;
+}>();
+const freeMeetings = computed(() =>
+  scheduleFreeMeetings(ui.day, rawState.value, selection.value, week.value),
+);
+function openMeeting(meetingID: string, occurrence?: TimetableOccurrence, termID = selected.value) {
+  meetingDetails.value = { termID, meetingID, occurrence };
+}
+function meetingChanged(day?: string) {
+  meetingDetails.value = undefined;
+  if (day) ui.day = day;
+}
+function createPlan(
+  preset: 'unscheduled' | 'linked' | 'empty' | 'allDay',
+  day = ui.day,
+  courseID = filters.value.courseID,
+) {
+  createMenu.value = false;
+  meetingDetails.value = undefined;
+  creatingPlan.value = { preset, day, courseID };
+}
+async function undoTimetable() {
+  const expected = guard();
+  if (expected) await store.change(() => api.undoTimetableChange(expected), '已撤销上次课表修改');
+}
+
 const daySections = [
   { id: 'allDay', title: '全天计划' },
   { id: 'deadlines', title: '当天截止' },
@@ -197,24 +236,12 @@ function chooseMonth(event: Event) {
 }
 function openEvent(event: ScheduleEvent) {
   if (event.plan) editingOccurrence.value = event.plan;
-  else meetingDetails.value = event;
+  else if (event.meeting && event.term)
+    openMeeting(event.meeting.meeting.id, event.meeting, event.term.id);
 }
 async function openDay(day: string) {
   ui.day = day;
   await ui.openSchedule('agenda');
-}
-async function toggleMeeting(event: Event) {
-  const entry = meetingDetails.value;
-  if (entry?.term && entry.meeting)
-    await store.change(
-      () =>
-        api.setTimetableMeetingMonthVisible(
-          entry.term!.id,
-          entry.meeting!.meeting.id,
-          (event.target as HTMLInputElement).checked,
-        ),
-      '课程月历显示已更新',
-    );
 }
 const statusOperation = ref<{ event: PlanOccurrence; action: 'complete' | 'reopen' | 'cancel' }>();
 const statusScope = ref<'all' | 'thisOccurrence' | 'thisAndFuture'>('all');
@@ -331,7 +358,7 @@ const timelineDays = computed(() =>
               color:
                 item.meeting.colorHex ??
                 store.state.courses.find((c) => c.id === item.meeting.courseID)?.colorHex ??
-                '#39786B',
+                store.state.accentColor,
               date: item.date,
               range,
               fixed: true,
@@ -359,7 +386,10 @@ const timelineDays = computed(() =>
               id: occurrence.id,
               title: occurrence.task.title,
               location: occurrence.task.location,
-              color: occurrence.task.colorHex ?? '#587EA7',
+              color:
+                occurrence.task.colorHex ??
+                store.state.courses.find((c) => c.id === occurrence.task.courseID)?.colorHex ??
+                store.state.accentColor,
               date: occurrence.date,
               range,
               clipped:
@@ -491,7 +521,78 @@ function dragTarget(event: PointerEvent, state: DragState) {
     timeline.value,
   );
 }
+const creation = ref<{
+  day: string;
+  pointerID: number;
+  x: number;
+  y: number;
+  minute: number;
+  active: boolean;
+  range?: MinuteRange;
+  guard: { root: string; revision: string };
+}>();
+function creationPoint(event: PointerEvent, day: string) {
+  const column = grid.value?.querySelector<HTMLElement>(`[data-day="${day}"]`),
+    viewport = scroll.value;
+  if (!column || !viewport) return;
+  const box = column.getBoundingClientRect(),
+    visible = viewport.getBoundingClientRect();
+  if (
+    event.clientX < box.left ||
+    event.clientX >= box.right ||
+    event.clientY < Math.max(box.top, visible.top) ||
+    event.clientY >= Math.min(box.bottom, visible.bottom)
+  )
+    return;
+  return timeline.value.minute(event.clientY - box.top, 10);
+}
+function startCreation(event: PointerEvent, day: string) {
+  if (
+    event.target !== event.currentTarget ||
+    event.button !== 0 ||
+    store.busy ||
+    !showPlans.value ||
+    drag.value
+  )
+    return;
+  const expected = guard(),
+    minute = creationPoint(event, day);
+  if (!expected || minute == null || minute >= 1440) return;
+  selectedEventID.value = '';
+  creation.value = {
+    day,
+    pointerID: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    minute,
+    active: false,
+    guard: expected,
+  };
+  capture = event.currentTarget as HTMLElement;
+  capture.setPointerCapture(event.pointerId);
+  capture.focus();
+  event.preventDefault();
+}
+function moveCreation(event: PointerEvent) {
+  const current = creation.value;
+  if (!current || event.pointerId !== current.pointerID) return;
+  if (!current.active && Math.hypot(event.clientX - current.x, event.clientY - current.y) < 8)
+    return;
+  current.active = true;
+  const minute = creationPoint(event, current.day);
+  current.range =
+    minute == null
+      ? undefined
+      : {
+          start: Math.min(current.minute, minute),
+          end: Math.min(1440, Math.max(current.minute, minute) + 10),
+        };
+}
 function movePointer(event: PointerEvent) {
+  if (creation.value) {
+    moveCreation(event);
+    return;
+  }
   const state = drag.value;
   if (!state || event.pointerId !== state.pointerID) return;
   if (
@@ -506,6 +607,10 @@ function movePointer(event: PointerEvent) {
   event.preventDefault();
 }
 function clearDrag() {
+  const pending = creation.value;
+  creation.value = undefined;
+  if (pending && capture?.hasPointerCapture(pending.pointerID))
+    capture.releasePointerCapture(pending.pointerID);
   const state = drag.value;
   drag.value = undefined;
   if (state?.active) suppressClickUntil = Date.now() + 200;
@@ -514,6 +619,24 @@ function clearDrag() {
   capture = undefined;
 }
 async function endPointer(event: PointerEvent) {
+  if (creation.value) {
+    if (event.pointerId !== creation.value.pointerID) return;
+    moveCreation(event);
+    const pending = creation.value;
+    clearDrag();
+    if (
+      pending.active &&
+      pending.range &&
+      guardCurrent(pending.guard) &&
+      validMinuteRange(pending.range)
+    ) {
+      ui.day = pending.day;
+      createPlan('empty', pending.day);
+      creatingPlan.value!.start = pending.day + 'T' + clock(pending.range.start) + ':00+08:00';
+      creatingPlan.value!.end = pending.day + 'T' + clock(pending.range.end) + ':00+08:00';
+    }
+    return;
+  }
   const state = drag.value;
   if (!state || event.pointerId !== state.pointerID) return;
   const target = state.active ? dragTarget(event, state) : undefined;
@@ -631,7 +754,7 @@ function resizeStyle(
   };
 }
 function cancelKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && drag.value) {
+  if (event.key === 'Escape' && (drag.value || creation.value)) {
     event.preventDefault();
     clearDrag();
   } else if (chosen.value) void timeKey(event, chosen.value);
@@ -663,7 +786,7 @@ watch(fixedEditing, () => {
 watch(
   () => store.snapshot?.revision,
   (next, previous) => {
-    if (next !== previous && drag.value) {
+    if (next !== previous && (drag.value || creation.value)) {
       store.status = '资料库已变化，已取消这次拖动';
       clearDrag();
     }
@@ -770,7 +893,7 @@ async function setMonthVisible(item: TimetableOccurrence, event: Event) {
   if (!term.value) return;
   const visible = (event.target as HTMLInputElement).checked;
   await store.change(
-    () => api.setTimetableMeetingMonthVisible(term.value!.id, item.meeting.id, visible),
+    () => api.setTimetableMeetingMonthVisible(term.value!.id, item.meeting.id, visible, guard()),
     visible ? '该课程时段已加入月历' : '该课程时段已移出月历',
   );
 }
@@ -837,7 +960,7 @@ async function saveMove() {
     '本次课程已调整',
   );
   if (value) {
-    week.value = timetableWeek(t, moveForm.date + 'T00:00:00+08:00') ?? week.value;
+    ui.day = moveForm.date;
     moving.value = null;
   }
 }
@@ -862,7 +985,7 @@ async function restoreMove(id: string) {
       () => api.restoreTimetableMove(t.id, id, expected),
       '本次调课已还原',
     );
-    if (value) week.value = timetableWeek(t, move.originalDate) ?? week.value;
+    if (value) ui.day = shanghaiDayKey(move.originalDate);
   }
 }
 function time(item: TimetableOccurrence) {
@@ -890,7 +1013,7 @@ function time(item: TimetableOccurrence) {
                 store.navigate('plans');
               "
             >
-              <ArrowLeft :size="15" /></button
+              <List :size="15" /></button
             ><button title="网站读取" aria-label="网站读取" @click="emit('website')">
               <Globe :size="15" /></button
             ><button
@@ -997,7 +1120,9 @@ function time(item: TimetableOccurrence) {
                     :aria-label="'月历显示 ' + chosen.title"
                   />月历显示</label
                 >
-                <button @click="openMove(chosen.course)" :disabled="!!store.busy">调整本次</button>
+                <button @click="openMeeting(chosen.course.meeting.id, chosen.course)">
+                  课程详情</button
+                ><button @click="openMove(chosen.course)" :disabled="!!store.busy">调整本次</button>
                 <button @click="cancel(chosen.course)" :disabled="!!store.busy">取消本次</button>
                 <button
                   v-if="chosen.course.rescheduleID"
@@ -1029,6 +1154,14 @@ function time(item: TimetableOccurrence) {
         <p v-if="scheduleMode === 'month'" class="schedule-notice">
           默认显示 DDL，其他安排可在详情中加入月历。
         </p>
+        <button
+          v-if="store.snapshot?.canUndoTimetable"
+          class="undo-timetable"
+          :disabled="!!store.busy"
+          @click="undoTimetable"
+        >
+          <Undo2 :size="14" />撤销上次课表修改
+        </button>
         <div class="selected-day-plans" role="complementary" aria-label="选中日期安排">
           <strong>{{ selectedLabel }}</strong>
           <span class="muted small">{{ selectedEvents.length }} 项安排</span>
@@ -1036,11 +1169,26 @@ function time(item: TimetableOccurrence) {
             :events="selectedEvents"
             compact
             :month="scheduleMode === 'month'"
+            :busy="!!store.busy"
+            @status="eventStatus"
             @open="openEvent"
           />
           <p v-if="!selectedEvents.length" class="muted small">
             {{ scheduleMode === 'month' ? '这一天没有月历条目。' : '这一天没有安排。' }}
           </p>
+          <template v-if="freeMeetings.length"
+            ><h3>未定时课程</h3>
+            <button
+              v-for="meeting in freeMeetings"
+              :key="meeting.id"
+              class="loose-plan"
+              :aria-label="'查看未定时课程 ' + meeting.title"
+              @click="openMeeting(meeting.id)"
+            >
+              <strong>{{ meeting.title }}</strong
+              ><small>{{ meeting.teacher }} · 自由时间</small>
+            </button></template
+          >
           <template v-if="loosePlans.length"
             ><h3>{{ filters.filter === 'active' ? '待安排' : '筛选计划' }}</h3>
             <button
@@ -1058,15 +1206,35 @@ function time(item: TimetableOccurrence) {
         </div>
       </div>
       <footer class="schedule-create">
-        <button aria-label="新建计划" @click="creatingPlan = true">＋ 新建计划</button>
+        <button aria-label="新建计划" @click="createPlan('unscheduled')">＋ 新建计划</button>
+        <div class="create-options" @keydown.esc.stop="createMenu = false">
+          <button
+            class="icon-button"
+            aria-label="更多新建计划方式"
+            :aria-expanded="createMenu"
+            aria-haspopup="menu"
+            @click="createMenu = !createMenu"
+          >
+            <ChevronDown :size="16" /></button
+          ><template v-if="createMenu"
+            ><div class="create-dismiss" @click="createMenu = false" />
+            <div class="create-menu" role="menu">
+              <button role="menuitem" @click="createPlan('empty')">新建“空”</button
+              ><button role="menuitem" @click="createPlan('allDay')">添加全天安排</button>
+            </div></template
+          >
+        </div>
       </footer>
     </aside>
     <TaskEditor v-if="editingTask" :task="editingTask" @close="editingTask = undefined" />
     <TaskEditor
       v-if="creatingPlan"
-      :initial-date="ui.day"
-      :initial-course-i-d="filters.courseID"
-      @close="creatingPlan = false"
+      :initial-date="creatingPlan.day"
+      :initial-course-i-d="creatingPlan.courseID"
+      :initial-preset="creatingPlan.preset"
+      :initial-start="creatingPlan.start"
+      :initial-end="creatingPlan.end"
+      @close="creatingPlan = undefined"
     />
     <TaskEditor
       v-if="editingOccurrence"
@@ -1183,13 +1351,15 @@ function time(item: TimetableOccurrence) {
           <div class="floating-week">
             <section v-for="n in 7" :key="n">
               <h3>{{ ['周一', '周二', '周三', '周四', '周五', '周六', '周日'][n - 1] }}</h3>
-              <p
+              <button
                 v-for="meeting in floatingMeetings.filter((m) => m.weekday === n)"
                 :key="meeting.id"
+                :aria-label="'查看未关联日期课程 ' + meeting.title"
+                @click="openMeeting(meeting.id)"
               >
                 {{ meeting.title
                 }}<small>第 {{ meeting.startSection }} 节 · {{ meeting.classroom }}</small>
-              </p>
+              </button>
             </section>
           </div>
         </div>
@@ -1257,7 +1427,27 @@ function time(item: TimetableOccurrence) {
                   class="timeline-day"
                   :class="{ outside: day.day === undefined }"
                   :data-day="day.key"
+                  tabindex="0"
+                  role="group"
+                  :aria-label="day.key + ' 时间网格，拖动空白处新建安排'"
+                  @pointerdown="startCreation($event, day.key)"
+                  @lostpointercapture="clearDrag"
+                  @keydown.enter.self.prevent="createPlan('empty', day.key)"
                 >
+                  <div
+                    v-if="creation?.day === day.key && creation.active && creation.range"
+                    class="creation-preview"
+                    :style="{
+                      top: timeline.y(creation.range.start) + 'px',
+                      height:
+                        Math.max(
+                          16,
+                          timeline.y(creation.range.end) - timeline.y(creation.range.start),
+                        ) + 'px',
+                    }"
+                  >
+                    空 · {{ clock(creation.range.start) }}–{{ clock(creation.range.end) }}
+                  </div>
                   <div
                     v-for="minute in timeline.gridMinutes"
                     :key="minute"
@@ -1301,7 +1491,9 @@ function time(item: TimetableOccurrence) {
                       @pointerdown="startDrag($event, item)"
                       @click="chooseEvent(item)"
                       @dblclick="
-                        item.course ? openMove(item.course) : (editingOccurrence = item.plan)
+                        item.course
+                          ? openMeeting(item.course.meeting.id, item.course)
+                          : (editingOccurrence = item.plan)
                       "
                       @lostpointercapture="clearDrag"
                     >
@@ -1382,7 +1574,7 @@ function time(item: TimetableOccurrence) {
                 '--event-color':
                   item.meeting.colorHex ??
                   store.state.courses.find((c) => c.id === item.meeting.courseID)?.colorHex ??
-                  '#39786B',
+                  store.state.accentColor,
               }"
             >
               <small>{{ time(item) }}</small
@@ -1400,7 +1592,9 @@ function time(item: TimetableOccurrence) {
                 />月历显示</label
               >
               <div class="timetable-event-actions">
-                <button class="small-button" @click="openMove(item)">调整本次</button
+                <button class="small-button" @click="openMeeting(item.meeting.id, item)">
+                  课程详情</button
+                ><button class="small-button" @click="openMove(item)">调整本次</button
                 ><button class="small-button" @click="cancel(item)">取消本次</button
                 ><button
                   v-if="item.rescheduleID"
@@ -1427,9 +1621,13 @@ function time(item: TimetableOccurrence) {
             </div></template
           ><template v-if="term.meetings.some((m) => !isScheduled(m))"
             ><h3>待安排</h3>
-            <p v-for="m in term.meetings.filter((m) => !isScheduled(m))" :key="m.id">
+            <button
+              v-for="m in term.meetings.filter((m) => !isScheduled(m))"
+              :key="m.id"
+              @click="openMeeting(m.id)"
+            >
               {{ m.title }} · {{ m.teacher }} <span class="muted">{{ m.note }}</span>
-            </p></template
+            </button></template
           ><template v-if="term.cancellations.length"
             ><h3>停课记录</h3>
             <div v-for="c in term.cancellations" :key="c.id" class="cancel-row">
@@ -1454,42 +1652,24 @@ function time(item: TimetableOccurrence) {
       <p>导入原版资料库中的课表，或读取学校网站和本科课表 JSON。</p>
       <button class="primary" @click="importJSON">导入课表 JSON</button>
     </div>
-    <Modal
+    <ScheduleMeetingDetails
       v-if="meetingDetails"
+      :term-i-d="meetingDetails.termID"
+      :meeting-i-d="meetingDetails.meetingID"
+      :occurrence="meetingDetails.occurrence"
+      :selected-date="ui.day"
       :title="scheduleMode === 'month' ? '月历课程' : '课程详情'"
       @close="meetingDetails = undefined"
-      ><div class="form-stack">
-        <h3>{{ meetingDetails.title }}</h3>
-        <p>{{ ui.day }} · {{ meetingDetails.time }}</p>
-        <p>{{ meetingDetails.location }} · {{ meetingDetails.meeting?.meeting.teacher }}</p>
-        <p class="muted">{{ meetingDetails.term?.name }}</p>
-        <label class="check-label"
-          ><input
-            type="checkbox"
-            :checked="
-              terms
-                .find((t) => t.id === meetingDetails!.term?.id)
-                ?.meetings.find((m) => m.id === meetingDetails!.meeting?.meeting.id)?.showInMonth ??
-              false
-            "
-            :disabled="!!store.busy"
-            @change="toggleMeeting"
-          />此时段显示在月历</label
-        >
-        <div class="dialog-actions">
-          <button @click="meetingDetails = undefined">关闭</button
-          ><button
-            @click="
-              selected = meetingDetails!.term!.id;
-              meetingDetails = undefined;
-              ui.openSchedule('week');
-            "
-          >
-            打开课表
-          </button>
-        </div>
-      </div></Modal
-    >
+      @changed="meetingChanged"
+      @linked-plan="(id, day) => createPlan('linked', day, id)"
+      @open-week="
+        (id) => {
+          selected = id;
+          meetingDetails = undefined;
+          ui.openSchedule('week');
+        }
+      "
+    />
     <Modal v-if="statusOperation" :title="statusTitle" @close="statusOperation = undefined"
       ><div class="form-stack">
         <p>{{ statusOperation.event.task.title }}</p>
@@ -1949,5 +2129,67 @@ function time(item: TimetableOccurrence) {
 }
 .empty-state.compact {
   min-height: 260px;
+}
+
+.undo-timetable {
+  margin: 0 12px 10px;
+  width: calc(100% - 24px);
+  font-size: 11px;
+}
+.schedule-create {
+  display: flex;
+  gap: 4px;
+}
+.schedule-create > button {
+  flex: 1;
+  min-width: 0;
+}
+.create-options {
+  position: relative;
+}
+.create-options > button {
+  height: 100%;
+}
+.create-dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+.create-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 31;
+  min-width: 170px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px #0002;
+}
+.create-menu button {
+  border-radius: 5px;
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.timeline-day {
+  touch-action: none;
+}
+.creation-preview {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  pointer-events: none;
+  z-index: 5;
+  border: 1px dashed var(--accent);
+  background: var(--selection);
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 4px;
+  overflow: hidden;
 }
 </style>

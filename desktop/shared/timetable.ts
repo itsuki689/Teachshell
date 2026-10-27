@@ -74,6 +74,13 @@ export interface TimetableImportSummary {
   coursesCreated: number;
   meetingsImported: number;
 }
+export interface TimetableMeetingInput {
+  weekday: number;
+  startSection: number;
+  sectionCount: number;
+  classroom: string;
+  weeks: number[];
+}
 export interface TimetableRescheduleInput {
   date: SwiftDate;
   startSection: number;

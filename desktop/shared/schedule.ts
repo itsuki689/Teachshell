@@ -2,7 +2,13 @@ import { dateMs } from './model.ts';
 import type { Course, LibraryState, StudyTask } from './model.ts';
 import { planEvents, planSnapshot, readPlan } from './plans.ts';
 import type { PlanOccurrence } from './plans.ts';
-import { meetingTimeRange, shanghaiDay, timetableOccurrences } from './timetable.ts';
+import {
+  meetingTimeRange,
+  shanghaiDay,
+  timetableOccurrences,
+  isScheduled,
+  timetableWeek,
+} from './timetable.ts';
 import type { TimetableOccurrence, TimetableTerm } from './timetable.ts';
 export type ScheduleMode = 'month' | 'week' | 'agenda';
 export type ScheduleFilter = 'active' | 'unscheduled' | 'pending' | 'completed' | 'cancelled';
@@ -209,5 +215,33 @@ export function scheduleEvents(
     }
   return result.sort(
     (a, b) => Number(b.allDay) - Number(a.allDay) || a.date - b.date || a.id.localeCompare(b.id),
+  );
+}
+
+/** Undated courses remain inspectable; never fabricate an occurrence date. */
+export function scheduleFreeMeetings(
+  day: string,
+  state: LibraryState,
+  selection: ScheduleSelection,
+  virtualWeek = 1,
+) {
+  const term = (state.timetableTerms as unknown as TimetableTerm[]).find(
+    (t) => t.id === selection.termID,
+  );
+  if (!term || !selection.showsFixed || selection.filter !== 'active') return [];
+  const week =
+    term.weekOneMonday == null ? virtualWeek : timetableWeek(term, day + 'T00:00:00+08:00');
+  const words = selection.query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  return term.meetings.filter(
+    (m) =>
+      !isScheduled(m) &&
+      (!selection.courseID || m.courseID === selection.courseID) &&
+      (!m.weeks.length || (week != null && m.weeks.includes(week))) &&
+      words.every((word) =>
+        [m.title, m.teacher, m.classroom, m.note, m.courseCode]
+          .join(' ')
+          .toLocaleLowerCase()
+          .includes(word),
+      ),
   );
 }

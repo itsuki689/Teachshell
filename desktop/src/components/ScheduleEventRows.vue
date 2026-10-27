@@ -43,11 +43,19 @@ const emit = defineEmits<{
         ></span
       >
     </button>
-    <div v-if="!compact && event.plan" class="schedule-event-actions">
+    <div v-if="event.plan" class="schedule-event-actions">
       <button
         v-if="event.plan.task.completionRequired !== false"
         class="icon-button"
-        :aria-label="(event.completed ? '恢复待完成 ' : '完成计划 ') + event.title"
+        :aria-label="
+          (compact
+            ? event.completed
+              ? '恢复此项 '
+              : '完成此项 '
+            : event.completed
+              ? '恢复待完成 '
+              : '完成计划 ') + event.title
+        "
         :title="event.completed ? '恢复待完成' : '完成计划'"
         :disabled="busy"
         @click="emit('status', event, event.completed ? 'reopen' : 'complete')"
@@ -55,6 +63,7 @@ const emit = defineEmits<{
         <RotateCcw v-if="event.completed" :size="15" /><Check v-else :size="15" />
       </button>
       <button
+        v-if="!compact"
         class="icon-button"
         :aria-label="'取消计划 ' + event.title"
         title="取消计划"

@@ -268,6 +268,7 @@ try {
       await b('新建计划').click();
       const editor = page.getByRole('dialog', { name: '新建计划', exact: true });
       assert.equal(await editor.getByLabel('课程', { exact: true }).inputValue(), courseID);
+      await editor.getByLabel('安排执行时间', { exact: true }).check();
       assert.match(
         await editor.getByLabel('开始时间', { exact: false }).inputValue(),
         /^2027-02-27/,

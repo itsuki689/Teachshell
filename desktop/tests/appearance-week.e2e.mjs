@@ -108,6 +108,7 @@ try {
       await page.getByLabel('选择日期 2026-10-27', { exact: true }).click();
       await button('新建计划').click();
       const dialog = page.getByRole('dialog', { name: '新建计划', exact: true });
+      await dialog.getByLabel('安排执行时间', { exact: true }).check();
       await dialog.getByLabel('计划名称', { exact: true }).fill('离线周计划');
       assert.match(await dialog.getByLabel(/开始时间/).inputValue(), /^2026-10-27T09:00/);
       await dialog.getByRole('button', { name: '保存', exact: true }).click();
