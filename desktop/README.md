@@ -141,6 +141,7 @@ macOS helper 与主机构架匹配，打包前验证架构；Intel 与 Apple Sil
 本地构建命令：
 
 ```sh
+npm run release:mac -- --installers --windows # Mac：从同一提交构建/验证两平台，并备份更新本机
 npm run package:mac
 npm run verify:release -- darwin arm64 # Intel Mac 使用 x64
 npm run package:win

@@ -50,7 +50,6 @@ async function inspect(directory) {
     'dist/index.html',
     'dist-electron/main.cjs',
     'dist-electron/preload.cjs',
-    'dist-electron/mcp-stdio.cjs',
   ])
     assert.equal(digest(asar.extractFile(archive, name)), await hash(name), name);
   const rendererFiles = files.filter((n) => /^dist\/assets\/.*\.(?:js|css)$/.test(n));

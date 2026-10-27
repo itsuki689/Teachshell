@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:
-      TEACHSHELF_SCREENSHOT_DIR: ${{ runner.temp }}/release-evidence
+      TEACHSHELF_SCREENSHOT_DIR: ${{ github.workspace }}/desktop/test-results/release-evidence
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     defaults:
       run:
@@ -74,7 +74,7 @@ jobs:
         if: always()
         with:
           name: release-tests-${{ matrix.platform }}-${{ matrix.arch }}
-          path: ${{ runner.temp }}/release-evidence/
+          path: ${{ github.workspace }}/desktop/test-results/release-evidence/
           if-no-files-found: warn
   publish:
     needs: build

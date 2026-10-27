@@ -1,6 +1,7 @@
 name: Cross-platform desktop
 on:
   push:
+    branches: ["**"]
     paths: ["desktop/**", ".github/workflows/desktop.yml"]
   pull_request:
     paths: ["desktop/**", ".github/workflows/desktop.yml"]
@@ -15,7 +16,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     env:
-      TEACHSHELF_SCREENSHOT_DIR: ${{ runner.temp }}/teachshelf-e2e
+      TEACHSHELF_SCREENSHOT_DIR: ${{ github.workspace }}/desktop/test-results/teachshelf-e2e
     defaults:
       run:
         working-directory: desktop
@@ -60,5 +61,5 @@ jobs:
         if: always()
         with:
           name: teachshelf-tests-${{ matrix.os }}
-          path: ${{ runner.temp }}/teachshelf-e2e/
+          path: ${{ github.workspace }}/desktop/test-results/teachshelf-e2e/
           if-no-files-found: warn

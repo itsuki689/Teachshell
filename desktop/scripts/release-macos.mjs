@@ -9,6 +9,13 @@ const exec = promisify(execFile),
   desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
   repo = path.dirname(desktop);
 if (process.platform !== 'darwin') throw new Error('This release command targets macOS');
+const installers = process.argv.includes('--installers');
+const windows = process.argv.includes('--windows');
+if (
+  process.argv.slice(2).some((arg) => !['--installers', '--windows'].includes(arg)) ||
+  (windows && !installers)
+)
+  throw new Error('Use --installers [--windows] to build distribution packages');
 const commit = (await exec('git', ['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim();
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'teachshell-release-'));
 const output = path.join(desktop, 'release'),
@@ -41,12 +48,14 @@ try {
   );
   await exec('/usr/bin/tar', ['-xf', path.join(temporary, 'source.tar'), '-C', temporary]);
   await fs.symlink(path.join(desktop, 'node_modules'), path.join(snapshot, 'node_modules'), 'dir');
+  await fs.mkdir(output, { recursive: true });
+  await fs.symlink(output, path.join(snapshot, 'release'), 'dir');
   console.log('Building committed Release ' + commit);
   await run('npm', ['run', 'build']);
   await run(process.execPath, [
     path.join(desktop, 'node_modules/electron-builder/out/cli/cli.js'),
     '--mac',
-    '--dir',
+    ...(installers ? [] : ['--dir']),
     '--' + process.arch,
     '--publish',
     'never',
@@ -70,6 +79,35 @@ try {
   );
   if (release.commit !== commit || release.version !== metadata.version)
     throw new Error('Release metadata does not match the committed build');
+  if (installers) {
+    await run(process.execPath, [
+      path.join(snapshot, 'scripts/verify-release.mjs'),
+      'darwin',
+      process.arch,
+    ]);
+    if (windows) {
+      await run(process.execPath, [
+        path.join(desktop, 'node_modules/electron-builder/out/cli/cli.js'),
+        '--win',
+        '--x64',
+        '--publish',
+        'never',
+        '--config.directories.output=' + output,
+      ]);
+      await run(process.execPath, [
+        path.join(snapshot, 'scripts/verify-release.mjs'),
+        'win32',
+        'x64',
+      ]);
+    }
+    await run(process.execPath, [path.join(snapshot, 'scripts/test-release.mjs')], {
+      env: {
+        ...process.env,
+        TEACHSHELL_BUILD_COMMIT: commit,
+        TEACHSHELF_SCREENSHOT_DIR: path.join(output, 'qa-release-' + commit.slice(0, 7)),
+      },
+    });
+  }
   await run(process.execPath, [path.join(desktop, 'scripts/install-macos.mjs'), built], {
     cwd: desktop,
   });
