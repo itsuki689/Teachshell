@@ -22,10 +22,6 @@ jobs:
             platform: darwin
             arch: arm64
             target: mac
-          - os: macos-15-intel
-            platform: darwin
-            arch: x64
-            target: mac
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:

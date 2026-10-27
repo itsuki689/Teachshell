@@ -1,6 +1,6 @@
 {
   "name": "teachshelf-desktop",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "private": true,
   "type": "module",
   "description": "课屿跨平台课程资料管理",
@@ -22,7 +22,7 @@
     "test:packaged": "node scripts/test-packaged.mjs",
     "release:mac": "node scripts/release-macos.mjs",
     "install:mac": "node scripts/install-macos.mjs",
-    "package:mac": "npm run build && electron-builder --mac --publish never",
+    "package:mac": "npm run build && electron-builder --mac --arm64 --publish never",
     "package:win": "npm run build && electron-builder --win --x64 --publish never",
     "verify:release": "node scripts/verify-release.mjs"
   },
@@ -64,8 +64,18 @@
     "mac": {
       "category": "public.app-category.education",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
       ],
       "identity": "-",
       "icon": "build-assets/icon.icns",

@@ -70,14 +70,13 @@ async function inspect(directory) {
   if (mac) {
     assert.equal(process.platform, 'darwin', 'Verify Mac archives on a Mac');
     run('/usr/bin/codesign', ['--verify', '--deep', '--strict', directory]);
-    const expectedArch = arch === 'x64' ? 'x86_64' : 'arm64';
     for (const file of [
       'Contents/MacOS/Teachshell',
       'Contents/Resources/teaching-session-keychain',
     ]) {
       assert.equal(
         run('/usr/bin/xcrun', ['lipo', '-archs', path.join(directory, file)]).trim(),
-        expectedArch,
+        'arm64',
       );
       run('/usr/bin/codesign', ['--verify', '--strict', path.join(directory, file)]);
     }

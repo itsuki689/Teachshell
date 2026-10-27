@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import {
   expectedReleaseFiles,
   mergeReleaseManifests,
@@ -19,9 +20,28 @@ const manifests = () =>
       sha256: 'b'.repeat(64),
     })),
   }));
-test('release has distinct Windows x64, Mac ARM and Intel assets', () => {
+test('release contains only Windows x64 and Apple Silicon Mac installers', () => {
   const merged = mergeReleaseManifests(manifests(), version, commit);
-  assert.equal(new Set(merged.targets.flatMap((t) => t.artifacts.map((a) => a.name))).size, 5);
+  assert.deepEqual(merged.targets.flatMap((t) => t.artifacts.map((a) => a.name)).sort(), [
+    'Teachshell-0.3.8-mac-arm64.dmg',
+    'Teachshell-0.3.8-mac-arm64.zip',
+    'Teachshell-0.3.8-win-x64.exe',
+  ]);
+  assert.throws(() => expectedReleaseFiles(version, 'darwin', 'x64'), /Unsupported release target/);
+  const intel = manifests();
+  intel[0].arch = 'x64';
+  assert.throws(() => mergeReleaseManifests(intel, version, commit), /Unsupported release target/);
+});
+test('macOS packaging rejects Intel and universal targets before accessing the helper', async () => {
+  const require = createRequire(import.meta.url);
+  const beforePack = require('../scripts/before-pack.cjs');
+  const { Arch } = require('builder-util');
+  for (const arch of [Arch.x64, Arch.universal])
+    await assert.rejects(
+      () => beforePack({ electronPlatformName: 'darwin', arch }),
+      /Apple Silicon/,
+    );
+  await beforePack({ electronPlatformName: 'win32', arch: Arch.x64 });
 });
 test('publication refuses missing, duplicated, stale or unverified targets', () => {
   assert.throws(() => mergeReleaseManifests(manifests().slice(1), version, commit));

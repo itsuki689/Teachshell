@@ -4,9 +4,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 await fs.mkdir('dist-electron', { recursive: true });
-// Ship the host architecture's Keychain bridge. Build Mac releases on the matching
-// architecture; end users need no Swift toolchain. Do not bypass runtime link checks.
+// Ship an ARM64 Keychain bridge for supported Apple Silicon Macs.
+// End users need no Swift toolchain. Do not bypass runtime link checks.
 if (process.platform === 'darwin') {
+  if (process.arch !== 'arm64')
+    throw new Error(
+      'macOS builds require Apple Silicon and arm64 Node.js; Intel Mac is no longer supported.',
+    );
   const nativeBuild = await fs.mkdtemp(path.join(os.tmpdir(), 'teachshell-keychain-build-'));
   try {
     execFileSync(
@@ -17,7 +21,7 @@ if (process.platform === 'darwin') {
         '5',
         '-O',
         '-target',
-        (process.arch === 'arm64' ? 'arm64' : 'x86_64') + '-apple-macos12.0',
+        'arm64-apple-macos12.0',
         '-module-cache-path',
         path.join(nativeBuild, 'cache'),
         'electron/services/website/native/TeachingSessionKeychain.swift',

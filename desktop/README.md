@@ -2,7 +2,7 @@
 
 本工程属于独立的 Teachshell Git 仓库，主目录为 `desktop/`。原生 Teachshelf 仅作只读参考；两者不共享 worktree、Git 对象库或远程配置。仓库内保留的 Swift 实现用于对照与兼容性验证。
 
-Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.9。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
+Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.10。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
 
 0.3.3 对照 Swift 同步计划默认周视图、无课表本地周计划、强调色编辑和十条色带明暗动效。外观设置随资料库保存；十二色预设、取消恢复、课程色边框、日夜开关、减少动态效果及切库同步见[周视图与外观验收](../docs/electron/appearance-week-parity.md)。
 
@@ -20,7 +20,7 @@ Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0
 
 ## 开发
 
-需要 Node.js 24 和 npm；macOS 构建还需要 Apple Command Line Tools 编译随包附带的 Keychain helper。首次安装需要联网；安装后本地资料管理完全离线。
+需要 Node.js 24 和 npm；macOS 仅支持 Apple Silicon（M 系列），构建需使用 ARM64 Node.js 和 Apple Command Line Tools 编译随包附带的 Keychain helper。首次安装需要联网；安装后本地资料管理完全离线。
 
 ```sh
 cd desktop
@@ -124,7 +124,7 @@ npm run test:packaged
 
 每次修改并通过相关编译和测试后，自动本地提交，再运行 `npm run release:mac`，无需重复确认。该命令从当前 Git 提交创建临时快照、构建 Release `.app`、验证签名和内嵌 commit/version；正常退出 `/Applications/Teachshell.app`，保留旧 bundle 于 `/Applications/.Teachshell-backups/`，替换后注册 LaunchServices、打开并核对进程路径及应用摘要。日常更新不生成 DMG/ZIP 等分发安装包，除非用户要求。未保存退出被取消时停止替换，不强制结束进程；安装失败恢复旧 bundle。`release/installed-macos.json` 保存安装回执。`npm run install:mac` 可只安装已构建且签名有效的应用。原 `/Applications/课屿.app` 和用户资料库保留。
 
-macOS helper 与主机构架匹配，打包前验证架构；Intel 与 Apple Silicon 应分别在对应主机构建。本地构建为 ad-hoc 签名；没有开发者证书和公证凭据，正式分发仍需 Apple Developer 签名/公证及 Windows 代码签名。自动流程不推送、不对外发布。设置页显示版本、源提交和当前执行路径，可核对是否运行新版。
+macOS helper 和应用均为 ARM64，打包前验证架构；从 0.3.10 起不再支持 Intel Mac，Intel 和 Universal 打包目标会被拒绝。本地构建为 ad-hoc 签名；没有开发者证书和公证凭据，正式分发仍需 Apple Developer 签名/公证及 Windows 代码签名。自动流程不推送、不对外发布。设置页显示版本、源提交和当前执行路径，可核对是否运行新版。
 
 ## 当前边界
 
@@ -138,19 +138,19 @@ macOS helper 与主机构架匹配，打包前验证架构；Intel 与 Apple Sil
 
 发布流程位于 `.github/workflows/release.yml`。在用户明确要求发布时，先更新 `package.json` / `package-lock.json` 版本和 `release-notes/<版本>.md`，验证并提交后推送同版本 `v<版本>` 标签。标签版本必须与包版本一致。
 
-流程分别在 Windows x64、macOS ARM64、macOS Intel 原生 runner 上测试、编译和打包，解开安装包验证代码、源提交及架构，再对打包应用运行月周日和课程交互测试。只有三个目标全部通过，才上传完整资产并将草稿转为公开 Release；已公开版本不会被覆盖。附件含五个安装包（Windows EXE、两种 Mac 架构的 DMG/ZIP）、SHA256SUMS 和 manifest。
+流程分别在 Windows x64、macOS ARM64 原生 runner 上测试、编译和打包，解开安装包验证代码、源提交及架构，再对打包应用运行月周日和课程交互测试。只有两个目标全部通过，才上传完整资产并将草稿转为公开 Release；已公开版本不会被覆盖。附件含三个安装包（Windows x64 EXE、macOS ARM64 DMG/ZIP）、SHA256SUMS 和 manifest。
 
 本地构建命令：
 
 ```sh
 npm run release:mac -- --installers --windows # Mac：从同一提交构建/验证两平台，并备份更新本机
 npm run package:mac
-npm run verify:release -- darwin arm64 # Intel Mac 使用 x64
+npm run verify:release -- darwin arm64 # 仅支持 Apple Silicon
 npm run package:win
 npm run verify:release -- win32 x64
 ```
 
-Windows 安装包可在 Mac 交叉构建并解包校验，但实际 Windows 运行验收由 Windows runner 完成。Mac helper 与应用架构一致，Intel 版本在 Intel runner 构建；本地更新仍使用 `npm run release:mac` 备份替换 Teachshell，不修改原生课屿。发布版本 0.3.8 起附件名称包含平台和架构。macOS 当前为 ad-hoc 签名、未公证；Windows 未配置发布者证书。
+Windows 安装包可在 Mac 交叉构建并解包校验，但实际 Windows 运行验收由 Windows runner 完成。Mac helper 与应用均为 ARM64，不再构建或发布 Intel 版本；本地更新仍使用 `npm run release:mac` 备份替换 Teachshell，不修改原生课屿。发布版本 0.3.8 起附件名称包含平台和架构。macOS 当前为 ad-hoc 签名、未公证；Windows 未配置发布者证书。
 
 Windows 文件监听使用 500ms 目录/文本轮询与 1000ms 二进制文件轮询，避免系统子目录监听句柄阻止应用内改名或资源管理器移动。大型资料库的 CPU/磁盘开销可能高于 macOS/Linux 的原生事件监听；变更合并与写入稳定检查仍保留。
 

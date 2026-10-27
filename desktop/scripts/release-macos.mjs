@@ -8,7 +8,8 @@ import { fileURLToPath } from 'node:url';
 const exec = promisify(execFile),
   desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'),
   repo = path.dirname(desktop);
-if (process.platform !== 'darwin') throw new Error('This release command targets macOS');
+if (process.platform !== 'darwin' || process.arch !== 'arm64')
+  throw new Error('This release command requires an Apple Silicon Mac and arm64 Node.js');
 const installers = process.argv.includes('--installers');
 const windows = process.argv.includes('--windows');
 if (

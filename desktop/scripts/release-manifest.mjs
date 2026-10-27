@@ -1,7 +1,6 @@
 /** The release must contain exactly one verified artifact set for each supported architecture. */
 export const releaseTargets = [
   { platform: 'darwin', arch: 'arm64' },
-  { platform: 'darwin', arch: 'x64' },
   { platform: 'win32', arch: 'x64' },
 ];
 export function expectedReleaseFiles(version, platform, arch) {
