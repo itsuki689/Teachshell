@@ -24,6 +24,33 @@ let app,
   page,
   completedPreferenceWrites = 0,
   secureStorageAvailable = true;
+async function waitForIPC(read, predicate, description) {
+  // waitForFunction tests a Promise's truthiness before it resolves; poll the awaited IPC value.
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline) {
+    const value = await read();
+    if (predicate(value)) return value;
+    await page.waitForTimeout(20);
+  }
+  assert.fail('Timed out waiting for ' + description);
+}
+const waitForLogin = (predicate) =>
+  waitForIPC(
+    () => page.evaluate(() => window.teachshelf.websiteLoginStatus()),
+    predicate,
+    'login status',
+  );
+async function retryFromUI(dialog) {
+  const before = await app.evaluate(() => globalThis.loginRetryCompletions);
+  await dialog.getByRole('button', { name: '重试安全存储', exact: true }).click();
+  await waitForIPC(
+    () => app.evaluate(() => globalThis.loginRetryCompletions),
+    (count) => count > before,
+    'secure storage retry completion',
+  );
+  const status = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
+  assert.equal(status.hasIssue, false, status.status);
+}
 async function normalQuit() {
   const running = app;
   const closed = running.waitForEvent('close');
@@ -90,11 +117,7 @@ async function authenticateFromUI(dialog) {
     .fill('https://selearning.nju.edu.cn/course/view.php?id=17');
   await dialog.getByRole('button', { name: '打开登录窗口', exact: true }).click();
   await dialog.getByRole('button', { name: '读取当前页面', exact: true }).click();
-  await page.waitForFunction(() =>
-    window.teachshelf
-      .websiteLoginStatus()
-      .then((s) => s.loginState === 'signedIn' && s.accountID === '99'),
-  );
+  await waitForLogin((s) => s.loginState === 'signedIn' && s.accountID === '99');
 }
 async function holdFilesystemOperation(method, argument, filename) {
   // Hold the real operation inside main's foreground action, not its already-completed IPC reply.
@@ -175,6 +198,16 @@ async function launch() {
         throw error;
       }
     });
+    const retryChannel = 'teachshelf:retryWebsiteLogin',
+      retry = ipcMain._invokeHandlers.get(retryChannel);
+    if (!retry) throw new Error('Missing secure storage retry IPC handler');
+    globalThis.loginRetryCompletions = 0;
+    ipcMain.removeHandler(retryChannel);
+    ipcMain.handle(retryChannel, async (...args) => {
+      const result = await retry(...args);
+      globalThis.loginRetryCompletions++;
+      return result;
+    });
   });
 }
 async function website() {
@@ -193,9 +226,10 @@ async function switched(destination) {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [destination] });
   }, destination);
   await page.evaluate(() => window.teachshelf.openLibrary());
-  await page.waitForFunction(
-    (destination) => window.teachshelf.snapshot().then((s) => s.root === destination),
-    destination,
+  await waitForIPC(
+    () => page.evaluate(() => window.teachshelf.snapshot()),
+    (s) => s.root === destination,
+    'library switch',
   );
 }
 try {
@@ -333,9 +367,7 @@ try {
       await switched(a);
       await dialog.waitFor({ state: 'hidden' });
       dialog = await website();
-      await page.waitForFunction(() =>
-        window.teachshelf.websiteLoginStatus().then((s) => s.enabled),
-      );
+      await waitForLogin((s) => s.enabled);
       assert.equal(
         await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).isChecked(),
         true,
@@ -358,9 +390,7 @@ try {
       app = undefined;
       await launch();
       dialog = await website();
-      await page.waitForFunction(() =>
-        window.teachshelf.websiteLoginStatus().then((s) => s.enabled),
-      );
+      await waitForLogin((s) => s.enabled);
       assert.equal(
         await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).isChecked(),
         true,
@@ -380,9 +410,7 @@ try {
       );
       await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).uncheck();
       await waitRememberComplete(false);
-      await page.waitForFunction(() =>
-        window.teachshelf.websiteLoginStatus().then((s) => !s.enabled),
-      );
+      await waitForLogin((s) => !s.enabled);
     },
   );
   await check('Disabled preference persists on the next actual application launch', async () => {
@@ -501,21 +529,11 @@ try {
         });
       }, scopeA);
       // Linux has no noninteractive safeStorage API; its documented path requires an explicit retry.
-      if (process.platform === 'linux') {
-        await dialog.getByRole('button', { name: '重试安全存储', exact: true }).click();
-        await page.waitForFunction(() =>
-          window.teachshelf.websiteLoginStatus().then((s) => !s.hasIssue),
-        );
-      }
+      if (process.platform === 'linux') await retryFromUI(dialog);
       await normalQuit();
       await launch();
       dialog = await website();
-      if (process.platform === 'linux') {
-        await dialog.getByRole('button', { name: '重试安全存储', exact: true }).click();
-        await page.waitForFunction(() =>
-          window.teachshelf.websiteLoginStatus().then((s) => !s.hasIssue),
-        );
-      }
+      if (process.platform === 'linux') await retryFromUI(dialog);
       const restoredStatus = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
       assert.equal(restoredStatus.enabled, true);
       assert.equal(restoredStatus.hasIssue, false, restoredStatus.status);
@@ -549,9 +567,7 @@ try {
         assert.equal(status.canProbe, false);
         await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).uncheck();
         await waitRememberComplete(false);
-        await page.waitForFunction(() =>
-          window.teachshelf.websiteLoginStatus().then((s) => !s.enabled),
-        );
+        await waitForLogin((s) => !s.enabled);
         const disabled = await page.evaluate(() => window.teachshelf.websiteLoginStatus());
         assert.equal(disabled.hasIssue, false, disabled.status);
         const preference = JSON.parse(
@@ -638,9 +654,7 @@ try {
         }, scopeA);
       await dialog.getByLabel('记住此资料库的教学网站登录', { exact: true }).uncheck();
       // Wait only until the request starts, deliberately not until the UI's busy state clears.
-      await page.waitForFunction(() =>
-        window.teachshelf.websiteLoginStatus().then((s) => !s.enabled),
-      );
+      await waitForLogin((s) => !s.enabled);
       if (process.platform === 'darwin') {
         for (
           let n = 0;
