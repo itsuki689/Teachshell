@@ -151,3 +151,5 @@ npm run verify:release -- win32 x64
 Windows 安装包可在 Mac 交叉构建并解包校验，但实际 Windows 运行验收由 Windows runner 完成。Mac helper 与应用架构一致，Intel 版本在 Intel runner 构建；本地更新仍使用 `npm run release:mac` 备份替换 Teachshell，不修改原生课屿。发布版本 0.3.8 起附件名称包含平台和架构。macOS 当前为 ad-hoc 签名、未公证；Windows 未配置发布者证书。
 
 Windows 文件监听使用 500ms 目录/文本轮询与 1000ms 二进制文件轮询，避免系统子目录监听句柄阻止应用内改名或资源管理器移动。大型资料库的 CPU/磁盘开销可能高于 macOS/Linux 的原生事件监听；变更合并与写入稳定检查仍保留。
+
+Windows 本机执行 `verify:release` 需要完整 7-Zip（默认 `C:\Program Files\7-Zip\7z.exe`，可用 `TEACHSHELL_7ZIP_PATH` 指定）。校验会先检查 NSIS 格式支持，再解包对比；electron-builder 自带的 Windows 精简版 7za 不包含该读取器。GitHub Windows runner 已提供完整版本。

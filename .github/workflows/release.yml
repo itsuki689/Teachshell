@@ -52,12 +52,12 @@ jobs:
       - run: node node_modules/electron/install.js
       - run: npm test
       - run: npm run build
-      - name: Full desktop integration
-        run: npm run test:e2e
       - name: Build installer
         run: npx electron-builder --${{ matrix.target }} --${{ matrix.arch }} --publish never
       - name: Verify distribution archives
         run: npm run verify:release -- ${{ matrix.platform }} ${{ matrix.arch }}
+      - name: Full desktop integration
+        run: npm run test:e2e
       - name: Exercise packaged calendar
         env:
           RELEASE_PLATFORM: ${{ matrix.platform }}

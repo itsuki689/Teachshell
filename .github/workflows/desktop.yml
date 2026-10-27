@@ -31,12 +31,6 @@ jobs:
       - run: node node_modules/electron/install.js
       - run: npm test
       - run: npm run build
-      - name: Desktop integration (Linux)
-        if: runner.os == 'Linux'
-        run: xvfb-run --auto-servernum npm run test:e2e
-      - name: Desktop integration (macOS / Windows)
-        if: runner.os != 'Linux'
-        run: npm run test:e2e
       - name: Build installers (unsigned)
         run: npm run package -- --publish never
         env:
@@ -44,6 +38,12 @@ jobs:
       - name: Verify Windows and macOS archives
         if: runner.os != 'Linux'
         run: npm run verify:release
+      - name: Desktop integration (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:e2e
+      - name: Desktop integration (macOS / Windows)
+        if: runner.os != 'Linux'
+        run: npm run test:e2e
       - name: Packaged application (Linux)
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum npm run test:packaged

@@ -33,7 +33,19 @@ const hash = async (file) => {
 // ASAR traverses directory names using the host separator, including on Windows.
 const extract = (archive, name) => asar.extractFile(archive, path.normalize(name));
 const digest = (buffer) => createHash('sha256').update(buffer).digest('hex');
-const seven = await getPath7za();
+// electron-builder's Windows 7za is a reduced build without the NSIS reader.
+// GitHub Windows runners include the full 7-Zip installation (7z.exe + 7z.dll).
+const seven =
+  process.env.TEACHSHELL_7ZIP_PATH ??
+  (process.platform === 'win32'
+    ? path.join(process.env.ProgramFiles ?? 'C:\\Program Files', '7-Zip', '7z.exe')
+    : await getPath7za());
+if (platform === 'win32')
+  assert.match(
+    run(seven, ['i']),
+    /\bNsis\b/i,
+    'Install full 7-Zip with NSIS support, or set TEACHSHELL_7ZIP_PATH',
+  );
 async function inspect(directory) {
   const mac = platform === 'darwin',
     resources = path.join(directory, mac ? 'Contents/Resources' : 'resources');
@@ -114,8 +126,13 @@ try {
     } else {
       const dest = path.join(scratch, 'nsis');
       await fs.mkdir(dest);
-      // 7-Zip's archive selector uses backslashes on Windows, slashes on POSIX.
-      run(seven, ['e', '-y', '-o' + dest, file, path.normalize('$PLUGINSDIR/app-64.7z')]);
+      const payloadEntries = run(seven, ['l', '-slt', file])
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith('Path = '))
+        .map((line) => line.slice(7))
+        .filter((name) => name.replaceAll('\\', '/') === '$PLUGINSDIR/app-64.7z');
+      assert.equal(payloadEntries.length, 1, 'Missing or ambiguous NSIS x64 payload');
+      run(seven, ['e', '-y', '-o' + dest, file, payloadEntries[0]]);
       const payload = path.join(dest, 'app-64.7z');
       run(seven, ['t', payload]);
       const unpacked = path.join(scratch, 'windows');
