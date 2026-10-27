@@ -52,6 +52,8 @@ jobs:
       - run: node node_modules/electron/install.js
       - run: npm test
       - run: npm run build
+      - name: Full desktop integration
+        run: npm run test:e2e
       - name: Build installer
         run: npx electron-builder --${{ matrix.target }} --${{ matrix.arch }} --publish never
       - name: Verify distribution archives
@@ -104,6 +106,7 @@ jobs:
         run: |
           set -euo pipefail
           version="${RELEASE_TAG#v}"
+          test "$(gh api "repos/$GH_REPO/commits/$RELEASE_TAG" --jq .sha)" = "$(git rev-parse HEAD)"
           if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release-state.json" 2>/dev/null; then
             node -e 'if(!JSON.parse(require("fs").readFileSync(process.argv[1])).isDraft) throw Error("Refusing to overwrite a published release")' "$RUNNER_TEMP/release-state.json"
           else

@@ -30,32 +30,27 @@ const hash = async (file) => {
   for await (const chunk of createReadStream(file)) h.update(chunk);
   return h.digest('hex');
 };
+// ASAR traverses directory names using the host separator, including on Windows.
+const extract = (archive, name) => asar.extractFile(archive, path.normalize(name));
 const digest = (buffer) => createHash('sha256').update(buffer).digest('hex');
 const seven = await getPath7za();
 async function inspect(directory) {
   const mac = platform === 'darwin',
     resources = path.join(directory, mac ? 'Contents/Resources' : 'resources');
   const archive = path.join(resources, 'app.asar');
-  assert.deepEqual(
-    JSON.parse(asar.extractFile(archive, 'dist-electron/release-info.json')),
-    release,
-  );
-  assert.equal(JSON.parse(asar.extractFile(archive, 'package.json')).version, metadata.version);
+  assert.deepEqual(JSON.parse(extract(archive, 'dist-electron/release-info.json')), release);
+  assert.equal(JSON.parse(extract(archive, 'package.json')).version, metadata.version);
   const files = asar.listPackage(archive).map((n) => n.replaceAll('\\', '/').replace(/^\//, ''));
   assert.ok(
     !files.some((n) => n.endsWith('/teaching-session-keychain')),
     'Native helper must remain outside asar',
   );
-  for (const name of [
-    'dist/index.html',
-    'dist-electron/main.cjs',
-    'dist-electron/preload.cjs',
-  ])
-    assert.equal(digest(asar.extractFile(archive, name)), await hash(name), name);
+  for (const name of ['dist/index.html', 'dist-electron/main.cjs', 'dist-electron/preload.cjs'])
+    assert.equal(digest(extract(archive, name)), await hash(name), name);
   const rendererFiles = files.filter((n) => /^dist\/assets\/.*\.(?:js|css)$/.test(n));
   assert.ok(rendererFiles.length >= 2, 'Missing renderer assets');
   for (const name of rendererFiles)
-    assert.equal(digest(asar.extractFile(archive, name)), await hash(name), name);
+    assert.equal(digest(extract(archive, name)), await hash(name), name);
   assert.equal(
     await hash(path.join(resources, 'mcp-stdio.cjs')),
     await hash('dist-electron/mcp-stdio.cjs'),

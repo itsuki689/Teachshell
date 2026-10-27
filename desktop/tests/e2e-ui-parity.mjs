@@ -425,7 +425,7 @@ try {
             document.documentElement.scrollWidth,
             document.documentElement.scrollHeight,
           ]),
-          [width, height],
+          [contentWidth, contentHeight],
         );
       }
     },

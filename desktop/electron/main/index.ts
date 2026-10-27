@@ -18,7 +18,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
-import chokidar from 'chokidar';
+import { watchLibrary } from '../services/filesystem/watch.ts';
 import { z } from 'zod';
 import { Repository, copyLibrary } from '../services/storage/repository.ts';
 import { SettingsService } from '../services/storage/settings.ts';
@@ -98,7 +98,7 @@ function closeWebsite() {
 let chat: ChatService;
 let server: MCPServer;
 let toolProvider: ToolProvider;
-let watcher: ReturnType<typeof chokidar.watch> | undefined;
+let watcher: ReturnType<typeof watchLibrary> | undefined;
 let timer: ReturnType<typeof setTimeout> | undefined;
 let quitting = false;
 let switching = false;
@@ -179,12 +179,7 @@ async function watch() {
   await watcher?.close();
   if (timer) clearTimeout(timer);
   const repo = repository;
-  watcher = chokidar.watch(path.join(repo.root, 'files'), {
-    ignoreInitial: true,
-    followSymlinks: false,
-    awaitWriteFinish: { stabilityThreshold: 350, pollInterval: 100 },
-    ignored: (p) => path.basename(p).startsWith('.'),
-  });
+  watcher = watchLibrary(repo.root);
   watcher.on('all', () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
