@@ -7,7 +7,12 @@ const executable = path.resolve(
     : 'release/win-unpacked/Teachshell.exe',
 );
 await fs.access(executable);
-for (const test of ['schedule-workspace.e2e.mjs', 'schedule-interactions.e2e.mjs']) {
+for (const test of [
+  'schedule-workspace.e2e.mjs',
+  'schedule-interactions.e2e.mjs',
+  'page-refresh.e2e.mjs',
+  'toolbar-feedback.e2e.mjs',
+]) {
   const code = await new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,

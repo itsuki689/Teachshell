@@ -58,7 +58,7 @@ jobs:
         run: npm run verify:release -- ${{ matrix.platform }} ${{ matrix.arch }}
       - name: Full desktop integration
         run: npm run test:e2e
-      - name: Exercise packaged calendar
+      - name: Exercise packaged calendar and toolbar
         env:
           RELEASE_PLATFORM: ${{ matrix.platform }}
           RELEASE_ARCH: ${{ matrix.arch }}
