@@ -1,6 +1,6 @@
 {
   "name": "teachshelf-desktop",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "private": true,
   "type": "module",
   "description": "课屿跨平台课程资料管理",
@@ -21,7 +21,10 @@
     "format:check": "prettier --check .",
     "test:packaged": "node scripts/test-packaged.mjs",
     "release:mac": "node scripts/release-macos.mjs",
-    "install:mac": "node scripts/install-macos.mjs"
+    "install:mac": "node scripts/install-macos.mjs",
+    "package:mac": "npm run build && electron-builder --mac --publish never",
+    "package:win": "npm run build && electron-builder --win --x64 --publish never",
+    "verify:release": "node scripts/verify-release.mjs"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
@@ -107,8 +110,9 @@
         "to": "mcp-stdio.cjs"
       }
     ],
-    "beforePack": "scripts/before-pack.cjs"
+    "beforePack": "scripts/before-pack.cjs",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
   },
   "desktopName": "com.teachshelf.desktop.desktop",
-  "homepage": "https://github.com/itsuki689/Teachshelf-mac"
+  "homepage": "https://github.com/itsuki689/Teachshell"
 }

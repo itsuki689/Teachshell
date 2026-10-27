@@ -131,3 +131,20 @@ macOS helper 与主机构架匹配，打包前验证架构；Intel 与 Apple Sil
 - 安全文件复制暂使用同一资料库卷内的硬链接完成无覆盖提交；不支持硬链接的卷会明确拒绝并回滚。优先使用本地 APFS/NTFS/ext4，网络/移动卷未验收。
 - 同一用户下其他恶意进程可绕过任何应用级锁/权限；不支持两端同时修改同库。
 - Windows/Linux 安装和真实学校账号登录需在对应环境验收。没有凭据时只做离线解析和受限下载测试，不声称真实登录已通过。
+
+## Windows / macOS GitHub Releases
+
+发布流程位于 `.github/workflows/release.yml`。在用户明确要求发布时，先更新 `package.json` / `package-lock.json` 版本和 `release-notes/<版本>.md`，验证并提交后推送同版本 `v<版本>` 标签。标签版本必须与包版本一致。
+
+流程分别在 Windows x64、macOS ARM64、macOS Intel 原生 runner 上测试、编译和打包，解开安装包验证代码、源提交及架构，再对打包应用运行月周日和课程交互测试。只有三个目标全部通过，才上传完整资产并将草稿转为公开 Release；已公开版本不会被覆盖。附件含五个安装包（Windows EXE、两种 Mac 架构的 DMG/ZIP）、SHA256SUMS 和 manifest。
+
+本地构建命令：
+
+```sh
+npm run package:mac
+npm run verify:release -- darwin arm64 # Intel Mac 使用 x64
+npm run package:win
+npm run verify:release -- win32 x64
+```
+
+Windows 安装包可在 Mac 交叉构建并解包校验，但实际 Windows 运行验收由 Windows runner 完成。Mac helper 与应用架构一致，Intel 版本在 Intel runner 构建；本地更新仍使用 `npm run release:mac` 备份替换 Teachshell，不修改原生课屿。发布版本 0.3.8 起附件名称包含平台和架构。macOS 当前为 ad-hoc 签名、未公证；Windows 未配置发布者证书。

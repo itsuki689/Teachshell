@@ -1,0 +1,113 @@
+name: Windows and macOS Release
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: win32
+            arch: x64
+            target: win
+          - os: macos-15
+            platform: darwin
+            arch: arm64
+            target: mac
+          - os: macos-15-intel
+            platform: darwin
+            arch: x64
+            target: mac
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      TEACHSHELF_SCREENSHOT_DIR: ${{ runner.temp }}/release-evidence
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    defaults:
+      run:
+        working-directory: desktop
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - name: Check tag and architecture
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: node -e 'const p=require("./package.json"); if(process.env.RELEASE_TAG!=="v"+p.version || process.platform!==process.env.RELEASE_PLATFORM || process.arch!==process.env.RELEASE_ARCH) throw Error("Release target/version mismatch")'
+      - run: npm ci
+      - run: node node_modules/electron/install.js
+      - run: npm test
+      - run: npm run build
+      - name: Build installer
+        run: npx electron-builder --${{ matrix.target }} --${{ matrix.arch }} --publish never
+      - name: Verify distribution archives
+        run: npm run verify:release -- ${{ matrix.platform }} ${{ matrix.arch }}
+      - name: Exercise packaged calendar
+        env:
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: node scripts/test-release.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/manifest-*.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-tests-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/release-evidence/
+          if-no-files-found: warn
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installer-*
+          path: desktop/release
+          merge-multiple: true
+      - name: Verify all targets and checksums
+        working-directory: desktop
+        run: node scripts/collect-release.mjs
+      - name: Upload and publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          if gh release view "$RELEASE_TAG" --json isDraft > "$RUNNER_TEMP/release-state.json" 2>/dev/null; then
+            node -e 'if(!JSON.parse(require("fs").readFileSync(process.argv[1])).isDraft) throw Error("Refusing to overwrite a published release")' "$RUNNER_TEMP/release-state.json"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft --title "Teachshell $version" --notes-file "desktop/release-notes/$version.md"
+          fi
+          gh release upload "$RELEASE_TAG" desktop/release/*.exe desktop/release/*.dmg desktop/release/*.zip desktop/release/SHA256SUMS.txt desktop/release/release-manifest.json --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest
