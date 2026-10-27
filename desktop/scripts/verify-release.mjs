@@ -114,7 +114,8 @@ try {
     } else {
       const dest = path.join(scratch, 'nsis');
       await fs.mkdir(dest);
-      run(seven, ['e', '-y', '-o' + dest, file, '$PLUGINSDIR/app-64.7z']);
+      // 7-Zip's archive selector uses backslashes on Windows, slashes on POSIX.
+      run(seven, ['e', '-y', '-o' + dest, file, path.normalize('$PLUGINSDIR/app-64.7z')]);
       const payload = path.join(dest, 'app-64.7z');
       run(seven, ['t', payload]);
       const unpacked = path.join(scratch, 'windows');
