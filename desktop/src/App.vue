@@ -331,7 +331,7 @@ onUnmounted(() => {
           @website="openWebsite()"
         /><ChatView ref="chatView" v-show="store.route === 'assistant'" />
         <footer class="statusbar">
-          <LoaderCircle v-if="store.busy" :size="12" class="spinning" /><span
+          <LoaderCircle v-if="store.busy || store.reading" :size="12" class="spinning" /><span
             v-else
             class="status-dot"
           /><span>{{ store.status }}</span

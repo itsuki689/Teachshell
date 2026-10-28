@@ -55,7 +55,7 @@ async function activate(action: ToolbarAction) {
   if (action === 'update') {
     if (pendingUpdate.value) return;
     pendingUpdate.value = true;
-    const animation = animate(
+    animate(
       artwork(action),
       [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
       400,
@@ -63,7 +63,7 @@ async function activate(action: ToolbarAction) {
     );
     try {
       // Start the real refresh immediately; animation never schedules or cancels work.
-      await Promise.all([props.activate(action), animation?.finished.catch(() => {})]);
+      await props.activate(action);
     } finally {
       pendingUpdate.value = false;
     }

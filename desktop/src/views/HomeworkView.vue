@@ -80,9 +80,10 @@ async function load() {
   listing.value = undefined;
   loading.value = true;
   try {
-    const result = await store.run(
+    const result = await store.read(
       () => api.listHomework(target.course || undefined, target.relative),
       '作业目录已读取',
+      () => request === sequence && sameLocation(target),
     );
     if (result && request === sequence && sameLocation(target)) listing.value = result;
     return !!result && request === sequence && sameLocation(target);

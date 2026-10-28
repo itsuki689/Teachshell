@@ -50,7 +50,8 @@ const form = reactive({
   loaded = ref(false),
   saving = ref(false),
   baseline = ref('');
-let active = true;
+let active = true,
+  readSequence = 0;
 const dirty = computed(() => loaded.value && JSON.stringify(form) !== baseline.value);
 useUnsavedCloseGuard(() => dirty.value || saving.value);
 const releaseLeaveGuard = store.registerLeaveGuard(async () => {
@@ -84,14 +85,21 @@ async function refresh() {
   // Editing can resume while the filesystem scan is pending.
   if (dirty.value && !(await store.requestLeave())) return false;
   if (!active) return false;
+  const request = ++readSequence;
+  const current = () => active && request === readSequence;
   const previouslyLoaded = loaded.value;
   loaded.value = false;
-  const result = await store.run(() => api.settings(), '设置已加载');
-  if (result && active) {
+  const result = await store.read(() => api.settings(), '设置已加载', current);
+  if (!current()) return false;
+  if (result) {
     store.settings = result;
     fill();
   }
-  if (active && result) application.value = await store.run(() => api.appInfo(), '设置已加载');
+  if (result) {
+    const info = await store.read(() => api.appInfo(), '设置已加载', current);
+    if (!current()) return false;
+    application.value = info;
+  }
   // A failed read keeps the old form editable and leaves the error visible.
   if (active && !result) loaded.value = previouslyLoaded;
   return !!result && !!application.value && active;

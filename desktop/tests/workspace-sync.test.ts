@@ -95,6 +95,69 @@ test('old workspace replies and errors cannot overwrite current content or notif
   assert.equal(store.busy, 0);
 });
 
+test('read-only loading leaves input available while writes retain their busy protection', async (t) => {
+  const { store } = await setup(t);
+  const reading = deferred<string>(),
+    writing = deferred<string>();
+  const read = store.read(() => reading.promise, '读取完成');
+  assert.equal(store.reading, 1);
+  assert.equal(store.busy, 0);
+  const write = store.run(() => writing.promise);
+  assert.equal(store.busy, 1);
+  reading.resolve('read');
+  assert.equal(await read, 'read');
+  assert.equal(store.reading, 0);
+  assert.equal(store.busy, 1);
+  writing.resolve('write');
+  assert.equal(await write, 'write');
+  assert.equal(store.busy, 0);
+});
+
+test('unmounted and superseded reads discard both replies and errors without hiding current failures', async (t) => {
+  const { store } = await setup(t);
+  const old = deferred<string>(),
+    failure = deferred<string>();
+  let active = true;
+  const read = store.read(
+    () => old.promise,
+    '旧读取完成',
+    () => active,
+  );
+  const failed = store.read(
+    () => failure.promise,
+    '旧读取失败',
+    () => active,
+  );
+  active = false;
+  store.status = '当前页面';
+  old.resolve('old');
+  failure.reject(Error('旧页面错误'));
+  assert.equal(await read, undefined);
+  assert.equal(await failed, undefined);
+  assert.equal(store.status, '当前页面');
+  assert.equal(store.error, '');
+  assert.equal(store.reading, 0);
+  await store.read(async () => {
+    throw Error('当前读取错误');
+  });
+  assert.equal(store.error, '当前读取错误');
+  assert.equal(store.status, '操作未完成');
+  assert.equal(store.reading, 0);
+});
+
+test('read replies from an old workspace do not reach the new workspace', async (t) => {
+  const { b, store } = await setup(t);
+  const gate = deferred<string>();
+  const read = store.read(() => gate.promise, '旧库完成');
+  store.accept(b.snapshot());
+  store.status = '新资料库';
+  gate.resolve('old');
+  assert.equal(await read, undefined);
+  assert.equal(store.status, '新资料库');
+  assert.equal(store.reading, 0);
+  assert.equal(store.busy, 0);
+});
+
 test('switching workspace dismisses confirmations and invalidates pending navigation', async (t) => {
   const { b, store } = await setup(t);
   store.registerLeaveGuard(() => store.confirm('未保存备注', '放弃草稿？'));

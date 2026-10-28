@@ -1,5 +1,7 @@
 # Teachshell
 
+2026-10-28 按键响应修复：刷新按钮按实际操作完成状态恢复，不再等待装饰动画；设置和作业目录的只读加载仍显示进度，但允许搜索快捷键和顶栏导航。保存、同步和未保存草稿保护继续生效。专项回归：`node tests/input-response.e2e.mjs`，包含暂停动画、延迟真实 IPC、键盘输入和迟到回复检查；实现约束见[异步状态说明](../docs/electron/ui-sync-migration.md)。
+
 2026-10-28：macOS 改用系统递归文件监听，处理连续目录改名、`files/` 替换和无文件名事件；监听就绪后主动核对一次索引。Windows 保留无目录锁的轮询，Linux 保留 Chokidar 原生监听。见[诊断与回归](../docs/electron/filesystem-watch.md)、[当前验证](../docs/electron/validation.md)、[全部技术文档](../docs/README.md)。版本仍为 0.3.11，开发更新按提交编号区分；既有 GitHub Release 不会自动被覆盖。
 
 本工程属于独立的 Teachshell Git 仓库，主目录为 `desktop/`。原生 Teachshelf 仅作只读参考；两者不共享 worktree、Git 对象库或远程配置。仓库内保留的 Swift 实现用于对照与兼容性验证。

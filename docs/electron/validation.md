@@ -1,10 +1,10 @@
 # 当前验证记录
 
-2026-10-28：macOS 文件监听修复，版本沿用 0.3.11，以 Git 提交标识本次开发构建。原因、原始失败链接、可复现回归与验证结果见[文件监听专项](filesystem-watch.md)。原生课屿与真实用户资料不参与测试。
+2026-10-28：按键响应修复，版本沿用 0.3.11，以 Git 提交标识开发构建。刷新按钮不再等待装饰动画；设置和作业目录只读加载不阻塞顶栏与快捷键。实现与异步守卫见[界面状态说明](ui-sync-migration.md)。原生课屿与真实用户资料不参与测试。
 
-本机结果：332/332 业务测试、22 个完整源码窗口套件、专项 7/7 工作区检查及 5 轮监听重复检查通过；TypeScript、生产构建、代码格式、Markdown 本地链接和差异检查通过。详见专项中的范围说明。
+本轮 macOS ARM64 本机结果：335/335 业务测试、23 个完整源码窗口套件通过，其中新增 4 项按键响应检查。旧版在暂停刷新动画、延迟设置与作业目录读取时失败，修复后全部通过。TypeScript、生产构建、修改代码的格式和差异检查通过；窗口身份、非空界面、错误遮罩、控制台和交互检查通过。Browser 插件不可用，采用 Playwright Electron，截图与日志保存在仓库外的临时目录。测试通过事件屏障复现，未放宽时间阈值。
 
-验证入口（`desktop/`）：`npm test`、`npm run build`、`node tests/workspace-sync.e2e.mjs`、`npm run test:e2e`。安装版使用 `TEACHSHELF_EXECUTABLE=/Applications/Teachshell.app/Contents/MacOS/Teachshell` 重跑相关窗口检查；所有业务样例均在临时资料库。
+验证入口（`desktop/`）：`npm test`、`npm run build`、`node tests/input-response.e2e.mjs`、`npm run test:e2e`。安装版使用 `TEACHSHELF_EXECUTABLE=/Applications/Teachshell.app/Contents/MacOS/Teachshell` 重跑相关窗口检查；所有业务样例均在临时资料库。本轮未在 Windows/Linux 实机执行，也未推送或触发新的远程 CI；先前 CI 结果不代表此次改动。原 macOS 监听根因、原始 CI 失败链接和重复验证见[文件监听专项](filesystem-watch.md)。
 
 本地 Release 由当前已提交快照构建，签名通过后正常退出旧版、备份替换、注册并打开 Teachshell。回执为忽略的 `desktop/release/installed-macos.json`；关于页显示版本、源提交和实际执行路径。只生成 `.app`，本次不更新既有 GitHub Release。
 

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { computed, ref } from 'vue';
+import { computed, ref, type Ref } from 'vue';
 import { emptyLibrary } from '../../shared/model.ts';
 import type { Snapshot, Settings } from '../../shared/api';
 interface WorkspaceLocation {
@@ -12,6 +12,7 @@ export const useLibrary = defineStore('library', () => {
     error = ref(''),
     status = ref('正在打开资料库…'),
     busy = ref(0),
+    reading = ref(0),
     route = ref('all'),
     folderID = ref<string | undefined>(),
     selected = ref<string[]>([]);
@@ -137,14 +138,17 @@ export const useLibrary = defineStore('library', () => {
     selected.value = selected.value.filter((id) => value.state.materials.some((m) => m.id === id));
     return true;
   }
-  async function run<T>(
+  async function perform<T>(
     fn: () => Promise<T>,
-    label = '已保存',
-    workspaceScoped = true,
+    label: string,
+    workspaceScoped: boolean,
+    activity: Ref<number>,
+    isCurrent = () => true,
   ): Promise<T | undefined> {
     const context = workspaceID.value;
-    const current = () => !workspaceScoped || !context || context === workspaceID.value;
-    busy.value++;
+    const current = () =>
+      isCurrent() && (!workspaceScoped || !context || context === workspaceID.value);
+    activity.value++;
     try {
       const value = await fn();
       if (!current()) return undefined;
@@ -156,8 +160,16 @@ export const useLibrary = defineStore('library', () => {
       status.value = '操作未完成';
       return undefined;
     } finally {
-      busy.value--;
+      activity.value--;
     }
+  }
+  function run<T>(fn: () => Promise<T>, label = '已保存', workspaceScoped = true) {
+    return perform(fn, label, workspaceScoped, busy);
+  }
+  // Read-only loading remains visible without swallowing unrelated input.
+  // Page/request guards also prevent late reads from posting stale notifications.
+  function read<T>(fn: () => Promise<T>, label = '已加载', isCurrent = () => true) {
+    return perform(fn, label, true, reading, isCurrent);
   }
   async function change(fn: () => Promise<Snapshot>, label = '已保存') {
     const result = await run(fn, label);
@@ -204,6 +216,7 @@ export const useLibrary = defineStore('library', () => {
     error,
     status,
     busy,
+    reading,
     route,
     folderID,
     selected,
@@ -216,6 +229,7 @@ export const useLibrary = defineStore('library', () => {
     navigate,
     accept,
     run,
+    read,
     change,
     refresh,
     chooseLibrary,
