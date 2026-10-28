@@ -4,6 +4,8 @@
 
 当前入口：[使用指南](docs/usage.md) · [开发与构建](desktop/README.md) · [技术文档目录](docs/README.md) · [最新验证](docs/electron/validation.md)。2026-10-28 修复 macOS 连续目录改名后的监听丢事件，增加自动同步与切库回归；根因、证据及平台差异见[文件监听说明](docs/electron/filesystem-watch.md)。
 
+当前版本 **0.3.12**，汇总输入响应与文件同步修复，提供 Windows x64 和 macOS Apple Silicon 安装包；[更新说明](desktop/release-notes/0.3.12.md)。发布由同标签的双平台构建、测试及校验流水线完成。
+
 同日补充按键响应修复：刷新结束后立即恢复操作；设置、作业目录读取期间可继续使用顶栏和搜索快捷键。保存与草稿保护保留，见[异步状态与回归](docs/electron/ui-sync-migration.md)。
 
 响应排查续修：资料快捷键只在资料区处理，计划调时键只作用于焦点所在事件；确认丢弃草稿后继续原来的资料选择。启动设置与资料预览读取不再锁住顶栏；作业目录枚举移出写入队列，资料同步复用安全扫描结果，减少大资料库收藏等操作的重复检查。验证范围与限制见[当前验证](docs/electron/validation.md)。

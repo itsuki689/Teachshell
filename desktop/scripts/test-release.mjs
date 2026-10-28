@@ -12,6 +12,10 @@ for (const test of [
   'schedule-interactions.e2e.mjs',
   'page-refresh.e2e.mjs',
   'toolbar-feedback.e2e.mjs',
+  'input-response.e2e.mjs',
+  'keyboard-routing.e2e.mjs',
+  'schedule-drag.e2e.mjs',
+  'e2e-ui-parity.mjs',
   'website-login-ui.e2e.mjs',
 ]) {
   console.log('RELEASE SUITE', test);

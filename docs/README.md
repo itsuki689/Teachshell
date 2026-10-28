@@ -16,7 +16,7 @@
 
 - Electron 阶段报告：[0.1.0](electron/validation-0.1.0.md)、[0.2.0](electron/validation-0.2.0.md)、[0.3.0](electron/validation-0.3.0.md)、[0.3.1](electron/validation-0.3.1.md)、[逐页布局](electron/page-layout-parity.md)、[周视图和外观](electron/appearance-week-parity.md)、[图标控件](electron/controls-parity.md)、[前后端审计](electron/detail-audit-0.3.6.md)。测试数和当时安装状态不改写为当前结果。
 - Swift 历史：[验证归档](validation-history.md)、[网站早期方案](web-in-plan.md)、[网站实施记录](web-in-progress.md)。历史路径和步骤仅供研究，不能用来替换原生课屿或修改真实数据。
-- 已发布说明：[0.3.8](../desktop/release-notes/0.3.8.md)、[0.3.9](../desktop/release-notes/0.3.9.md)、[0.3.10](../desktop/release-notes/0.3.10.md)、[0.3.11](../desktop/release-notes/0.3.11.md)。这些不可变发布记录已审阅，保留原文；0.3.10 起停止 Intel Mac 分发。
+- 版本说明：[0.3.8](../desktop/release-notes/0.3.8.md)、[0.3.9](../desktop/release-notes/0.3.9.md)、[0.3.10](../desktop/release-notes/0.3.10.md)、[0.3.11](../desktop/release-notes/0.3.11.md)、[0.3.12](../desktop/release-notes/0.3.12.md)。保留历史发布记录；0.3.10 起停止 Intel Mac 分发，0.3.12 汇总输入响应及文件同步修复。
 
 ## 维护规则
 
