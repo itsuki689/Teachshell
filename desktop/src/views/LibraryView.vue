@@ -49,6 +49,17 @@ const query = ref(''),
   moveCourseID = ref(''),
   moveFolderID = ref(''),
   preview = ref<{ id: string; url: string; mime: string; name: string } | null>(null);
+let active = true,
+  previewSequence = 0,
+  pendingPreview: string | undefined;
+watch(
+  () => store.selected.join(','),
+  () => {
+    previewSequence++;
+    pendingPreview = undefined;
+  },
+  { flush: 'sync' },
+);
 const isScoped = computed(() => !!store.courseID || store.route === 'unassigned');
 const currentFolder = computed(() =>
   store.state.materialFolders.find((f) => f.id === store.folderID),
@@ -155,6 +166,7 @@ async function changeSelection(action: () => void) {
   }
 }
 async function select(e: MouseEvent, m: Material) {
+  // A click held by the pointerdown leave guard resumes in prepareDrag.
   if (selectionPending) return;
   if (
     !e.shiftKey &&
@@ -221,7 +233,37 @@ async function setInspector(visible: boolean) {
 }
 let dragPreparation = 0;
 let approvedDrag: { id: string; workspace: string; selection: string } | undefined;
-function releaseDragPreparation() {
+let pendingDragGesture:
+  | { pointerID: number; x: number; y: number; moved: boolean; released: boolean; click: boolean }
+  | undefined;
+function moveDragPreparation(event: PointerEvent) {
+  const gesture = pendingDragGesture;
+  if (
+    gesture &&
+    !gesture.released &&
+    gesture.pointerID === event.pointerId &&
+    Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 5
+  )
+    gesture.moved = true;
+}
+function releaseDragPreparation(event?: Event) {
+  const gesture = pendingDragGesture;
+  if (gesture) {
+    if (!event || event.type === 'blur' || event.type === 'pointercancel') {
+      gesture.released = true;
+      gesture.click = false;
+    } else if (
+      event instanceof PointerEvent &&
+      event.pointerId === gesture.pointerID &&
+      !gesture.released
+    ) {
+      gesture.released = true;
+      gesture.click =
+        event.button === 0 &&
+        !gesture.moved &&
+        Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) <= 5;
+    }
+  }
   dragPreparation++;
   approvedDrag = undefined;
 }
@@ -239,21 +281,43 @@ async function prepareDrag(event: PointerEvent, material: Material) {
     return;
   const token = ++dragPreparation,
     workspace = ui.identity,
-    selection = JSON.stringify(store.selected);
+    selection = JSON.stringify(store.selected),
+    route = store.route,
+    folder = store.folderID;
+  const gesture = {
+    pointerID: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    moved: false,
+    released: false,
+    click: false,
+  };
+  pendingDragGesture = gesture;
   approvedDrag = undefined;
   selectionPending = true;
+  let resumeClick = false;
   try {
     const approved = await store.requestLeave();
     if (
       approved &&
-      token === dragPreparation &&
+      active &&
       workspace === ui.identity &&
-      selection === JSON.stringify(store.selected)
-    )
-      approvedDrag = { id: material.id, workspace, selection };
+      route === store.route &&
+      folder === store.folderID &&
+      selection === JSON.stringify(store.selected) &&
+      visible.value.some((item) => item.id === material.id)
+    ) {
+      if (token === dragPreparation) approvedDrag = { id: material.id, workspace, selection };
+      // The confirmation overlay can receive pointerup instead of the source
+      // row, so its click never arrives. Resume only the original short gesture;
+      // later confirmation-button pointerups cannot turn a drag into a click.
+      resumeClick = gesture.click;
+    }
   } finally {
+    if (pendingDragGesture === gesture) pendingDragGesture = undefined;
     selectionPending = false;
   }
+  if (resumeClick) await select(event, material);
 }
 async function moveSelection(event: KeyboardEvent) {
   const rows = browserRows.value;
@@ -351,8 +415,17 @@ async function exportCopies() {
   else if (result === null) store.status = '已取消导出';
 }
 async function showPreview(id: string) {
-  const result = await store.run(() => api.previewMaterial(id), '预览已打开');
-  if (result) preview.value = { id, ...result };
+  if (pendingPreview === id) return;
+  const request = ++previewSequence,
+    workspace = store.workspaceID;
+  const current = () => active && request === previewSequence && workspace === store.workspaceID;
+  pendingPreview = id;
+  try {
+    const result = await store.read(() => api.previewMaterial(id), '预览已打开', current);
+    if (result) preview.value = { id, ...result };
+  } finally {
+    if (current()) pendingPreview = undefined;
+  }
 }
 function drag(e: DragEvent, m: Material) {
   if (selectionPending) {
@@ -419,9 +492,17 @@ function leaveDrop(e: DragEvent) {
 }
 function key(e: KeyboardEvent) {
   const target = e.target as HTMLElement;
+  const row = target?.closest<HTMLElement>('[data-browser-id]');
+  const control = target?.closest(
+    'input,textarea,select,button,a,[role="button"],[role="menuitem"],[role="menuitemradio"],[contenteditable]:not([contenteditable="false"])',
+  );
   if (
+    e.defaultPrevented ||
+    e.isComposing ||
+    e.keyCode === 229 ||
     store.busy ||
-    target?.closest('input,textarea,select,[contenteditable="true"],[role="dialog"]') ||
+    !canvas.value?.contains(target) ||
+    (control && control !== row) ||
     document.querySelector('[role="dialog"]')
   )
     return;
@@ -445,7 +526,14 @@ function key(e: KeyboardEvent) {
     }
     return;
   }
-  if (e.code === 'Space' && selectedMaterial.value) {
+  if (
+    e.code === 'Space' &&
+    !e.metaKey &&
+    !e.ctrlKey &&
+    !e.altKey &&
+    selectedMaterial.value &&
+    (!row || row.dataset.browserId === selectedMaterial.value.id)
+  ) {
     e.preventDefault();
     void showPreview(selectedMaterial.value.id);
   }
@@ -460,13 +548,19 @@ function key(e: KeyboardEvent) {
 }
 onMounted(() => {
   window.addEventListener('keydown', key);
+  window.addEventListener('pointermove', moveDragPreparation);
   window.addEventListener('pointerup', releaseDragPreparation);
+  window.addEventListener('pointercancel', releaseDragPreparation);
   window.addEventListener('blur', releaseDragPreparation);
 });
 onUnmounted(() => {
+  active = false;
+  previewSequence++;
   releaseDragPreparation();
   window.removeEventListener('keydown', key);
+  window.removeEventListener('pointermove', moveDragPreparation);
   window.removeEventListener('pointerup', releaseDragPreparation);
+  window.removeEventListener('pointercancel', releaseDragPreparation);
   window.removeEventListener('blur', releaseDragPreparation);
 });
 </script>
@@ -678,7 +772,7 @@ onUnmounted(() => {
                 @pointerdown="prepareDrag($event, m)"
                 @click="select($event, m)"
                 @dblclick="store.run(() => api.openMaterial(m.id), '已打开资料')"
-                @keydown.enter="store.run(() => api.openMaterial(m.id), '已打开资料')"
+                @keydown.enter.self.prevent="store.run(() => api.openMaterial(m.id), '已打开资料')"
                 @dragstart="drag($event, m)"
               >
                 <td class="check-cell" @click.stop>

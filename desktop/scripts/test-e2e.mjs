@@ -11,6 +11,7 @@ const tests = [
   'toolbar.e2e.mjs',
   'toolbar-feedback.e2e.mjs',
   'input-response.e2e.mjs',
+  'keyboard-routing.e2e.mjs',
   'page-refresh.e2e.mjs',
   'inline-search.e2e.mjs',
   'website-login-ui.e2e.mjs',

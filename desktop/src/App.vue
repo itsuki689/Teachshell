@@ -268,7 +268,11 @@ onMounted(async () => {
   window.addEventListener('online', refreshWebsiteBackground);
   window.addEventListener('offline', refreshWebsiteBackground);
   await store.refresh();
-  const settings = await store.run(() => api.settings(), '本地资料库已就绪');
+  const settings = await store.read(
+    () => api.settings(),
+    '本地资料库已就绪',
+    () => !store.settings,
+  );
   if (settings) store.settings = settings;
   await refreshWebsiteBackground();
   loaded.value = true;

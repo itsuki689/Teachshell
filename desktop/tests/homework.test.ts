@@ -29,6 +29,35 @@ async function file(root: string, relative: string, content: string) {
   await fs.writeFile(result, content);
   return result;
 }
+async function holdListing(service: HomeworkService, courseID: string, folder: string, rel = '') {
+  let entered!: () => void, release!: () => void;
+  const begun = new Promise<void>((r) => (entered = r)),
+    gate = new Promise<void>((r) => (release = r)),
+    original = fs.readdir;
+  const stub = mock.method(fs, 'readdir', async (...args: Parameters<typeof fs.readdir>) => {
+    if (args[0] === folder && args.length === 1) {
+      entered();
+      await gate;
+    }
+    return original(...args);
+  });
+  const pending = service.list(courseID, rel);
+  await begun;
+  return { pending, release, restore: () => stub.mock.restore() };
+}
+async function whileListingHeld<T>(operation: Promise<T>): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<never>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('旧目录枚举阻塞了新读取或无关写入')), 2000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 test('homework has separate course and unassigned roots and preserves ordinary nested and hidden files', async () => {
   const f = await fixture();
@@ -211,6 +240,91 @@ test('homework import and course rename share the repository queue and retain th
     assert.equal(f.repo.state.materials.length, 0);
   } finally {
     await f.cleanup();
+  }
+});
+
+test('slow homework enumeration leaves new listings and unrelated writes available', async () => {
+  const f = await fixture();
+  let held: Awaited<ReturnType<typeof holdListing>> | undefined;
+  try {
+    const base = (await f.service.list(f.id)).root;
+    held = await holdListing(f.service, f.id, base);
+    const [listing, snapshot] = await whileListingHeld(
+      Promise.all([f.service.list(), f.repo.updateCourse(f.id, { teacher: '读取期间保存' })]),
+    );
+    assert.equal(listing.courseID, undefined);
+    assert.equal(snapshot.state.courses[0].teacher, '读取期间保存');
+  } finally {
+    held?.release();
+    await held?.pending;
+    held?.restore();
+    await f.cleanup();
+  }
+});
+
+test('detached homework listing rejects a changed mount or course directory', async (t) => {
+  for (const change of ['mount', 'course-directory'] as const) {
+    await t.test(change, async () => {
+      const f = await fixture();
+      let held: Awaited<ReturnType<typeof holdListing>> | undefined;
+      try {
+        const mount = path.join(f.root, 'External');
+        if (change === 'mount') {
+          await fs.mkdir(mount);
+          await f.repo.setHomeworkFolder(f.id, mount);
+        }
+        const base = (await f.service.list(f.id)).root;
+        held = await holdListing(f.service, f.id, base);
+        await whileListingHeld(
+          change === 'mount'
+            ? f.repo.setHomeworkFolder(f.id)
+            : f.repo.updateCourse(f.id, { name: '新的课程目录' }),
+        );
+        held.release();
+        await assert.rejects(held.pending, /已变化|ENOENT/);
+      } finally {
+        held?.release();
+        await held?.pending.catch(() => {});
+        held?.restore();
+        await f.cleanup();
+      }
+    });
+  }
+});
+
+test('detached homework listing rejects workspace switches and replaced directory paths', async (t) => {
+  for (const change of ['workspace', 'directory', 'symlink'] as const) {
+    await t.test(change, async () => {
+      const f = await fixture(),
+        next = await Repository.open(path.join(f.root, 'OtherLibrary'), { create: true });
+      let active = f.repo;
+      const service = new HomeworkService(() => active);
+      let held: Awaited<ReturnType<typeof holdListing>> | undefined;
+      try {
+        const base = (await service.list(f.id)).root,
+          folder = path.join(base, 'nested');
+        await file(folder, 'answer.txt', 'answer');
+        held = await holdListing(service, f.id, folder, 'nested');
+        if (change === 'workspace') active = next;
+        else {
+          await fs.rename(folder, path.join(base, 'previous'));
+          if (change === 'directory') await fs.mkdir(folder);
+          else {
+            const outside = path.join(f.root, 'Private');
+            await file(outside, 'secret.txt', 'private');
+            await fs.symlink(outside, folder, process.platform === 'win32' ? 'junction' : 'dir');
+          }
+        }
+        held.release();
+        await assert.rejects(held.pending, /已切换|已变化|符号链接/);
+      } finally {
+        held?.release();
+        await held?.pending.catch(() => {});
+        held?.restore();
+        await next.close();
+        await f.cleanup();
+      }
+    });
   }
 });
 

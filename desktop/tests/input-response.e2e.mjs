@@ -64,6 +64,7 @@ async function check(name, action) {
         if (Number.isFinite(animation.effect.getComputedTiming().endTime)) animation.finish();
     });
     await idle();
+    if (await page.getByRole('dialog').count()) await page.keyboard.press('Escape');
     await page.locator('.sidebar').getByRole('button', { name: '全部资料', exact: true }).click();
   }
 }
@@ -253,6 +254,64 @@ try {
       await idle();
       assert.equal(await toolbar('update').isEnabled(), true);
       await page.screenshot({ path: path.join(evidence, 'input-response-refreshed.png') });
+    },
+  );
+  await check(
+    'Startup settings reads do not lock the already rendered toolbar and search',
+    async () => {
+      await hold('settings');
+      await page.reload();
+      await page.locator('.app-body').waitFor();
+      await held();
+      assert.equal(await toolbar('settings').isEnabled(), true);
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
+      const search = page.getByRole('combobox', { name: '搜索课程、资料和计划', exact: true });
+      assert.equal(await search.evaluate((el) => el === document.activeElement), true);
+      await page.keyboard.type('startup');
+      assert.equal(await search.inputValue(), 'startup');
+      await page.keyboard.press('Escape');
+    },
+  );
+  const source = path.join(root, '慢预览.txt');
+  await fs.writeFile(source, 'Real preview read fixture');
+  await app.evaluate(({ dialog }, source) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [source] });
+  }, source);
+  await page.evaluate(() => window.teachshelf.importFiles({ category: '课件', copy: true }));
+  async function startPreview() {
+    await page.getByRole('table').getByText('慢预览', { exact: true }).click();
+    await hold('previewMaterial');
+    await page.locator('.inspector').getByRole('button', { name: '预览', exact: true }).click();
+    await held();
+  }
+  await check(
+    'A slow preview allows search and navigation and cannot open after leaving its page',
+    async () => {
+      await startPreview();
+      assert.equal(await toolbar('settings').isEnabled(), true);
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+k' : 'Control+k');
+      const search = page.getByRole('combobox', { name: '搜索课程、资料和计划', exact: true });
+      assert.equal(await search.evaluate((el) => el === document.activeElement), true);
+      await page.keyboard.type('preview');
+      assert.equal(await search.inputValue(), 'preview');
+      await page.keyboard.press('Escape');
+      await toolbar('settings').click();
+      await page.getByRole('heading', { name: '设置', exact: true }).waitFor();
+      await release();
+      await idle();
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      assert.notEqual(await page.locator('.statusbar').textContent(), '预览已打开');
+    },
+  );
+  await check(
+    'Changing the file selection invalidates a pending preview without locking selection',
+    async () => {
+      await startPreview();
+      await page.getByRole('button', { name: '取消选择', exact: true }).click();
+      assert.equal(await page.locator('.selection-bar').count(), 0);
+      await release();
+      await idle();
+      assert.equal(await page.getByRole('dialog').count(), 0);
     },
   );
   assert.equal(

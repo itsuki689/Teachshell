@@ -1048,25 +1048,36 @@ export class Repository {
     await walk('files');
     return entries;
   }
-  private async refreshObservations() {
+  private async refreshObservations(entries?: ReadonlyMap<string, Entry>) {
     const next: Record<string, Observation> = {};
+    const missing = new Set<string>();
+    for (const c of this.stateValue.courses)
+      if (c.isMissing) {
+        missing.add('course:' + c.id);
+        missing.add('root:' + c.id);
+      }
+    for (const f of this.stateValue.materialFolders) if (f.isMissing) missing.add('folder:' + f.id);
+    for (const m of this.stateValue.materials) if (m.isMissing) missing.add('file:' + m.id);
     for (const [key, relative] of Object.entries(this.tracked())) {
-      const [kind, recordID] = key.split(':');
-      const record =
-        kind === 'file'
-          ? this.stateValue.materials.find((m) => m.id === recordID)
-          : kind === 'folder'
-            ? this.stateValue.materialFolders.find((f) => f.id === recordID)
-            : this.stateValue.courses.find((c) => c.id === recordID);
-      if (record?.isMissing) {
+      if (missing.has(key)) {
         if (this.observations[key]) next[key] = this.observations[key];
         continue;
       }
-      const p = await safePath(this.root, relative);
-      if (await exists(p)) {
-        const st = await fs.lstat(p);
-        next[key] = { path: relative, identity: identity(st), size: st.size };
-      } else if (this.observations[key]) next[key] = this.observations[key];
+      if (entries) {
+        // synchronize() has already safely walked this tree. Keep that scan's
+        // path/identity pairing rather than restating every tracked file.
+        const entry = entries.get(relative);
+        if (entry) next[key] = { path: relative, identity: entry.identity, size: entry.size };
+        else if (this.observations[key]) next[key] = this.observations[key];
+      } else {
+        // Writes may have moved or imported files since the preceding scan.
+        // Recheck their paths and identities before publishing observations.
+        const p = await safePath(this.root, relative);
+        if (await exists(p)) {
+          const st = await fs.lstat(p);
+          next[key] = { path: relative, identity: identity(st), size: st.size };
+        } else if (this.observations[key]) next[key] = this.observations[key];
+      }
     }
     await atomicWrite(this.root, '.desktop-observations.json', JSON.stringify(next));
     this.observations = next;
@@ -1085,15 +1096,23 @@ export class Repository {
     if (digest(JSON.stringify(diskIndex)) !== digest(JSON.stringify(this.stateValue)))
       throw new Error('索引被另一程序修改，请重新打开资料库，防止覆盖');
     const entries = await this.scan();
+    const identities = new Map<string, Entry[]>();
+    for (const entry of entries.values()) {
+      const entryIdentity = entry.identity;
+      const matches = identities.get(entryIdentity);
+      if (matches) matches.push(entry);
+      else identities.set(entryIdentity, [entry]);
+    }
     const s = this.state;
     const tracked = this.tracked();
     const locate = (key: string, missing?: boolean) => {
       const ob = this.observations[key];
-      const matches = ob ? [...entries.values()].filter((e) => e.identity === ob.identity) : [];
+      const matches = ob ? (identities.get(ob.identity) ?? []) : [];
+      const exact = entries.get(tracked[key]);
       return (
-        matches.find((e) => e.path === tracked[key]) ??
+        (ob && exact?.identity === ob.identity ? exact : undefined) ??
         (matches.length === 1 ? matches[0] : undefined) ??
-        (!missing ? entries.get(tracked[key]) : undefined)
+        (!missing ? exact : undefined)
       );
     };
     for (const c of s.courses) {
@@ -1216,7 +1235,7 @@ export class Repository {
       this.stateValue = s;
       this.onChanged?.(this.snapshot());
     }
-    await this.refreshObservations();
+    await this.refreshObservations(entries);
   }
   async backup(destination: string) {
     return this.serial(async () => {

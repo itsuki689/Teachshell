@@ -305,6 +305,7 @@ try {
         .filter({ hasText: '高等数学 A' })
         .waitFor();
       await waitCard(occurrenceID, 'start', 480);
+      assert.equal(await occurrence().evaluate((el) => el === document.activeElement), true);
       const moved = (await snapshot()).state.timetableTerms[0].reschedules.find(
         (r) => r.meetingID === meetingID,
       );
@@ -316,6 +317,7 @@ try {
         .locator('.timeline-event')
         .waitFor();
       await waitCard(occurrenceID, 'start', 480);
+      assert.equal(await occurrence().evaluate((el) => el === document.activeElement), true);
       let before = await snapshot();
       await page.getByLabel('课表周次', { exact: true }).focus();
       await page.keyboard.press('ArrowUp');
@@ -329,6 +331,54 @@ try {
       assert.equal(await page.locator('.timeline-resize').count(), 0);
       await page.getByLabel('编辑固定课程与计划', { exact: true }).check();
       await occurrence().click();
+    },
+  );
+  await check(
+    'Time keys stay with the focused card or resize grip after focus leaves a selected event',
+    async () => {
+      await occurrence().click();
+      const before = await snapshot();
+      await page.keyboard.press('Shift+Tab');
+      assert.equal(
+        await page.evaluate(() => document.activeElement?.matches('.timeline-day')),
+        true,
+        'Shift+Tab moves focus from the card to its day grid',
+      );
+      for (const key of ['ArrowDown', 'ArrowRight', 'Shift+=', '-']) {
+        await page.keyboard.press(key);
+        assert.equal((await snapshot()).revision, before.revision);
+      }
+      const toolbar = page.locator('[data-toolbar-action=create]');
+      await toolbar.focus();
+      await page.keyboard.press('Enter');
+      const menu = page.getByRole('menu', { name: '快捷新建菜单', exact: true });
+      await menu.waitFor();
+      await page.keyboard.press('ArrowDown');
+      assert.equal(
+        await menu
+          .getByRole('menuitem', { name: '新建计划…', exact: true })
+          .evaluate((el) => el === document.activeElement),
+        true,
+      );
+      for (const key of ['ArrowRight', 'Shift+=', '-']) {
+        await page.keyboard.press(key);
+        assert.equal((await snapshot()).revision, before.revision);
+      }
+      await page.keyboard.press('Escape');
+      await menu.waitFor({ state: 'hidden' });
+      await occurrence().focus();
+      await page.keyboard.press('ArrowDown');
+      await waitCard(occurrenceID, 'start', 490);
+      await page.keyboard.press('ArrowUp');
+      await waitCard(occurrenceID, 'start', 480);
+      const handle = page.getByRole('button', { name: '调整开始边界 高等数学 A', exact: true });
+      await handle.focus();
+      await page.keyboard.press('ArrowDown');
+      await waitCard(occurrenceID, 'start', 481);
+      assert.equal(await occurrence().getAttribute('data-end'), '590');
+      await page.keyboard.press('ArrowUp');
+      await waitCard(occurrenceID, 'start', 480);
+      assert.equal(await handle.evaluate((el) => el === document.activeElement), true);
     },
   );
   await check(

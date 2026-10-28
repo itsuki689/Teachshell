@@ -229,6 +229,96 @@ test('atomic replacement at existing path stays attached and updates size', asyn
   assert.equal(await repo.resolveMaterial(material.id), original);
 });
 
+test('sync reuses the safe scan instead of repeatedly stating every indexed file', async (t) => {
+  const dir = await scratch(t);
+  const repo = await start(t, path.join(dir, 'Library'));
+  const { material } = await addFile(repo, dir);
+  const file = await repo.resolveMaterial(material.id);
+  const lstat = fs.lstat;
+  let reads = 0;
+  const mock = t.mock.method(fs, 'lstat', async (...args: Parameters<typeof fs.lstat>) => {
+    if (args[0] === file) reads++;
+    return lstat(...args);
+  });
+  try {
+    await repo.sync();
+  } finally {
+    mock.mock.restore();
+  }
+  assert.equal(reads, 1, 'each indexed file should need only its safe directory-scan stat');
+});
+
+test('sync identity lookup stays linear in scanned entries', async (t) => {
+  const dir = await scratch(t);
+  const repo = await start(t, path.join(dir, 'Library'));
+  const files = await Promise.all(
+    Array.from({ length: 24 }, async (_, i) => {
+      const file = path.join(dir, `source-${i}.txt`);
+      await fs.writeFile(file, 'x');
+      return file;
+    }),
+  );
+  assert.equal((await repo.importFiles(files)).imported, files.length);
+  // Count actual scan-result identity accesses rather than a machine-dependent
+  // elapsed-time threshold. Rescanning all entries per indexed item is quadratic.
+  const scanner = repo as unknown as {
+    scan(): Promise<Map<string, { identity: string }>>;
+  };
+  const scan = scanner.scan.bind(repo);
+  let identityReads = 0;
+  let entryCount = 0;
+  const mock = t.mock.method(scanner, 'scan', async () => {
+    const entries = await scan();
+    entryCount = entries.size;
+    for (const entry of entries.values()) {
+      const identity = entry.identity;
+      Object.defineProperty(entry, 'identity', {
+        get: () => {
+          identityReads++;
+          return identity;
+        },
+      });
+    }
+    return entries;
+  });
+  try {
+    await repo.sync();
+  } finally {
+    mock.mock.restore();
+  }
+  assert.ok(
+    identityReads <= entryCount * 3,
+    `${identityReads} identity reads for ${entryCount} entries`,
+  );
+});
+
+test('sync preserves exact hard-link paths and refuses ambiguous moved identities', async (t) => {
+  const dir = await scratch(t);
+  const root = path.join(dir, 'Library');
+  const repo = await start(t, root);
+  const { material } = await addFile(repo, dir);
+  const original = await repo.resolveMaterial(material.id);
+  const first = path.join(path.dirname(original), 'é-🌊.txt');
+  const second = path.join(path.dirname(original), 'É-🌊-alias.txt');
+  await fs.link(original, first);
+  await fs.link(original, second);
+  await repo.sync();
+  assert.equal(await repo.resolveMaterial(material.id), original);
+  await fs.unlink(original);
+  await repo.sync();
+  assert.equal(repo.state.materials[0].isMissing, true);
+  await fs.writeFile(original, 'unrelated replacement');
+  await repo.sync();
+  assert.equal(repo.state.materials[0].isMissing, true);
+  await repo.close();
+  const reopened = await start(t, root);
+  assert.equal(reopened.state.materials[0].isMissing, true);
+  await fs.unlink(second);
+  await reopened.sync();
+  assert.equal(await reopened.resolveMaterial(material.id), first);
+  assert.equal(await fs.readFile(original, 'utf8'), 'unrelated replacement');
+});
+
 test('external references are never renamed or modified by moving or removing records', async (t) => {
   const dir = await scratch(t);
   const repo = await start(t, path.join(dir, 'Library'));

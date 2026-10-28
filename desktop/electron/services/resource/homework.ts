@@ -76,6 +76,7 @@ function relative(value: string, allowEmpty = true): string {
 async function directory(file: string) {
   const st = await fs.lstat(file);
   if (st.isSymbolicLink() || !st.isDirectory()) throw new Error('不是安全的普通文件夹');
+  return identity(st);
 }
 /** Existing disconnected mounts still reserve their stored location, matching Swift. */
 export async function validateHomeworkMount(
@@ -210,25 +211,65 @@ export class HomeworkService {
       return action(repo, state, base, !!c?.homeworkFolder);
     });
   }
-  list(courseID?: string, rel = ''): Promise<HomeworkListing> {
-    return this.access(courseID, async (_repo, _state, base, mounted) => {
+  async list(courseID?: string, rel = ''): Promise<HomeworkListing> {
+    const location = (state: LibraryState) => {
+      const c = course(state, courseID);
+      return JSON.stringify([
+        c?.homeworkFolder ?? null,
+        c?.homeworkFolder ? null : courseDirectory(c),
+        c?.homeworkFolder ? false : !!c?.isMissing,
+      ]);
+    };
+    // Directory preparation still shares the mutation queue. Slow enumeration
+    // does not: an obsolete mounted-directory read must not hold up later work.
+    const context = await this.access(courseID, async (repo, state, base, mounted) => {
       const folder = await child(base, rel);
-      await directory(folder);
-      const entries: HomeworkEntry[] = [];
-      for (const name of await fs.readdir(folder)) {
-        if (name.startsWith('.')) continue;
-        const file = path.join(folder, name),
-          st = await fs.lstat(file);
-        if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile())) continue;
-        entries.push(await entry(base, file));
-      }
-      entries.sort(
-        (a, b) =>
-          Number(b.isDirectory) - Number(a.isDirectory) ||
-          a.name.localeCompare(b.name, 'zh-CN', { numeric: true }),
-      );
-      return { courseID, relative: rel, root: base, mounted, entries };
+      const baseIdentity = await directory(base),
+        folderIdentity = folder === base ? baseIdentity : await directory(folder);
+      return {
+        repo,
+        base,
+        mounted,
+        folder,
+        baseIdentity,
+        folderIdentity,
+        location: location(state),
+      };
     });
+    const { repo, base, mounted, folder } = context;
+    const current = () => {
+      if (this.getRepository() !== repo) throw new Error('资料库已切换');
+      if (location(repo.state) !== context.location) throw new Error('作业目录已变化，请重新读取');
+    };
+    const validate = async () => {
+      current();
+      // Mutations may move a course or replace its mount while this read awaits
+      // IO. Reject replaced directories and symlink ancestors before returning.
+      await safeExternal(folder);
+      if (
+        (await directory(base)) !== context.baseIdentity ||
+        (folder === base ? context.baseIdentity : await directory(folder)) !==
+          context.folderIdentity
+      )
+        throw new Error('作业目录已变化，请重新读取');
+      current();
+    };
+    await validate();
+    const entries: HomeworkEntry[] = [];
+    for (const name of await fs.readdir(folder)) {
+      if (name.startsWith('.')) continue;
+      const file = path.join(folder, name),
+        st = await fs.lstat(file);
+      if (st.isSymbolicLink() || (!st.isDirectory() && !st.isFile())) continue;
+      entries.push(await entry(base, file));
+    }
+    await validate();
+    entries.sort(
+      (a, b) =>
+        Number(b.isDirectory) - Number(a.isDirectory) ||
+        a.name.localeCompare(b.name, 'zh-CN', { numeric: true }),
+    );
+    return { courseID, relative: rel, root: base, mounted, entries };
   }
   createFolder(courseID: string | undefined, rel: string, name: string): Promise<HomeworkEntry> {
     return this.access(courseID, async (_repo, _state, base) => {

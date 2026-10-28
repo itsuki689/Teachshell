@@ -740,8 +740,24 @@ async function timeKey(event: KeyboardEvent, item: TimelineEvent, edge?: 'start'
   const range = edge
     ? resizedRange(item.range, edge, item.range[edge] + minutes, 1)
     : shiftedRange(item.range, minutes);
-  if (range)
+  if (range) {
+    const focused = event.currentTarget;
     await applyEventTime(item, addPlanDays(item.date, days), range, expected, term.value?.id);
+    // Saving disables controls, and moving between days recreates the card. Keep
+    // repeated time keys on that control without taking focus back from the user.
+    await nextTick();
+    if (
+      chosen.value?.id === item.id &&
+      (document.activeElement === document.body || document.activeElement === focused)
+    )
+      grid.value
+        ?.querySelector<HTMLButtonElement>(
+          edge
+            ? `.timeline-resize.${edge}`
+            : `.timeline-event[data-event-id="${CSS.escape(item.id)}"]`,
+        )
+        ?.focus({ preventScroll: true });
+  }
 }
 function resizeStyle(
   item: TimelineEvent & { top: number; height: number; lane: number; laneCount: number },
@@ -757,7 +773,7 @@ function cancelKey(event: KeyboardEvent) {
   if (event.key === 'Escape' && (drag.value || creation.value)) {
     event.preventDefault();
     clearDrag();
-  } else if (chosen.value) void timeKey(event, chosen.value);
+  }
 }
 function lostFocus() {
   clearDrag();
@@ -1490,6 +1506,7 @@ function time(item: TimetableOccurrence) {
                       "
                       @pointerdown="startDrag($event, item)"
                       @click="chooseEvent(item)"
+                      @keydown="timeKey($event, item)"
                       @dblclick="
                         item.course
                           ? openMeeting(item.course.meeting.id, item.course)

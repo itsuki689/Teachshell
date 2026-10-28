@@ -285,6 +285,22 @@ try {
         courseA.id,
       );
       assert.equal(await notes.inputValue(), '拖动前保留草稿');
+      await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, {
+        steps: 8,
+      });
+      await page.mouse.up();
+      await confirm.waitFor();
+      await confirm.getByRole('button', { name: '丢弃修改', exact: true }).click();
+      await confirm.waitFor({ state: 'hidden' });
+      assert.equal(await selected().getAttribute('data-browser-id'), materials[0].id);
+      assert.equal(
+        (await snapshot()).state.materials.find((m) => m.id === materials[1].id).courseID,
+        courseA.id,
+        'Approving a guarded drag must not replay it as a click or a stale drop',
+      );
+      await notes.fill('清理前保留草稿');
       await page.getByRole('button', { name: '取消选择', exact: true }).click();
       await confirm.getByRole('button', { name: '丢弃修改', exact: true }).click();
       await second.dragTo(sidebarCourse(courseB.name));
@@ -296,6 +312,46 @@ try {
         id: materials[1].id,
         courseID: courseA.id,
       });
+    },
+  );
+  await check(
+    'Approving discarded drafts completes the original row and cover selection on the first click',
+    async () => {
+      const materials = (await snapshot()).state.materials.filter(
+        (m) => m.courseID === courseA.id && !m.folderID,
+      );
+      for (const [layout, selector] of [
+        ['列表视图', 'tr[data-browser-id]'],
+        ['封面视图', '.material-cover[data-browser-id]'],
+      ]) {
+        await page.getByRole('button', { name: layout, exact: true }).click();
+        const first = page.locator(`${selector}[data-browser-id="${materials[0].id}"]`),
+          second = page.locator(`${selector}[data-browser-id="${materials[1].id}"]`),
+          inspector = page.locator('.inspector');
+        await first.click();
+        await inspector.getByLabel('备注', { exact: true }).fill(`${layout}待丢弃的草稿`);
+        await second.click();
+        const confirm = page.getByRole('dialog', { name: '丢弃未保存的资料修改？', exact: true });
+        await confirm.waitFor();
+        assert.equal(await confirm.count(), 1);
+        await confirm.getByRole('button', { name: '丢弃修改', exact: true }).click();
+        await confirm.waitFor({ state: 'hidden' });
+        await until(
+          () => second.getAttribute('aria-selected'),
+          (value) => value === 'true',
+          `${layout}: the first click must select the requested material after discarding`,
+        );
+        assert.equal(await first.getAttribute('aria-selected'), 'false');
+        assert.equal(
+          await inspector.getByLabel('显示标题', { exact: true }).inputValue(),
+          materials[1].title,
+        );
+        assert.equal(
+          (await snapshot()).state.materials.find((m) => m.id === materials[0].id).notes,
+          materials[0].notes,
+          'Discarding a draft must not persist it',
+        );
+      }
     },
   );
   await check(

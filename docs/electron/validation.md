@@ -1,12 +1,16 @@
 # 当前验证记录
 
-2026-10-28 Windows 反馈补充：确认反馈来自 Windows，继续移除按钮按下态的 120 ms 颜色过渡；保留鼠标拖出取消、空格键松开执行与悬停过渡。新增两项旧版失败、修复后通过的真实输入回归，当前专项共 6 项。此补充在本机 macOS ARM64 通过生产构建、按键/顶栏/控件/外观 4 组窗口回归、修改代码格式和差异检查；尚未在 Windows 原生环境验收，不能据此认定测试者的所有延迟原因已排除。
+2026-10-28 响应排查续修：由三个 GPT-6.1-sol 子代理分别检查事件/动效、异步加载和主进程。实际复现并修复资料快捷键抢占按钮、收藏 Enter 冒泡打开文件、计划焦点外调时、丢弃草稿后首击失效、启动设置与预览读取误锁顶栏、慢作业枚举占用写队列，以及同步重复文件检查。实现约束见[界面状态说明](ui-sync-migration.md)。未改动原生课屿或真实用户资料。
 
-2026-10-28：按键响应修复，版本沿用 0.3.11，以 Git 提交标识开发构建。刷新按钮不再等待装饰动画；设置和作业目录只读加载不阻塞顶栏与快捷键。实现与异步守卫见[界面状态说明](ui-sync-migration.md)。原生课屿与真实用户资料不参与测试。
+反向验证：新增键盘套件在旧版有 5 项失败；新增启动设置与预览检查 3 项均失败；实际资料点击确认后未切换选中项。旧同步对单个索引文件重复 stat 4 次，26 个扫描条目访问身份 624 次；优化后单文件同步仅扫描一次，身份查找按条目数线性增长。旧作业目录枚举屏障会阻塞新读取和无关保存，修复后可在屏障未释放时完成。
 
-本轮 macOS ARM64 本机结果：335/335 业务测试、23 个完整源码窗口套件通过，其中新增 4 项按键响应检查。旧版在暂停刷新动画、延迟设置与作业目录读取时失败，修复后全部通过。TypeScript、生产构建、修改代码的格式和差异检查通过；窗口身份、非空界面、错误遮罩、控制台和交互检查通过。Browser 插件不可用，采用 Playwright Electron，截图与日志保存在仓库外的临时目录。测试通过事件屏障复现，未放宽时间阈值。
+本轮 macOS ARM64 业务测试 **346/346 通过，完整源码窗口套件 24/24 通过**，其中包含硬链接歧义、原位替换、挂载/目录/工作区变更和符号链接竞态。按键专项为 9 项，新增键盘归属套件 7 项，课表拖动及键盘 10 项，原生 UI 对齐 9 项。TypeScript、生产构建及修改代码格式检查通过。Browser 插件不可用，使用 Playwright Electron 的真实键盘/鼠标与临时资料库；截图、日志留在仓库外。窗口身份、非空页面、框架错误遮罩、控制台、截图与实际交互均已核对；覆盖标准 1260×800 及最小 1020×680、明暗模式。提交后安装核对结果记录在忽略的 `desktop/release/installed-verification.json`，不以旧版结果代替。
 
-验证入口（`desktop/`）：`npm test`、`npm run build`、`node tests/input-response.e2e.mjs`、`npm run test:e2e`。安装版使用 `TEACHSHELF_EXECUTABLE=/Applications/Teachshell.app/Contents/MacOS/Teachshell` 重跑相关窗口检查；所有业务样例均在临时资料库。本轮未在 Windows/Linux 实机执行，也未推送或触发新的远程 CI；先前 CI 结果不代表此次改动。原 macOS 监听根因、原始 CI 失败链接和重复验证见[文件监听专项](filesystem-watch.md)。
+本机临时 1 字节文件样本的收藏操作：1,000 份约 212 → 135 ms，3,000 份约 640 → 320 ms；3,000 份的一次分段测量中 lstat 为 39,028 → 21,028 次。这些是观察值，测试不以固定时间判定通过，也不代表 Windows 实机性能。提交后的全新路径/身份验证仍保留；作业目录准备与挂载验证仍在串行队列内，系统 IO 等待没有被强行取消。
+
+验证入口（`desktop/`）：`npm test`、`npm run build`、`node tests/input-response.e2e.mjs`、`node tests/keyboard-routing.e2e.mjs`、`npm run test:e2e`。安装版使用 `TEACHSHELF_EXECUTABLE=/Applications/Teachshell.app/Contents/MacOS/Teachshell` 重跑窗口检查。本轮未在 Windows/Linux 原生环境执行，也未推送或触发新的 CI。
+
+前轮 `3009c34` 的按下反馈/刷新动画/只读状态修复已获准推送，[三平台 CI 40657230958](https://github.com/itsuki689/Teachshell/actions/runs/40657230958) 全部成功；Windows 333 项业务测试及 23 个源码、21 个打包窗口套件通过，6 项输入响应在两种应用中均通过。此结果只对应该提交，不代表本轮续修。原 macOS 监听根因与验证见[文件监听专项](filesystem-watch.md)。
 
 本地 Release 由当前已提交快照构建，签名通过后正常退出旧版、备份替换、注册并打开 Teachshell。回执为忽略的 `desktop/release/installed-macos.json`；关于页显示版本、源提交和实际执行路径。只生成 `.app`，本次不更新既有 GitHub Release。
 

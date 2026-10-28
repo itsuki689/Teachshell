@@ -147,7 +147,11 @@ onMounted(async () => {
   });
   await history();
   if (!store.settings && active) {
-    const s = await store.run(() => api.settings());
+    const s = await store.read(
+      () => api.settings(),
+      '设置已加载',
+      () => active && !store.settings,
+    );
     if (s && active) store.settings = s;
   }
 });

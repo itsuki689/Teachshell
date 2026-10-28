@@ -1,5 +1,7 @@
 # Teachshell
 
+2026-10-28 响应排查续修：资料行的 Enter/Space 不再抢占按钮和菜单，计划调时限制到事件卡片/边界的焦点；丢弃资料草稿后首个点击继续完成选择。启动设置及预览使用带失效守卫的只读状态；慢作业枚举不再占用写入队列；同步按本次扫描更新文件身份，减少重复 stat 与全量匹配。新增 `node tests/keyboard-routing.e2e.mjs`，配合 `input-response`、`schedule-drag`、`e2e-ui-parity` 和存储/作业业务回归。详细安全边界见[异步状态说明](../docs/electron/ui-sync-migration.md)。
+
 2026-10-28 按键响应修复：刷新按钮按实际操作完成状态恢复，不再等待装饰动画；设置和作业目录的只读加载仍显示进度，但允许搜索快捷键和顶栏导航。针对 Windows 按下反馈慢的补充：按钮按下态立即显示，悬停/松开过渡保留；不将点击提前到按下时执行。保存、同步和未保存草稿保护继续生效。专项回归：`node tests/input-response.e2e.mjs`，包含鼠标/空格键按下反馈、取消操作、暂停动画、延迟真实 IPC、键盘输入和迟到回复检查；实现约束见[异步状态说明](../docs/electron/ui-sync-migration.md)。
 
 2026-10-28：macOS 改用系统递归文件监听，处理连续目录改名、`files/` 替换和无文件名事件；监听就绪后主动核对一次索引。Windows 保留无目录锁的轮询，Linux 保留 Chokidar 原生监听。见[诊断与回归](../docs/electron/filesystem-watch.md)、[当前验证](../docs/electron/validation.md)、[全部技术文档](../docs/README.md)。版本仍为 0.3.11，开发更新按提交编号区分；既有 GitHub Release 不会自动被覆盖。
