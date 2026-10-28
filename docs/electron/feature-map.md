@@ -1,5 +1,7 @@
 # Swift 功能审计与 Electron 迁移映射
 
+2026-10-28 当前状态：第 1–6 节为原 Swift 审计，第 7 节起为迁移阶段记录，历史测试数不代表当前结果。当前功能见[使用指南](../usage.md)、[开发说明](../../desktop/README.md)及[验证](validation.md)。macOS 已使用主进程原生递归监听，Windows 保留轮询；外部改名后的持续监听、索引和 UI 自动更新见[文件监听诊断](filesystem-watch.md)。
+
 审计基线：Git `24efb2d`（`codex/in-app-ai-assistant`），2026-10-25。仅审计 `Sources`、`Resources`、`Tests` 和 Swift 包入口；`example/`（WPF）不参与迁移。本文记录读到的实际行为与目标边界，不代表对应 Electron 模块已经完成。各阶段的实测结果另见测试报告。
 
 ## 1. 原应用结构与界面

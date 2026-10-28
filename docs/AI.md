@@ -1,3 +1,20 @@
+# Teachshell AI 助手
+
+适用于 `desktop/` 当前实现；[文档目录](README.md) · [当前验证](electron/validation.md)。
+
+在设置 → AI 助手填写 OpenAI 兼容 Chat Completions 地址、模型和可选 API Key，保存后到 AI 助手发送消息。支持 SSE 流式输出、停止、工具调用；没有内置模型。当前设置未实现 Swift 的独立工具连接测试及推理兼容开关，不应按下方历史说明寻找这些控件。
+
+`electron/services/ai/stream.ts` 负责分块 UTF-8/SSE 和普通 JSON 响应，`chat.ts` 管理多轮、取消及写入确认，和 MCP 共用 `mcp/tools.ts` 的 25 个工具。查询直接执行，每个 AI 写工具都必须在应用内确认；过期 revision 或切库后不能执行旧确认。工具不能读取 PDF/Office 正文、运行 shell 或任意访问本地路径。停止不打断已经提交中的磁盘事务，退出等待工具回执与聊天落盘。
+
+每份资料库的历史写入 `.desktop-chat.json`，原子更新并保留备份；损坏/超限数据报错并保留原件。切库切换对应会话，不能把原生 Swift 的内存聊天记录当成可导入的历史文件。聊天和工具返回的元数据会发给用户配置的模型服务；只打开页面不会发起对话。
+
+API Key 由 Electron `safeStorage` 使用系统后端加密，按完整规范化 endpoint 绑定；更换地址不沿用旧密钥。配置存入独立应用数据目录的 `desktop-settings.json`，不写入资料库。Linux 无安全后端时拒绝保存，不回退明文。此存储与教学网站 Cookie 的专用 macOS Keychain helper 不同，也不读取原生课屿的凭据。
+
+验证（在 `desktop/`）：`node --experimental-strip-types --test tests/ai.test.ts tests/mcp.test.ts tests/security.test.ts`，窗口通过 `npm run test:e2e` 覆盖输入、确认、草稿和退出。HTTP 测试使用回环夹具，不需要真实模型密钥。
+
+<details>
+<summary>原生 Swift 历史说明（保留作行为对照，不作为 Teachshell 操作指引）</summary>
+
 # 内置 AI 助手
 
 课屿 1.15.0 在侧栏提供 **AI 助手**；自 1.15.2 起与 **计划** 并排显示。用自然语言查询计划、课程和资料，调整计划内容、资料元数据及物理文件夹。它与外部 MCP 共用 25 个工具及 `AppToolExecutor`，保持相同的参数校验、资料库标识、版本检查、编辑窗口保护、物理文件事务和界面刷新。
@@ -52,3 +69,5 @@ API Key 单独保存在 macOS 钥匙串，按完整 API 地址隔离；不会进
 - 测试使用隔离资料库、脚本化模型和 URLProtocol HTTP 夹具，覆盖真实请求编码、工具往返、修改/拒绝/撤销、取消后的迟到回复、版本/编辑冲突及物理文件夹创建；未使用用户资料或实际第三方模型凭据。
 
 消息格式参考 [Chat Completions API](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) 和 [Function calling](https://developers.openai.com/api/docs/guides/function-calling)。不同兼容服务仍可能存在参数差异，以连接测试为准。
+
+</details>

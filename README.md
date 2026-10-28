@@ -1,5 +1,9 @@
 # Teachshell
 
+支持 macOS **Apple Silicon**、Windows x64 和 Linux；Intel Mac 自 0.3.10 起不再支持。日常本机更新构建 `.app`，仅在明确发布时生成分发安装包。始终保留 `/Applications/课屿.app`，只备份替换 `/Applications/Teachshell.app`。
+
+当前入口：[使用指南](docs/usage.md) · [开发与构建](desktop/README.md) · [技术文档目录](docs/README.md) · [最新验证](docs/electron/validation.md)。2026-10-28 修复 macOS 连续目录改名后的监听丢事件，增加自动同步与切库回归；根因、证据及平台差异见[文件监听说明](docs/electron/filesystem-watch.md)。
+
 独立维护的 Electron + Vue 3 + TypeScript 跨平台课程资料应用，主实现位于 [`desktop/`](desktop/)，开发、启动和测试方式见 [Teachshell 开发说明](desktop/README.md)。
 
 本目录使用自己的 `.git/`，不再作为 Teachshelf 的 worktree，不共享 Git 对象库，也不配置原版仓库的远程。保留已有提交历史用于追溯；原生 Teachshelf 仅作只读参考。本仓库内保留的 Swift 源码、资源和测试用于行为对照与数据兼容性验证。

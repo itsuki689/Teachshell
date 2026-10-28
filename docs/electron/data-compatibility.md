@@ -1,5 +1,7 @@
 # Swift 数据兼容契约
 
+2026-10-28 复核：以下第 1–8 节保持 Swift 基线契约。当前 Electron 延续 schema 9 与真实目录，额外使用 `.teachshelf-electron.json` 标记、`.desktop-observations.json` 身份缓存和 `.desktop-chat.json` 历史；未知字段保留。macOS 监听替换不修改 JSON 格式或身份算法；事件只触发全树核对，未索引新文件不自动入库。见[文件监听](filesystem-watch.md)、[当前验证](validation.md)、[文档目录](../README.md)。
+
 分析基线：`24efb2d`，`Sources/TeachshelfCore`、`Sources/Teachshelf/AI` 及对应测试的实际实现。`example/` 未作为迁移依据。下述是原生版本的行为契约；Electron 完成度以迁移清单和测试报告为准。
 
 ## 1. 索引、版本和日期

@@ -1,5 +1,7 @@
 # 教学网站连接与作业截止同步
 
+2026-10-28 复核：本地文件监听可能推进资料库 revision，网站预览/确认仍需复核版本，不能因界面已自动刷新而沿用旧审核。当前测试入口和平台状态见[验证报告](validation.md)。
+
 依据原 Swift `TeachingWebsite.swift`、`LibraryRepository+TeachingWebsite.swift` 与 `TeachingWebsiteTests.swift` 的实际实现迁移。原 Swift 代码未修改。
 
 ## 已迁移的核心
@@ -48,4 +50,4 @@ python3 scripts/verify-swift-teaching.py /private/tmp/teaching.json
 
 ## 仍需独立验收
 
-旧 WebKit/Keychain 登录 cookie 不自动迁移到 Chromium；独立网站会话不代表已复刻 Swift 的“只保存 Moodle cookie、7 天有效、可选记住登录”策略。后台定时巡检和真实校园账号仍需独立验收。已移除记录保持忽略，不会批量自动重建。增量正文核验、版本保存与缺失修复现由独立批量文件模块实现；作业/DDL 合并与文件事务边界仍分开，不能静默覆盖用户编辑的副本。
+旧 WebKit/Keychain 登录 cookie 不自动迁移到 Chromium；可选七天登录记忆已由[登录模块](login-session-migration.md)实现，默认关闭的[后台巡检](background-sync-migration.md)只生成审核。真实校园账号仍需独立在线验收。已移除记录保持忽略，不会批量自动重建。增量正文核验、版本保存与缺失修复现由独立批量文件模块实现；作业/DDL 合并与文件事务边界仍分开，不能静默覆盖用户编辑的副本。

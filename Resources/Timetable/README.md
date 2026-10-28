@@ -1,5 +1,7 @@
 # 本科课表导入资源
 
+Electron 复用此解析资源，当前入口为“计划 → 导入课表”；构建复制脚本与授权声明，运行在隔离 Chromium 中。文件监听变更不影响解析协议。当前用法与回归范围见[使用指南](../../docs/usage.md)及[验证报告](../../docs/electron/validation.md)。
+
 `njubksjw2.js` 是随应用打包的南京大学本科课表 DOM 解析器，修改来源及授权见 `NOTICE.txt`、`LICENSE-APACHE-2.0.txt`。仅在官方本科课表地址执行；不发起网络请求，不读取账号、密码或 Cookie。
 
 `Sample-undergraduate.json` 是人为编写的公开示例，不对应任何学生。可通过「课表 → 导入本科课表 → 选择 JSON 文件」离线体验预览、导入与重复导入。

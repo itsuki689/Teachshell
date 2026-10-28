@@ -1,5 +1,7 @@
 # 计划页的统一日历工作区
 
+2026-10-28 复核：月/周/日仍共享工作区；右上角刷新只重读当前页面的本地数据，不触发网站同步或重置日期。文件监听仅推进资料库快照，不改变日历选择。下文保留 10 月 26–27 日的交互验收；当前跨平台结果见[验证报告](validation.md)。
+
 本次对照仓库中保留的 Swift `ScheduleWorkspace.swift`、`ScheduleSelection.swift`、`ScheduleMonthView.swift`、`ScheduleAgendaView.swift`、`ScheduleSideAgenda.swift` 和 `PlanPresentation.swift` 实现。Swift 文件和用户资料库不作修改，不改变 JSON schema。
 
 ## 视图结构

@@ -1,5 +1,7 @@
 # 教学网站登录记忆迁移
 
+2026-10-28 复核：当前窗口测试为 9 项，包含 0.3.11 的忙碌互斥、请求失败回滚及重启恢复。`website-update-ipc.ts` 统一登录操作生命周期；Windows 使用系统加密存储，macOS 仅 ARM64 helper。下文早期 7 项计数保留为历史范围，当前结果见[验证报告](validation.md)。
+
 实现依据是原项目 `Sources/Teachshelf/TeachingLoginSession.swift`、`TeachingWebClient.swift`、`TeachingLoginRecovery.swift` 及相应两个测试 suite，未修改这些 Swift 源文件。
 
 ## 保留的规则

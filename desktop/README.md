@@ -1,8 +1,10 @@
 # Teachshell
 
+2026-10-28：macOS 改用系统递归文件监听，处理连续目录改名、`files/` 替换和无文件名事件；监听就绪后主动核对一次索引。Windows 保留无目录锁的轮询，Linux 保留 Chokidar 原生监听。见[诊断与回归](../docs/electron/filesystem-watch.md)、[当前验证](../docs/electron/validation.md)、[全部技术文档](../docs/README.md)。版本仍为 0.3.11，开发更新按提交编号区分；既有 GitHub Release 不会自动被覆盖。
+
 本工程属于独立的 Teachshell Git 仓库，主目录为 `desktop/`。原生 Teachshelf 仅作只读参考；两者不共享 worktree、Git 对象库或远程配置。仓库内保留的 Swift 实现用于对照与兼容性验证。
 
-Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.11。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
+Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.11。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。跨平台实现已对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
 
 0.3.3 对照 Swift 同步计划默认周视图、无课表本地周计划、强调色编辑和十条色带明暗动效。外观设置随资料库保存；十二色预设、取消恢复、课程色边框、日夜开关、减少动态效果及切库同步见[周视图与外观验收](../docs/electron/appearance-week-parity.md)。
 
@@ -120,7 +122,7 @@ npm run package -- --publish never
 npm run test:packaged
 ```
 
-输出在 `desktop/release/`，应用名为「Teachshell」。macOS 生成 DMG/ZIP，Windows 生成 NSIS EXE，Linux 生成 AppImage/DEB。`.github/workflows/desktop.yml` 在各平台原生 runner 安装依赖、测试、构建安装包，再用打包后的应用重复主界面及批量/版本窗口验收并上传产物和截图。该工作流已配置不等于三平台已通过验收；实际本地结果见验证报告。
+输出在 `desktop/release/`，应用名为「Teachshell」。macOS 生成 DMG/ZIP，Windows 生成 NSIS EXE，Linux 生成 AppImage/DEB。`.github/workflows/desktop.yml` 在各平台原生 runner 安装依赖、测试、构建安装包，再用打包后的应用重复主界面及批量/版本窗口验收并上传产物和截图。每次必须核对本次源提交的工作流结果；历史成功不代表当前提交已通过。见[验证报告](../docs/electron/validation.md)。
 
 每次修改并通过相关编译和测试后，自动本地提交，再运行 `npm run release:mac`，无需重复确认。该命令从当前 Git 提交创建临时快照、构建 Release `.app`、验证签名和内嵌 commit/version；正常退出 `/Applications/Teachshell.app`，保留旧 bundle 于 `/Applications/.Teachshell-backups/`，替换后注册 LaunchServices、打开并核对进程路径及应用摘要。日常更新不生成 DMG/ZIP 等分发安装包，除非用户要求。未保存退出被取消时停止替换，不强制结束进程；安装失败恢复旧 bundle。`release/installed-macos.json` 保存安装回执。`npm run install:mac` 可只安装已构建且签名有效的应用。原 `/Applications/课屿.app` 和用户资料库保留。
 
@@ -132,7 +134,7 @@ macOS helper 和应用均为 ARM64，打包前验证架构；从 0.3.10 起不�
 - 教学资料增量/版本与批量审核、可选七天登录记忆、默认关闭的后台定时巡检已实现。后台只在应用运行时检查并生成审核，不自动下载或应用；开机启动、应用退出后的系统任务和系统通知未实现。真实账号登录受校园网络与学校页面影响，离线自动验收不能替代真实账号验收。
 - 安全文件复制暂使用同一资料库卷内的硬链接完成无覆盖提交；不支持硬链接的卷会明确拒绝并回滚。优先使用本地 APFS/NTFS/ext4，网络/移动卷未验收。
 - 同一用户下其他恶意进程可绕过任何应用级锁/权限；不支持两端同时修改同库。
-- Windows/Linux 安装和真实学校账号登录需在对应环境验收。没有凭据时只做离线解析和受限下载测试，不声称真实登录已通过。
+- Windows/Linux 的原生 runner 自动化与用户桌面安装体验分别验收，结果见验证报告；真实学校账号登录仍需对应环境验证。没有凭据时只做离线解析和受限下载测试，不声称真实登录已通过。
 
 ## Windows / macOS GitHub Releases
 
@@ -152,6 +154,6 @@ npm run verify:release -- win32 x64
 
 Windows 安装包可在 Mac 交叉构建并解包校验，但实际 Windows 运行验收由 Windows runner 完成。Mac helper 与应用均为 ARM64，不再构建或发布 Intel 版本；本地更新仍使用 `npm run release:mac` 备份替换 Teachshell，不修改原生课屿。发布版本 0.3.8 起附件名称包含平台和架构。macOS 当前为 ad-hoc 签名、未公证；Windows 未配置发布者证书。
 
-Windows 文件监听使用 500ms 目录/文本轮询与 1000ms 二进制文件轮询，避免系统子目录监听句柄阻止应用内改名或资源管理器移动。大型资料库的 CPU/磁盘开销可能高于 macOS/Linux 的原生事件监听；变更合并与写入稳定检查仍保留。
+Windows 文件监听使用 500ms 目录/文本轮询与 1000ms 二进制文件轮询，避免系统子目录监听句柄阻止应用内改名或资源管理器移动。大型资料库的 CPU/磁盘开销可能高于原生事件监听；Windows/Linux 保留 Chokidar 的 350ms 写入稳定检查，所有平台由主进程 500ms 合并后扫描。macOS 不依赖逐目录扫描注册，不把事件路径当作改名事实。
 
 Windows 本机执行 `verify:release` 需要完整 7-Zip（默认 `C:\Program Files\7-Zip\7z.exe`，可用 `TEACHSHELL_7ZIP_PATH` 指定）。校验会先检查 NSIS 格式支持，再解包对比；electron-builder 自带的 Windows 精简版 7za 不包含该读取器。GitHub Windows runner 已提供完整版本。

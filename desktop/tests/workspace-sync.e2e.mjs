@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Repository } from '../electron/services/storage/repository.ts';
+import { courseDirectory } from '../electron/services/filesystem/paths.ts';
 const desktop = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const executable = process.env.TEACHSHELF_EXECUTABLE;
 const root = await fs.realpath(
@@ -93,6 +94,49 @@ try {
         await page.locator('.sidebar').getByText('后续更新课程', { exact: true }).count(),
         1,
       );
+    },
+  );
+  await check(
+    'External consecutive course and nested material moves update the UI without refresh',
+    async () => {
+      const before = await snap();
+      const course = before.state.courses.find((c) => c.name === '后续更新课程');
+      const first = path.join(before.root, courseDirectory(course));
+      const middle = path.join(path.dirname(first), `中间改名 [${course.id}]`);
+      const final = path.join(path.dirname(first), `自动同步课程 [${course.id}]`);
+      await fs.rename(first, middle);
+      await fs.rename(middle, final);
+      await page.locator('.sidebar').getByText('自动同步课程', { exact: true }).waitFor();
+      const nested = path.join(final, '资料', '外部新目录');
+      await fs.mkdir(nested);
+      await fs.rename(
+        path.join(before.root, item.storedPath),
+        path.join(nested, '自动同步课件.txt'),
+      );
+      await page.getByRole('table').getByText('自动同步课件', { exact: true }).waitFor();
+      const after = await snap();
+      const moved = after.state.materials.find((m) => m.id === item.id);
+      assert.equal(
+        moved.courseID,
+        course.id,
+        JSON.stringify({
+          courses: after.state.courses,
+          moved,
+          folders: after.state.materialFolders,
+          warnings: after.warnings,
+        }),
+      );
+      assert.equal(
+        await fs.readFile(path.join(after.root, moved.storedPath), 'utf8'),
+        'workspace UI fixture',
+      );
+      // Rename again after the earlier watcher notifications have been processed.
+      await fs.rename(
+        path.join(after.root, moved.storedPath),
+        path.join(nested, '后续修改课件.txt'),
+      );
+      await page.getByRole('table').getByText('后续修改课件', { exact: true }).waitFor();
+      item.title = '后续修改课件';
     },
   );
   await check(
@@ -187,6 +231,19 @@ try {
       assert.equal(await page.locator('.inspector').count(), 0);
       assert.equal(await page.getByText('后续更新课程', { exact: true }).count(), 0);
       assert.equal(after.state.courses.length, 1);
+      // A retired watcher must not publish into the new library. The new watcher
+      // must already be active, without waiting for manual refresh.
+      const nextCourse = after.state.courses[0];
+      const nextPath = path.join(after.root, courseDirectory(nextCourse));
+      await fs.rename(
+        nextPath,
+        path.join(path.dirname(nextPath), `乙库自动同步 [${nextCourse.id}]`),
+      );
+      await fs.writeFile(path.join(before.root, 'files', '旧库变化.txt'), 'retired library');
+      await page.locator('.sidebar').getByText('乙库自动同步', { exact: true }).waitFor();
+      const latest = await snap();
+      assert.equal(latest.workspaceID, after.workspaceID);
+      assert.equal(latest.state.courses.length, 1);
       const original = JSON.parse(
         await fs.readFile(path.join(before.root, 'library.json'), 'utf8'),
       );

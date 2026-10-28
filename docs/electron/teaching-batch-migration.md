@@ -1,5 +1,7 @@
 # 教学网站批量更新审核
 
+2026-10-28 复核：登录记忆和后台只读巡检已分别接入独立模块；本文末尾“不在本模块内”不代表应用缺失这些能力。监听导致的文件路径或 revision 变化仍应使过期审核拒绝写入。见[文件监听](filesystem-watch.md)、[登录记忆](login-session-migration.md)、[后台巡检](background-sync-migration.md)、[当前验证](validation.md)。
+
 实现依据是原 `TeachingWebsiteController.check/applySelected`、`TeachingUpdateProposal`、`TeachingUpdateReviewView` 与 `TeachingWebClient.load/read/fetch` 的实际行为。Swift 原代码未修改。
 
 ## 已实现

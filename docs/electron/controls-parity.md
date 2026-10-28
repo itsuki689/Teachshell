@@ -1,5 +1,7 @@
 # Teachshell 0.3.4 图标与控件同步
 
+2026-10-28 文档复核：本文为标题所示版本的历史验收，测试数、平台限制和安装包名称均保留原记录。当前 macOS 仅支持 Apple Silicon；开发、部署和最新回归以[文档目录](../README.md)与[当前验证](validation.md)为准，不能将历史安装命令用于替换原生课屿。
+
 本轮只修改 `desktop/` 与迁移文档。原生 `/Applications/课屿.app`、Swift 源码、原生测试和 `example/` 保留。安装目标仅为 `/Applications/Teachshell.app`，替换前正常退出并保留可恢复的旧版。
 
 ## Swift 对照与实际改动

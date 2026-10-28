@@ -1,8 +1,10 @@
 # 历史验收记录
 
+2026-10-28 复核：下文全部为原生 Swift 历史，不代表当前 Electron 的运行环境或本机安装状态。最新技术文档入口见[目录](README.md)。
+
 [返回项目首页](../README.md)
 
-本文归档原 README 中的验收与版本记录。测试数量、界面行为和本机安装状态仅代表记录当时的情况；当前自动回归结果以 [README](../README.md#开发与验证) 为准。网站同步及 1.8–1.9 系列的后续记录见 [web-in-progress.md](web-in-progress.md)。
+本文归档原 README 中的验收与版本记录。测试数量、界面行为和本机安装状态仅代表记录当时的情况；当前自动回归结果以 [Teachshell 验证报告](electron/validation.md) 为准。网站同步及 1.8–1.9 系列的后续记录见 [web-in-progress.md](web-in-progress.md)。
 
 ## 早期功能与界面验收
 

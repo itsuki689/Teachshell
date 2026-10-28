@@ -1,3 +1,20 @@
+# Teachshell MCP 接入
+
+适用于 Electron 应用；[文档目录](README.md) · [功能与工具映射](electron/feature-map.md) · [当前验证](electron/validation.md)。
+
+MCP 默认关闭。在 Teachshell 的设置 → MCP 启用，确认显示实际运行状态，再复制 HTTP 或 stdio 配置。默认只监听 `http://127.0.0.1:53142/mcp`，与原生课屿的 53141 分离；应用必须保持运行。HTTP 配置包含随机 Bearer token，拒绝浏览器 Origin、错误 Host 和非法协议请求。不能将令牌提交到仓库或交给模型 API。
+
+stdio 配置由应用生成，使用当前 Teachshell 可执行文件、随包 `mcp-stdio.cjs`、`--config <userData>/desktop-settings.json` 和 `ELECTRON_RUN_AS_NODE=1`，不要求用户安装 Node.js。请复制实际配置，不能使用下方 Swift 历史示例的 `TeachshelfMCP` 路径。更换安装位置后重新复制配置。
+
+内置 AI 与 MCP 共享 25 个工具：计划查询/重复发生项/修改/撤销，以及课程、资料元数据和物理文件夹操作。工具名和 schema 对照见 `desktop/tests/fixtures/mcp-tool-catalog.json`；实现位于 `desktop/electron/services/mcp/`。查询先获取当前资料库 ID 与 revision，再提交写入；不要沿用 Swift 客户端缓存的 revision。文件事件重新核对索引后也可能改变 revision，冲突时应重新读取。资料移除保留真实文件，计划撤销不撤销课程和资料文件事务。
+
+外部客户端拥有已启用服务的令牌后可直接调用受校验的写工具；逐次弹确认属于内置 AI 的流程。服务没有任意 shell、文件正文读取或外部文件导入能力；网页没有调用 MCP 的本地权限。服务保存和重启使用串行配置事务，失败回滚；显示“已启用”不等于监听成功。
+
+验证（在 `desktop/`）：`node --experimental-strip-types --test tests/mcp.test.ts`；完整入口为 `npm test`。真实 HTTP/stdio 回归需要允许本地回环监听；安装版 E2E 校验实际桥接脚本。配置、构建和限制以[开发说明](../desktop/README.md)为准。
+
+<details>
+<summary>原生 Swift 历史说明（保留作行为对照，不作为 Teachshell 操作指引）</summary>
+
 # 用 LLM 操作课屿计划与课程资料
 
 也可以直接使用课屿侧栏的 **AI 助手**：在 **设置 → AI 助手** 配置 OpenAI 兼容模型 API 后，在应用内自然语言操作。它复用同一工具目录和执行层，不要求开启外部 MCP 服务，也无需向服务器开放本机端口。见 [AI 助手指南](AI.md)。
@@ -134,3 +151,5 @@ ssh -o ExitOnForwardFailure=yes -N \
 - 支持 MCP `2025-11-25`、`2025-06-18`、`2025-03-26`，更新版本初始化时协商至支持的版本。实现参考 [MCP 2025-11-25 传输规范](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) 和 [工具规范](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)。
 - HTTP 无会话、无 SSE：POST 返回 JSON 或 202；GET/DELETE 返回 405。请求使用 Content-Length（stdio 桥接自动设置），暂不支持 chunked request、压缩请求体、HTTP 批量 JSON-RPC。单请求最多 1 MiB、最多 32 个并发连接、15 秒连接超时。
 - `--data-dir` 隔离启动默认不启动 MCP，避免测试资料库抢占正式端口。开发测试可创建独立 `MCPController` 并提供临时配置路径。stdio 入口也支持 `--config /absolute/path/config.json`。
+
+</details>

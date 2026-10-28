@@ -1,5 +1,7 @@
 # Teachshell 0.2.0 交付与验证
 
+2026-10-28 文档复核：本文为标题所示版本的历史验收，测试数、平台限制和安装包名称均保留原记录。当前 macOS 仅支持 Apple Silicon；开发、部署和最新回归以[文档目录](../README.md)与[当前验证](validation.md)为准，不能将历史安装命令用于替换原生课屿。
+
 日期：2026-10-25。分支：`codex/electron-migration`。功能代码提交：`594305b`。本次要求的教学资料增量同步、历史版本保留与恢复、多课程批量更新审核，以及搜索、导航和编辑保护已经形成实际可运行的 Release。
 
 原 Swift 工程保留：相对审计基线 `24efb2d`，`Sources/`、原 `Tests/` 和 `Package.swift` 无改动，`example/` 未参与迁移。测试均使用临时资料库和明确的离线学校页面。按本次用户指定名称安装 `/Applications/Teachshell.app`，原 `/Applications/课屿.app` 保留。未推送或对外发布。上一阶段内容见 [0.1.0历史报告](validation-0.1.0.md)，未完成项以本报告更新为准。

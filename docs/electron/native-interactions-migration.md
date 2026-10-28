@@ -1,5 +1,7 @@
 # 原生交互与登录记忆迁移
 
+当前跨平台边界：macOS 仅 Apple Silicon。文件事件后端与 Swift FSEvents 调度不同，保留业务身份核对；见[文件监听说明](filesystem-watch.md)。本机安装只更新 Teachshell，当前验收见[验证报告](validation.md)。
+
 ## 对照的实际实现
 
 - `ToolbarSettings.swift` / `WorkspaceToolbar`：10 种操作，默认更新、设置、导入、新建；最多 6 个、不重复，可为空。跨平台版按原 JSON 保存 `toolbarSettings.actions`，保留未知字段；缺省读取不会把默认值写回旧库。修改受资料库身份和 revision 保护。
@@ -16,6 +18,6 @@ macOS 随包包含小型 Swift Keychain helper，读写时明确控制是否允�
 
 ## 构建和验收界限
 
-macOS 开发构建需要 Apple Command Line Tools。helper 与构建主机架构一致，打包前验证 Mach-O 架构及签名；Intel 与 Apple Silicon 应分别在对应主机构建。不使用缺少 Intel Swift 兼容运行库的 ARM CLT 强行交叉链接，也不移除运行时检查。安装后用户不需要 Swift 工具链。
+macOS 开发构建需要 Apple Command Line Tools。从 0.3.10 起仅支持 Apple Silicon，要求 ARM64 Node.js 和 helper；打包前验证 Mach-O 架构及签名，拒绝 Intel 和 Universal 目标。不使用缺少 Intel Swift 兼容运行库的 ARM CLT 强行交叉链接，也不移除运行时检查。安装后用户不需要 Swift 工具链。
 
 测试使用真实临时资料库、实际 Electron 窗口、原解析脚本和官方 URL 的本地响应替身。真实校园账号的交互登录、学校服务器策略与 Windows/Linux 桌面实机行为仍需对应环境验证；不能把隔离测试等同于真实校园认证成功。

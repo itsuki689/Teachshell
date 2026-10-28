@@ -1,5 +1,7 @@
 # Teachshell 0.3.0 交付与验证
 
+2026-10-28 文档复核：本文为标题所示版本的历史验收，测试数、平台限制和安装包名称均保留原记录。当前 macOS 仅支持 Apple Silicon；开发、部署和最新回归以[文档目录](../README.md)与[当前验证](validation.md)为准，不能将历史安装命令用于替换原生课屿。
+
 日期：2026-10-25。分支：`codex/electron-migration`。本轮完成后台定时巡检、登录记忆、课程与计划的分钟拖动/缩放/键盘微调，以及自定义顶栏。实际应用已构建、安装并验收；没有用静态页面代替功能。历史报告见 [0.2.0](validation-0.2.0.md)。
 
 **原生 `/Applications/课屿.app` 始终保留。** 已把这一要求写入 `AGENTS.md`。自动安装仅正常退出并备份、替换、注册 `/Applications/Teachshell.app`；不推送、不发布。本轮前后原生课屿的版本 1.16.0、可执行文件 SHA256、Info.plist SHA256 和 bundle 修改时间完全相同，见 [保留证据](evidence/0.3.0/native-app-preserved.json)。本轮没有修改 `Sources/`、原 `Tests/`、`Package.swift`，也没有处理 `example/`。

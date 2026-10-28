@@ -30,6 +30,12 @@ jobs:
       - run: npm ci
       - run: node node_modules/electron/install.js
       - run: npm test
+      - name: Repeat macOS watcher regressions
+        if: runner.os == 'macOS'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            node --experimental-strip-types --test tests/watcher.test.ts
+          done
       - run: npm run build
       - name: Build installers (unsigned)
         run: npm run package -- --publish never

@@ -180,7 +180,7 @@ async function watch() {
   if (timer) clearTimeout(timer);
   const repo = repository;
   watcher = watchLibrary(repo.root);
-  watcher.on('all', () => {
+  const reconcile = () => {
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       if (repo !== repository || switching || quitting) return;
@@ -190,7 +190,11 @@ async function watch() {
         post('changed', repo.snapshot());
       });
     }, 500);
-  });
+  };
+  watcher.on('all', reconcile);
+  // Reconcile once after registration: edits between Repository.open() and ready
+  // must not depend on a later user action or a particular OS event filename.
+  watcher.once('ready', reconcile);
   watcher.on('error', (error) => {
     if (repo !== repository) return;
     repo.warnings = [String(error)];

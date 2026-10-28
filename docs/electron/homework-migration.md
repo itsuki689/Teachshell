@@ -1,5 +1,7 @@
 # 作业文件夹迁移与验证
 
+2026-10-28 复核：默认作业目录随课程改名；外部挂载不属于 `files/` 的监听范围，作业页读取/刷新仍通过 `withWorkspace()` 检查真实路径。未知作业文件不会变成课件索引。监听机制见[说明](filesystem-watch.md)，下文测试数为模块历史验收，当前结果见[验证](validation.md)。
+
 实现依据为 `Sources/TeachshelfCore/Repository/LibraryRepository+Homework.swift`、`LibraryRepository+StorageMigration.swift`、`LibraryRepository+PhysicalStorage.swift`、`LibraryRepository+FileSystem.swift`、`LibraryRepository+Courses.swift` 以及 `HomeworkStorageTests.swift` 和 `LibraryRepositoryTests.swift` 的作业目录测试。原 Swift 文件没有修改。
 
 ## 已实现
