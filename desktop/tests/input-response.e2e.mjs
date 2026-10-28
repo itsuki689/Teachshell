@@ -96,6 +96,72 @@ try {
       return result;
     };
   });
+  async function assertPressedFeedback() {
+    const feedback = await toolbar('settings').evaluate((el) => ({
+      pressed: el.matches(':active'),
+      pendingColors: el
+        .getAnimations()
+        .filter(
+          (a) =>
+            a instanceof CSSTransition &&
+            [
+              'background-color',
+              'border-top-color',
+              'border-right-color',
+              'border-bottom-color',
+              'border-left-color',
+            ].includes(a.transitionProperty) &&
+            a.playState !== 'finished',
+        )
+        .map((a) => a.transitionProperty),
+    }));
+    assert.equal(feedback.pressed, true);
+    assert.deepEqual(
+      feedback.pendingColors,
+      [],
+      'Pressed feedback must not wait for a color transition',
+    );
+    assert.equal(
+      await page.getByRole('heading', { name: '设置', exact: true }).count(),
+      0,
+      'Pressing must not activate before release',
+    );
+  }
+  await check(
+    'Mouse down displays pressed feedback immediately and dragging away cancels activation',
+    async () => {
+      const box = await toolbar('settings').boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      try {
+        await assertPressedFeedback();
+        await page
+          .locator('.titlebar')
+          .screenshot({ path: path.join(evidence, 'input-response-pressed.png') });
+      } finally {
+        const heading = await page
+          .getByRole('heading', { name: '全部资料', exact: true })
+          .boundingBox();
+        await page.mouse.move(heading.x + 5, heading.y + 5);
+        await page.mouse.up();
+      }
+      assert.equal(await page.getByRole('heading', { name: '设置', exact: true }).count(), 0);
+    },
+  );
+  await check(
+    'Space displays pressed feedback immediately and activates only on key release',
+    async () => {
+      await toolbar('settings').focus();
+      await page.keyboard.down('Space');
+      try {
+        await assertPressedFeedback();
+      } finally {
+        await page.keyboard.up('Space');
+      }
+      await page.getByRole('heading', { name: '设置', exact: true }).waitFor();
+      assert.equal(await toolbar('settings').getAttribute('aria-pressed'), 'true');
+    },
+  );
   await check(
     'Refresh releases input when IO finishes even if its decorative animation is paused',
     async () => {
@@ -197,7 +263,13 @@ try {
   await fs.writeFile(
     path.join(evidence, 'input-response-report.json'),
     JSON.stringify(
-      { steps, failures, errors, packaged: !!process.env.TEACHSHELF_EXECUTABLE },
+      {
+        platform: process.platform,
+        steps,
+        failures,
+        errors,
+        packaged: !!process.env.TEACHSHELF_EXECUTABLE,
+      },
       null,
       2,
     ),

@@ -96,6 +96,9 @@ button:hover:not(:disabled) {
 }
 button:active:not(:disabled) {
   transform: translateY(0.5px);
+  /* Press feedback must appear immediately, including Space on Windows.
+     Keep the hover/release transition without delaying activation feedback. */
+  transition-duration: 0s;
 }
 button:disabled {
   cursor: default;
