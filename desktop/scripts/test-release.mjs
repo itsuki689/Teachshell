@@ -12,7 +12,9 @@ for (const test of [
   'schedule-interactions.e2e.mjs',
   'page-refresh.e2e.mjs',
   'toolbar-feedback.e2e.mjs',
+  'website-login-ui.e2e.mjs',
 ]) {
+  console.log('RELEASE SUITE', test);
   const code = await new Promise((resolve, reject) => {
     const child = spawn(
       process.execPath,
@@ -20,10 +22,15 @@ for (const test of [
       {
         stdio: 'inherit',
         env: { ...process.env, TEACHSHELF_EXECUTABLE: executable },
+        timeout: 300_000,
+        killSignal: 'SIGKILL',
       },
     );
     child.on('error', reject);
-    child.on('exit', (code) => resolve(code ?? 1));
+    child.on('exit', (code, signal) => {
+      if (signal) console.error(`${test} terminated (${signal}); suite limit is five minutes`);
+      resolve(code ?? 1);
+    });
   });
   if (code !== 0) process.exit(code);
 }

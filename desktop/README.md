@@ -2,7 +2,7 @@
 
 本工程属于独立的 Teachshell Git 仓库，主目录为 `desktop/`。原生 Teachshelf 仅作只读参考；两者不共享 worktree、Git 对象库或远程配置。仓库内保留的 Swift 实现用于对照与兼容性验证。
 
-Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.10。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
+Electron + Vue 3 + TypeScript 的跨平台课程与资料应用，当前版本 0.3.11。保留原 Swift 工程及原生课屿应用，使用独立应用标识 `com.teachshelf.desktop`。本次对照 Swift 补齐学期筛选、分词搜索、视图和日期记忆、键盘选择，并修复切库、并发草稿、聊天及网站审核的界面同步问题，详见[界面同步说明](../docs/electron/ui-sync-migration.md)。后台巡检、受控登录记忆、分钟拖动/缩放、教学资料增量同步与版本审核继续保留。应用更名后继续使用原 `teachshelf-desktop` 用户数据目录下的 `Library`；实际验收范围与剩余平台差异见末节及验证报告。
 
 0.3.3 对照 Swift 同步计划默认周视图、无课表本地周计划、强调色编辑和十条色带明暗动效。外观设置随资料库保存；十二色预设、取消恢复、课程色边框、日夜开关、减少动态效果及切库同步见[周视图与外观验收](../docs/electron/appearance-week-parity.md)。
 
@@ -138,7 +138,7 @@ macOS helper 和应用均为 ARM64，打包前验证架构；从 0.3.10 起不�
 
 发布流程位于 `.github/workflows/release.yml`。在用户明确要求发布时，先更新 `package.json` / `package-lock.json` 版本和 `release-notes/<版本>.md`，验证并提交后推送同版本 `v<版本>` 标签。标签版本必须与包版本一致。
 
-流程分别在 Windows x64、macOS ARM64 原生 runner 上测试、编译和打包，解开安装包验证代码、源提交及架构，再对打包应用运行月周日和课程交互测试。只有两个目标全部通过，才上传完整资产并将草稿转为公开 Release；已公开版本不会被覆盖。附件含三个安装包（Windows x64 EXE、macOS ARM64 DMG/ZIP）、SHA256SUMS 和 manifest。
+流程分别在 Windows x64、macOS ARM64 原生 runner 上测试、编译和打包，解开安装包验证代码、源提交及架构，再对打包应用运行月周日、课程交互、页面刷新、顶栏反馈和登录记忆测试。登录测试使用合成账户夹具及真实系统安全存储，覆盖操作互斥、请求失败回滚、重启恢复和关闭清除。只有两个目标全部通过，才上传完整资产并将草稿转为公开 Release；已公开版本不会被覆盖。附件含三个安装包（Windows x64 EXE、macOS ARM64 DMG/ZIP）、SHA256SUMS 和 manifest。
 
 本地构建命令：
 
